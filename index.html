@@ -908,6 +908,7 @@
             border-color: #2ecc71 !important;
             overflow: visible;
             z-index: 2;
+            cursor: pointer;
             animation: liveWaveBorder 1.8s ease-in-out infinite;
             will-change: box-shadow;
         }
@@ -1406,7 +1407,7 @@
                         <div class="team winner"><span class="team-flag"><img src="https://flagcdn.com/w40/be.png" alt="BEL"></span><span class="team-name">Belgia</span><span class="team-score">3</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/sn.png" alt="SEN"></span><span class="team-name">Senegal</span><span class="team-score">2</span></div>
                     </div>
-                    <div class="matchup live">
+                    <div class="matchup live" title="Tonton live di meWatch">
                         <div class="matchup-date">
                             <span class="matchup-live-badge">
                                 <span class="wave-bars"><span></span><span></span><span></span></span>
@@ -1763,6 +1764,19 @@
         window.addEventListener('load', () => setTimeout(injectSupporters, 200));
         // Redraw bracket lines after supporters are injected
         window.addEventListener('load', () => setTimeout(drawBracketLines, 300));
+
+        const LIVE_STREAM_URL = 'https://www.mewatch.sg/fifaworldcup';
+
+        function initLiveMatchupLinks() {
+            document.querySelectorAll('.matchup.live').forEach(matchup => {
+                matchup.addEventListener('click', (e) => {
+                    if (e.target.closest('.supporters-toggle, .supporters-panel')) return;
+                    window.open(LIVE_STREAM_URL, '_blank', 'noopener,noreferrer');
+                });
+            });
+        }
+
+        window.addEventListener('load', () => setTimeout(initLiveMatchupLinks, 250));
     </script>
 
     <!-- Standings Section -->

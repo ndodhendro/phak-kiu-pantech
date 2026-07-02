@@ -882,6 +882,118 @@
             font-weight: 600;
         }
 
+        /* Matchup Live Wave Effect */
+        @keyframes liveWaveBorder {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 0 rgba(46, 204, 113, 0.55),
+                    0 0 16px rgba(46, 204, 113, 0.35);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 5px rgba(46, 204, 113, 0),
+                    0 0 28px rgba(46, 204, 113, 0.65);
+            }
+        }
+        @keyframes liveWaveShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        @keyframes liveWaveBar {
+            0%, 100% { transform: scaleY(0.35); }
+            50% { transform: scaleY(1); }
+        }
+        .matchup.live {
+            position: relative;
+            border-color: #2ecc71 !important;
+            overflow: visible;
+            z-index: 2;
+            animation: liveWaveBorder 1.8s ease-in-out infinite;
+            will-change: box-shadow;
+        }
+        .matchup.live::before,
+        .matchup.live::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            border-radius: inherit;
+            border: 2px solid rgba(46, 204, 113, 0.45);
+            pointer-events: none;
+            animation: liveWaveRing 2.4s ease-out infinite;
+        }
+        .matchup.live::after {
+            animation-delay: 1.2s;
+        }
+        @keyframes liveWaveRing {
+            0% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1.06);
+                opacity: 0;
+            }
+        }
+        .matchup.live .matchup-date {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: linear-gradient(
+                90deg,
+                rgba(46, 204, 113, 0.12) 0%,
+                rgba(0, 255, 136, 0.28) 25%,
+                rgba(46, 204, 113, 0.12) 50%,
+                rgba(0, 255, 136, 0.28) 75%,
+                rgba(46, 204, 113, 0.12) 100%
+            );
+            background-size: 200% 100%;
+            animation: liveWaveShimmer 2.5s linear infinite;
+            color: #2ecc71;
+            font-weight: 700;
+            border-bottom-color: rgba(46, 204, 113, 0.35);
+        }
+        .matchup-live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 1px 8px;
+            border-radius: 999px;
+            background: rgba(46, 204, 113, 0.18);
+            border: 1px solid rgba(46, 204, 113, 0.45);
+            color: #00ff88;
+            font-size: 0.58rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .matchup-live-badge .wave-bars {
+            display: inline-flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 10px;
+        }
+        .matchup-live-badge .wave-bars span {
+            display: block;
+            width: 2px;
+            height: 100%;
+            background: #2ecc71;
+            border-radius: 1px;
+            transform-origin: bottom;
+            animation: liveWaveBar 0.9s ease-in-out infinite;
+        }
+        .matchup-live-badge .wave-bars span:nth-child(1) { animation-delay: 0s; }
+        .matchup-live-badge .wave-bars span:nth-child(2) { animation-delay: 0.15s; }
+        .matchup-live-badge .wave-bars span:nth-child(3) { animation-delay: 0.3s; }
+        .matchup.live .team {
+            position: relative;
+            z-index: 1;
+            background: #1a1a3e;
+        }
+
         /* Standings #1 Glowing Effect */
         .chart-row.top-1 .chart-bar-wrapper {
             border-color: var(--glow-color, #ffd700);
@@ -1294,10 +1406,16 @@
                         <div class="team winner"><span class="team-flag"><img src="https://flagcdn.com/w40/be.png" alt="BEL"></span><span class="team-name">Belgia</span><span class="team-score">3</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/sn.png" alt="SEN"></span><span class="team-name">Senegal</span><span class="team-score">2</span></div>
                     </div>
-                    <div class="matchup today">
-                        <div class="matchup-date">Kam, 2 Juli, 07:00 WIB</div>
-                        <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/us.png" alt="USA"></span><span class="team-name">Amerika Serikat</span></div>
-                        <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ba.png" alt="BIH"></span><span class="team-name">Bosnia & Herzegovina</span></div>
+                    <div class="matchup live">
+                        <div class="matchup-date">
+                            <span class="matchup-live-badge">
+                                <span class="wave-bars"><span></span><span></span><span></span></span>
+                                Live
+                            </span>
+                            Kam, 2 Juli, 07:00 WIB
+                        </div>
+                        <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/us.png" alt="USA"></span><span class="team-name">Amerika Serikat</span><span class="team-score">1</span></div>
+                        <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ba.png" alt="BIH"></span><span class="team-name">Bosnia & Herzegovina</span><span class="team-score">0</span></div>
                     </div>
                     <div class="matchup tbd">
                         <div class="matchup-date">Jum, 3 Juli, 02:00 WIB</div>

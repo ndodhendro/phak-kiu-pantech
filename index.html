@@ -3148,26 +3148,6 @@
 
     <script>
         window.ADMIN_CONFIG = null;
-        const ADMIN_CONFIG_URLS = [
-            'https://cdn.jsdelivr.net/gh/ndodhendro/arisan-wc-2026-knockout-hash-pku@main/admin-config.json',
-            'https://raw.githubusercontent.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/main/admin-config.json',
-        ];
-
-        async function fetchJsonNoCache(url) {
-            const sep = url.includes('?') ? '&' : '?';
-            const res = await fetch(url + sep + 't=' + Date.now(), { cache: 'no-store' });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
-        }
-
-        async function fetchAdminConfigFromRemote() {
-            for (const url of ADMIN_CONFIG_URLS) {
-                try {
-                    return await fetchJsonNoCache(url);
-                } catch (e) { /* coba sumber berikutnya */ }
-            }
-            return fetchJsonNoCache('admin-config.json');
-        }
 
         async function loadAdminConfig() {
             const preview = localStorage.getItem('arisan_admin_config');
@@ -3178,7 +3158,9 @@
                     localStorage.removeItem('arisan_admin_config');
                 }
             }
-            return fetchAdminConfigFromRemote();
+            const res = await fetch('admin-config.json?t=' + Date.now());
+            if (!res.ok) throw new Error('Failed to load admin-config.json');
+            return res.json();
         }
 
         function startApp() {

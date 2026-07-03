@@ -138,12 +138,10 @@
     <div id="admin-panel" class="wrap hidden">
         <h1>⚙️ Admin Panel</h1>
         <p class="subtitle">Kelola data manual — preview lokal atau deploy ke GitHub Pages</p>
-        <p id="config-meta" class="subtitle" style="margin-top:-12px; color:#00bcd4;"></p>
 
         <div class="toolbar">
             <button class="btn btn-success" onclick="savePreview()">👁 Preview Website</button>
             <button class="btn btn-primary" onclick="downloadConfig()">⬇ Download admin-config.json</button>
-            <button class="btn btn-secondary" onclick="reloadConfig()">↻ Muat Ulang Config</button>
             <button class="btn btn-secondary" onclick="clearPreview()">Hapus Preview Cache</button>
             <a href="index.html" class="btn btn-secondary" target="_blank">Buka Website</a>
             <button class="btn btn-secondary" onclick="logout()">Keluar</button>
@@ -184,12 +182,11 @@
             <div class="deploy-steps">
                 <ol>
                     <li>Klik <strong>Download admin-config.json</strong></li>
-                    <li>Upload / replace file <strong>admin-config.json</strong> di repo GitHub (branch <code>main</code>)</li>
-                    <li>Selesai — website & admin membaca config dari GitHub via CDN (±2–5 menit setelah upload)</li>
+                    <li>Replace file <strong>admin-config.json</strong> di repo GitHub</li>
+                    <li>Commit & push — semua pengunjung dapat update dalam ±1 menit</li>
                 </ol>
                 <p style="margin-top:10px;"><strong>Last updated</strong> otomatis dari waktu saat Preview / Download.</p>
-                <p style="margin-top:6px;"><strong>Preview</strong> hanya tampil di browser kamu (localStorage) sampai file di-upload ke GitHub.</p>
-                <p style="margin-top:6px; color:#888;">Error Actions <em>pages build and deployment</em> tidak memblok update config — bisa diabaikan selama upload ke <code>main</code> berhasil.</p>
+                <p style="margin-top:6px;"><strong>Preview</strong> hanya tampil di browser kamu (localStorage) sampai file di-commit.</p>
             </div>
         </div>
     </div>
@@ -198,11 +195,6 @@
         const ADMIN_PIN = '26889';
         const AUTH_KEY = 'arisan_admin_auth';
         const CONFIG_STORAGE = 'arisan_admin_config';
-        const ADMIN_CONFIG_URLS = [
-            'https://cdn.jsdelivr.net/gh/ndodhendro/arisan-wc-2026-knockout-hash-pku@main/admin-config.json',
-            'https://raw.githubusercontent.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/main/admin-config.json',
-        ];
-        const IS_LIVE_SITE = location.hostname.endsWith('github.io');
 
         const MATCH_CATALOG = [
             { id: 'group-0',  label: 'Grup — Afrika Selatan vs Kanada' },
@@ -392,62 +384,17 @@
             document.getElementById('pin-input').value = '';
         }
 
-        async function fetchJsonNoCache(url) {
-            const sep = url.includes('?') ? '&' : '?';
-            const res = await fetch(url + sep + 't=' + Date.now(), {
-                cache: 'no-store',
-                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
-            });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
-        }
-
-        async function fetchAdminConfigFromRemote() {
-            for (const url of ADMIN_CONFIG_URLS) {
-                try {
-                    return await fetchJsonNoCache(url);
-                } catch (e) {
-                    console.warn('Config source failed:', url, e);
-                }
-            }
-            if (!IS_LIVE_SITE) {
-                return fetchJsonNoCache('admin-config.json');
-            }
-            throw new Error('All remote config sources failed');
-        }
-
         async function loadConfig() {
             try {
-                config = await fetchAdminConfigFromRemote();
+                const res = await fetch('admin-config.json?t=' + Date.now());
+                if (!res.ok) throw new Error('fetch failed');
+                config = await res.json();
+                (config.finishedMatches || []).forEach(m => {
+                    if (!m.status) m.status = 'finished';
+                });
             } catch (e) {
-                console.error('Config load failed:', e);
                 config = { lastUpdated: '', finishedMatches: [], goldenBoot: [], goldenGlove: [] };
-                setStatus('Gagal memuat config dari GitHub. Coba Muat Ulang Config.', true);
-                return false;
             }
-            (config.finishedMatches || []).forEach(m => {
-                if (!m.status) m.status = 'finished';
-            });
-            return true;
-        }
-
-        function updateConfigMeta() {
-            const el = document.getElementById('config-meta');
-            if (!el) return;
-            if (!config?.lastUpdated) {
-                el.textContent = 'Config: belum dimuat dari GitHub';
-                return;
-            }
-            el.textContent = 'Config aktif — last updated: ' + config.lastUpdated;
-        }
-
-        async function reloadConfig() {
-            const ok = await loadConfig();
-            renderMatches();
-            renderGoldenBoot();
-            renderGoldenGlove();
-            updateConfigMeta();
-            if (ok) setStatus('Config dimuat ulang dari GitHub main.');
         }
 
         function showAdmin() {
@@ -456,7 +403,6 @@
             renderMatches();
             renderGoldenBoot();
             renderGoldenGlove();
-            updateConfigMeta();
         }
 
         function getMatchLabel(id) {
@@ -663,7 +609,7 @@
 
         function clearPreview() {
             localStorage.removeItem(CONFIG_STORAGE);
-            setStatus('Preview cache dihapus di browser ini.');
+            setStatus('Preview cache dihapus. Website akan pakai admin-config.json dari server.');
         }
 
         (async function init() {

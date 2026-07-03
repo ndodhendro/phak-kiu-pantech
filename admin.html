@@ -88,6 +88,8 @@
         }
         .match-row .winner:disabled { opacity: 0.35; cursor: not-allowed; }
         .match-row .match-label { font-size: 0.85rem; line-height: 1.35; }
+        .match-fields { display: contents; }
+        .mf-label { display: none; }
         .match-header {
             display: grid;
             grid-template-columns: minmax(140px, 1fr) 108px 64px 64px 108px;
@@ -108,7 +110,13 @@
             flex-wrap: wrap;
         }
         .gb-row .name, .gg-row .name { flex: 1; min-width: 140px; font-weight: 600; }
-        .gg-row label.inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: #ccc; font-size: 0.85rem; cursor: pointer; }
+        .gg-checks {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .gg-row label.inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: #ccc; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
         .gg-row label.inline input { width: auto; margin: 0; }
         .deploy-steps {
             background: #12122a;
@@ -123,10 +131,49 @@
         a.link { color: #00bcd4; }
         .hidden { display: none !important; }
         @media (max-width: 640px) {
-            .match-row, .match-header {
-                grid-template-columns: 1fr 1fr;
+            .match-header { display: none; }
+            .match-row {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
             }
-            .match-row .match-label { grid-column: 1 / -1; }
+            .match-fields {
+                display: grid;
+                grid-template-columns: minmax(0, 1.15fr) 52px 52px minmax(0, 1fr);
+                gap: 4px 6px;
+                align-items: center;
+                width: 100%;
+            }
+            .mf-label {
+                display: block;
+                font-size: 0.62rem;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                line-height: 1.2;
+            }
+            .match-fields select,
+            .match-fields input[type="number"] {
+                width: 100%;
+                min-width: 0;
+                font-size: 0.8rem;
+                padding: 8px 2px;
+            }
+            .gg-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .gg-row .name {
+                min-width: 0;
+                flex: none;
+            }
+            .gg-checks {
+                display: flex;
+                flex-wrap: nowrap;
+                gap: 16px;
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -156,7 +203,7 @@
         <div class="card">
             <h2>1. Kelola Match</h2>
             <div class="match-header">
-                <span>Match</span><span>Status</span><span>Skor T1</span><span>Skor T2</span><span>Pemenang</span>
+                <span>Match</span><span>Status</span><span>Score T1</span><span>Score T2</span><span>Winner</span>
             </div>
             <div id="matches-list"></div>
         </div>
@@ -474,11 +521,21 @@
             statusSel.addEventListener('change', syncWinnerField);
             syncWinnerField();
 
+            const matchFields = document.createElement('div');
+            matchFields.className = 'match-fields';
+            ['Status', 'T1', 'T2', 'Menang'].forEach(text => {
+                const lbl = document.createElement('span');
+                lbl.className = 'mf-label';
+                lbl.textContent = text;
+                matchFields.appendChild(lbl);
+            });
+            matchFields.appendChild(statusSel);
+            matchFields.appendChild(s0);
+            matchFields.appendChild(s1);
+            matchFields.appendChild(winSel);
+
             row.appendChild(label);
-            row.appendChild(statusSel);
-            row.appendChild(s0);
-            row.appendChild(s1);
-            row.appendChild(winSel);
+            row.appendChild(matchFields);
             return row;
         }
 
@@ -545,8 +602,12 @@
                 winLabel.appendChild(winCb);
                 winLabel.appendChild(document.createTextNode(' Winner'));
 
-                row.appendChild(elimLabel);
-                row.appendChild(winLabel);
+                const checks = document.createElement('div');
+                checks.className = 'gg-checks';
+                checks.appendChild(elimLabel);
+                checks.appendChild(winLabel);
+
+                row.appendChild(checks);
                 list.appendChild(row);
             });
         }

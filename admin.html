@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin — Arisan WC 2026</title>
+    <script src="supabase-public.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -140,8 +141,9 @@
         <p class="subtitle">Kelola data manual — preview lokal atau deploy ke GitHub Pages</p>
 
         <div class="toolbar">
+            <button class="btn btn-primary" id="btn-deploy-supabase" onclick="deployToSupabase()">🚀 Deploy ke Supabase</button>
             <button class="btn btn-success" onclick="savePreview()">👁 Preview Website</button>
-            <button class="btn btn-primary" onclick="downloadConfig()">⬇ Download admin-config.json</button>
+            <button class="btn btn-secondary" onclick="downloadConfig()">⬇ Download JSON</button>
             <button class="btn btn-secondary" onclick="clearPreview()">Hapus Preview Cache</button>
             <a href="index.html" class="btn btn-secondary" target="_blank">Buka Website</a>
             <button class="btn btn-secondary" onclick="logout()">Keluar</button>
@@ -178,15 +180,14 @@
 
         <!-- Deploy -->
         <div class="card">
-            <h2>📤 Deploy ke GitHub Pages</h2>
+            <h2>📤 Deploy Config</h2>
             <div class="deploy-steps">
                 <ol>
-                    <li>Klik <strong>Download admin-config.json</strong></li>
-                    <li>Upload / replace file di repo GitHub (branch <code>main</code>)</li>
-                    <li>Website & admin otomatis baca config terbaru via CDN (±2–5 menit) — <strong>tidak perlu</strong> tunggu Actions/Pages deploy</li>
+                    <li>Edit match / Golden Boot / Golden Glove</li>
+                    <li>Klik <strong>Deploy ke Supabase</strong> — website update langsung (±detik)</li>
                 </ol>
-                <p style="margin-top:10px;"><strong>Last updated</strong> otomatis dari waktu saat Preview / Download.</p>
-                <p style="margin-top:6px; color:#888;">Error Actions <em>pages build and deployment</em> tidak memblok update config selama upload ke <code>main</code> berhasil.</p>
+                <p style="margin-top:10px;"><strong>Last updated</strong> otomatis dari waktu Deploy / Preview / Download.</p>
+                <p style="margin-top:6px; color:#888;">Fallback: download JSON lalu upload manual ke GitHub jika Supabase belum disetup (lihat <code>SUPABASE_SETUP.md</code>).</p>
             </div>
         </div>
     </div>
@@ -195,7 +196,6 @@
         const ADMIN_PIN = '26889';
         const AUTH_KEY = 'arisan_admin_auth';
         const CONFIG_STORAGE = 'arisan_admin_config';
-        const ADMIN_CONFIG_CDN_URL = 'https://cdn.jsdelivr.net/gh/ndodhendro/arisan-wc-2026-knockout-hash-pku@main/admin-config.json';
 
         const MATCH_CATALOG = [
             { id: 'group-0',  label: 'Grup — Afrika Selatan vs Kanada' },
@@ -387,17 +387,9 @@
 
         async function loadConfig() {
             try {
-                const res = await fetch(ADMIN_CONFIG_CDN_URL + '?t=' + Date.now(), { cache: 'no-store' });
-                if (!res.ok) throw new Error('fetch failed');
-                config = await res.json();
+                config = await ArisanConfigSources.fetchConfig();
             } catch (e) {
-                try {
-                    const res = await fetch('admin-config.json?t=' + Date.now());
-                    if (!res.ok) throw new Error('fetch failed');
-                    config = await res.json();
-                } catch (e2) {
-                    config = { lastUpdated: '', finishedMatches: [], goldenBoot: [], goldenGlove: [] };
-                }
+                config = { lastUpdated: '', finishedMatches: [], goldenBoot: [], goldenGlove: [] };
             }
             (config.finishedMatches || []).forEach(m => {
                 if (!m.status) m.status = 'finished';
@@ -616,7 +608,31 @@
 
         function clearPreview() {
             localStorage.removeItem(CONFIG_STORAGE);
-            setStatus('Preview cache dihapus. Website akan pakai admin-config.json dari server.');
+            setStatus('Preview cache dihapus.');
+        }
+
+        async function deployToSupabase() {
+            if (!ArisanConfigSources.isConfigured()) {
+                setStatus('Supabase belum dikonfigurasi — isi supabase-public.js (lihat SUPABASE_SETUP.md)', true);
+                return;
+            }
+            if (sessionStorage.getItem(AUTH_KEY) !== '1') {
+                setStatus('Login dulu.', true);
+                return;
+            }
+            const btn = document.getElementById('btn-deploy-supabase');
+            btn.disabled = true;
+            setStatus('Mengupload ke Supabase...');
+            try {
+                const data = collectConfig();
+                await ArisanConfigSources.uploadConfig(data);
+                config = data;
+                setStatus('Deploy sukses! ' + data.lastUpdated);
+            } catch (e) {
+                setStatus('Deploy gagal: ' + e.message, true);
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         (async function init() {

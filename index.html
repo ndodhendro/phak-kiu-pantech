@@ -3146,16 +3146,9 @@
         window.addEventListener('focus', updateMusicForPageFocus);
     </script>
 
+    <script src="supabase-public.js"></script>
     <script>
         window.ADMIN_CONFIG = null;
-
-        const ADMIN_CONFIG_CDN_URL = 'https://cdn.jsdelivr.net/gh/ndodhendro/arisan-wc-2026-knockout-hash-pku@main/admin-config.json';
-
-        async function fetchRemoteConfig() {
-            const res = await fetch(ADMIN_CONFIG_CDN_URL + '?t=' + Date.now(), { cache: 'no-store' });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
-        }
 
         async function loadAdminConfig() {
             const preview = localStorage.getItem('arisan_admin_config');
@@ -3166,13 +3159,7 @@
                     localStorage.removeItem('arisan_admin_config');
                 }
             }
-            try {
-                return await fetchRemoteConfig();
-            } catch (e) {
-                const res = await fetch('admin-config.json?t=' + Date.now());
-                if (!res.ok) throw new Error('Failed to load admin-config.json');
-                return res.json();
-            }
+            return ArisanConfigSources.fetchConfig();
         }
 
         function startApp() {

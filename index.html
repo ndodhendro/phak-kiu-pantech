@@ -1764,6 +1764,45 @@
     </div>
 
     <script>
+        function splitLegacyScoreString(scoreStr) {
+            const text = String(scoreStr ?? '').trim();
+            const m = text.match(/^(\d+)\s*\(\s*(\d+)\s*\)$/);
+            if (m) {
+                return { ft: parseInt(m[1], 10), et: parseInt(m[2], 10) };
+            }
+            const n = parseInt(text, 10);
+            return { ft: Number.isNaN(n) ? 0 : n, et: 0 };
+        }
+
+        function getMatchScoreParts(match) {
+            const scores = match?.scores;
+            if (scores && typeof scores === 'object' && !Array.isArray(scores)) {
+                const toNum = v => {
+                    const n = parseInt(String(v ?? ''), 10);
+                    return Number.isNaN(n) ? 0 : Math.max(0, n);
+                };
+                return {
+                    ft: [toNum(scores.ft?.[0]), toNum(scores.ft?.[1])],
+                    et: [toNum(scores.et?.[0]), toNum(scores.et?.[1])],
+                };
+            }
+            const legacy0 = splitLegacyScoreString(scores?.[0]);
+            const legacy1 = splitLegacyScoreString(scores?.[1]);
+            return {
+                ft: [legacy0.ft, legacy1.ft],
+                et: [legacy0.et, legacy1.et],
+            };
+        }
+
+        function formatScoreForDisplay(ft, et, showExtraTimeFormat) {
+            const fullTime = Math.max(0, parseInt(ft, 10) || 0);
+            const extraTime = Math.max(0, parseInt(et, 10) || 0);
+            if (showExtraTimeFormat || extraTime > 0) {
+                return fullTime + ' (' + extraTime + ')';
+            }
+            return String(fullTime);
+        }
+
         function applyAdminConfig() {
             if (!window.ADMIN_CONFIG) return;
 
@@ -1779,10 +1818,16 @@
                 const status = match.status || 'finished';
                 const teams = el.querySelectorAll(':scope > .team');
                 const dateEl = el.querySelector('.matchup-date');
+                const scoreParts = getMatchScoreParts(match);
+                const hasExtraTime = scoreParts.et[0] > 0 || scoreParts.et[1] > 0;
+                const displayScores = [
+                    formatScoreForDisplay(scoreParts.ft[0], scoreParts.et[0], hasExtraTime),
+                    formatScoreForDisplay(scoreParts.ft[1], scoreParts.et[1], hasExtraTime),
+                ];
 
                 el.dataset.adminManaged = 'true';
 
-                (match.scores || []).forEach((score, i) => {
+                displayScores.forEach((score, i) => {
                     if (!teams[i]) return;
                     let scoreEl = teams[i].querySelector('.team-score');
                     if (!scoreEl) {

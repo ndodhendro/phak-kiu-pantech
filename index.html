@@ -855,6 +855,32 @@
             will-change: opacity;
         }
 
+        /* Golden Glove Winner — highlight emas */
+        #podium-goldenglove-container .player-podium-card.golden-glove-winner {
+            border: 2px solid rgba(255, 215, 0, 0.95);
+            box-shadow: 0 0 22px rgba(255, 215, 0, 0.85), 0 0 44px rgba(255, 215, 0, 0.35);
+            animation: glowPulse 2s ease-in-out infinite;
+            transform: scale(1.03);
+        }
+        #podium-goldenglove-container .player-podium-card.golden-glove-winner .player-podium-img {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+        #podium-goldenglove-container .player-podium-card.golden-glove-winner .player-podium-name {
+            color: #ffd700;
+        }
+        .golden-glove-winner-badge {
+            display: block;
+            text-align: center;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #1a1a3e;
+            background: linear-gradient(135deg, #ffd700, #f0a500);
+            padding: 4px 8px;
+        }
+
         /* Golden Boot #1 Glowing Effect */
         .goldenboot-row.top-1 .goldenboot-card {
             border-color: rgba(255, 215, 0, 0.7);
@@ -1490,16 +1516,10 @@
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/be.png" alt="BEL"></span><span class="team-name">Belgia</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/sn.png" alt="SEN"></span><span class="team-name">Senegal</span></div>
                     </div>
-                    <div class="matchup live" data-match-id="group-5" title="Tonton live" data-live-url="https://lee22.0i52waitxcy8needs.cfd/id">
-                        <div class="matchup-date">
-                            <span class="matchup-live-badge">
-                                <span class="wave-bars"><span></span><span></span><span></span></span>
-                                Live
-                            </span>
-                            Kam, 2 Juli, 07:00 WIB
-                        </div>
-                        <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/us.png" alt="USA"></span><span class="team-name">Amerika Serikat</span><span class="team-score">1</span></div>
-                        <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ba.png" alt="BIH"></span><span class="team-name">Bosnia-Herzegovina</span><span class="team-score">0</span></div>
+                    <div class="matchup tbd" data-match-id="group-5">
+                        <div class="matchup-date">Kam, 2 Juli, 07:00 WIB</div>
+                        <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/us.png" alt="USA"></span><span class="team-name">Amerika Serikat</span></div>
+                        <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ba.png" alt="BIH"></span><span class="team-name">Bosnia-Herzegovina</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-6">
                         <div class="matchup-date">Jum, 3 Juli, 02:00 WIB</div>
@@ -1677,7 +1697,12 @@
                 const el = document.querySelector('[data-match-id="' + match.id + '"]');
                 if (!el) return;
 
+                const status = match.status || 'finished';
                 const teams = el.querySelectorAll(':scope > .team');
+                const dateEl = el.querySelector('.matchup-date');
+
+                el.dataset.adminManaged = 'true';
+
                 (match.scores || []).forEach((score, i) => {
                     if (!teams[i]) return;
                     let scoreEl = teams[i].querySelector('.team-score');
@@ -1690,14 +1715,31 @@
                     teams[i].classList.remove('winner');
                 });
 
-                if (match.winner !== undefined && teams[match.winner]) {
-                    teams[match.winner].classList.add('winner');
-                }
+                el.classList.remove('tbd', 'today', 'live', 'waiting-admin', 'finished');
+                if (typeof setLiveBadge === 'function') setLiveBadge(dateEl, false);
+                if (typeof setSoonBadge === 'function') setSoonBadge(dateEl, false);
+                if (typeof setWaitingAdminBadge === 'function') setWaitingAdminBadge(dateEl, false);
 
-                el.classList.remove('tbd', 'today', 'live', 'waiting-admin');
-                el.classList.add('finished');
-                delete el.dataset.liveUrl;
-                el.removeAttribute('title');
+                if (status === 'finished') {
+                    if (match.winner !== undefined && teams[match.winner]) {
+                        teams[match.winner].classList.add('winner');
+                    }
+                    el.classList.add('finished');
+                    delete el.dataset.liveUrl;
+                    el.removeAttribute('title');
+                } else if (status === 'live') {
+                    el.classList.add('live');
+                    if (typeof setLiveBadge === 'function') setLiveBadge(dateEl, true);
+                    if (typeof LIVE_STREAM_URL !== 'undefined') {
+                        el.dataset.liveUrl = LIVE_STREAM_URL;
+                    }
+                    el.title = 'Tonton live';
+                } else if (status === 'waiting-admin') {
+                    el.classList.add('waiting-admin');
+                    if (typeof setWaitingAdminBadge === 'function') setWaitingAdminBadge(dateEl, true);
+                    delete el.dataset.liveUrl;
+                    el.removeAttribute('title');
+                }
             });
         }
     </script>
@@ -1987,7 +2029,7 @@
         function updateMatchupScheduleStatus() {
             const now = Date.now();
 
-            document.querySelectorAll('.bracket .matchup:not(.finished)').forEach(matchup => {
+            document.querySelectorAll('.bracket .matchup:not(.finished):not([data-admin-managed])').forEach(matchup => {
                 const dateEl = matchup.querySelector('.matchup-date');
                 if (!dateEl) return;
 
@@ -2526,7 +2568,14 @@
                 const card = document.createElement('div');
                 card.className = 'player-podium-card';
                 if (player.eliminated) card.classList.add('no-glow');
-                if (player.winner) card.classList.add('glowing');
+                if (player.winner) card.classList.add('golden-glove-winner');
+
+                if (player.winner) {
+                    const badge = document.createElement('span');
+                    badge.className = 'golden-glove-winner-badge';
+                    badge.textContent = '🏆 Pemenang';
+                    card.appendChild(badge);
+                }
 
                 // Player info
                 const info = document.createElement('div');
@@ -3116,10 +3165,10 @@
         }
 
         function startApp() {
+            updateMatchupScheduleStatus();
             applyAdminConfig();
             applyFinishedMatchBadges();
             advanceBracketWinners();
-            updateMatchupScheduleStatus();
             initLiveMatchupLinks();
             setInterval(updateMatchupScheduleStatus, 60 * 1000);
 

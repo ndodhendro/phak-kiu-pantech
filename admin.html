@@ -69,7 +69,7 @@
         .status.error { color: #e94560; }
         .match-row {
             display: grid;
-            grid-template-columns: 1fr 70px 70px 120px 36px;
+            grid-template-columns: minmax(140px, 1fr) 108px 64px 64px 108px 36px;
             gap: 8px;
             align-items: center;
             margin-bottom: 10px;
@@ -79,9 +79,10 @@
         }
         .match-row select { margin-bottom: 0; }
         .match-row input[type="text"] { margin-bottom: 0; }
+        .match-row .winner:disabled { opacity: 0.35; cursor: not-allowed; }
         .match-header {
             display: grid;
-            grid-template-columns: 1fr 70px 70px 120px 36px;
+            grid-template-columns: minmax(140px, 1fr) 108px 64px 64px 108px 36px;
             gap: 8px;
             font-size: 0.75rem;
             color: #666;
@@ -114,7 +115,10 @@
         a.link { color: #00bcd4; }
         .hidden { display: none !important; }
         @media (max-width: 640px) {
-            .match-row, .match-header { grid-template-columns: 1fr; }
+            .match-row, .match-header {
+                grid-template-columns: 1fr 1fr;
+            }
+            .match-row .match-id { grid-column: 1 / -1; }
         }
     </style>
 </head>
@@ -143,12 +147,15 @@
         </div>
         <p id="action-status" class="status"></p>
 
-        <!-- 1. Finished Matches -->
+        <!-- 1. Match Status & Skor -->
         <div class="card">
-            <h2>1. Hasil Match Selesai</h2>
-            <p class="hint">Skor penalti format: <code>1 (3)</code>. Pemenang = tim 1 atau tim 2. Match live jangan ditambah di sini.</p>
+            <h2>1. Kelola Match</h2>
+            <p class="hint">
+                Status: <strong>Selesai</strong> (butuh pemenang), <strong>Live</strong> (skor sementara),
+                <strong>Waiting Admin</strong> (menunggu konfirmasi admin). Skor penalti: <code>1 (3)</code>
+            </p>
             <div class="match-header">
-                <span>Match</span><span>Skor T1</span><span>Skor T2</span><span>Pemenang</span><span></span>
+                <span>Match</span><span>Status</span><span>Skor T1</span><span>Skor T2</span><span>Pemenang</span><span></span>
             </div>
             <div id="matches-list"></div>
             <button class="btn btn-secondary" onclick="addMatchRow()">+ Tambah Match</button>
@@ -222,6 +229,12 @@
             { id: 'final-0',  label: 'Final' },
         ];
 
+        const MATCH_STATUSES = [
+            { value: 'finished', label: 'Selesai' },
+            { value: 'live', label: 'Live' },
+            { value: 'waiting-admin', label: 'Waiting Admin' },
+        ];
+
         let config = null;
 
         function formatLastUpdatedNow() {
@@ -261,6 +274,9 @@
                 const res = await fetch('admin-config.json?t=' + Date.now());
                 if (!res.ok) throw new Error('fetch failed');
                 config = await res.json();
+                (config.finishedMatches || []).forEach(m => {
+                    if (!m.status) m.status = 'finished';
+                });
             } catch (e) {
                 config = { lastUpdated: '', finishedMatches: [], goldenBoot: [], goldenGlove: [] };
             }
@@ -292,6 +308,8 @@
             row.className = 'match-row';
             row.dataset.idx = idx;
 
+            const status = match.status || 'finished';
+
             const sel = document.createElement('select');
             sel.className = 'match-id';
             MATCH_CATALOG.forEach(m => {
@@ -300,6 +318,16 @@
                 opt.textContent = m.label;
                 if (m.id === match.id) opt.selected = true;
                 sel.appendChild(opt);
+            });
+
+            const statusSel = document.createElement('select');
+            statusSel.className = 'match-status';
+            MATCH_STATUSES.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.value;
+                opt.textContent = s.label;
+                if (s.value === status) opt.selected = true;
+                statusSel.appendChild(opt);
             });
 
             const s0 = document.createElement('input');
@@ -316,13 +344,22 @@
 
             const winSel = document.createElement('select');
             winSel.className = 'winner';
-            [['0', 'Tim 1'], ['1', 'Tim 2']].forEach(([v, t]) => {
+            [['0', 'Tim 1'], ['1', 'Tim 2'], ['', '—']].forEach(([v, t]) => {
                 const opt = document.createElement('option');
                 opt.value = v;
                 opt.textContent = t;
-                if (String(match.winner) === v) opt.selected = true;
+                if (v === '' && status !== 'finished') opt.selected = true;
+                else if (String(match.winner) === v) opt.selected = true;
                 winSel.appendChild(opt);
             });
+
+            function syncWinnerField() {
+                const isFinished = statusSel.value === 'finished';
+                winSel.disabled = !isFinished;
+                if (!isFinished) winSel.value = '';
+            }
+            statusSel.addEventListener('change', syncWinnerField);
+            syncWinnerField();
 
             const del = document.createElement('button');
             del.className = 'btn btn-danger';
@@ -333,6 +370,7 @@
             };
 
             row.appendChild(sel);
+            row.appendChild(statusSel);
             row.appendChild(s0);
             row.appendChild(s1);
             row.appendChild(winSel);
@@ -350,8 +388,8 @@
             config.finishedMatches.push({
                 id: next.id,
                 label: next.label,
+                status: 'live',
                 scores: ['0', '0'],
-                winner: 0,
             });
             renderMatches();
         }
@@ -420,15 +458,21 @@
             const rows = document.querySelectorAll('#matches-list .match-row');
             return Array.from(rows).map(row => {
                 const id = row.querySelector('.match-id').value;
-                return {
+                const status = row.querySelector('.match-status').value;
+                const winnerVal = row.querySelector('.winner').value;
+                const entry = {
                     id,
                     label: getMatchLabel(id),
+                    status,
                     scores: [
                         row.querySelector('.score-0').value.trim(),
                         row.querySelector('.score-1').value.trim(),
                     ],
-                    winner: parseInt(row.querySelector('.winner').value, 10),
                 };
+                if (status === 'finished' && winnerVal !== '') {
+                    entry.winner = parseInt(winnerVal, 10);
+                }
+                return entry;
             });
         }
 

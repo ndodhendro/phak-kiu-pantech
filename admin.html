@@ -182,11 +182,12 @@
             <div class="deploy-steps">
                 <ol>
                     <li>Klik <strong>Download admin-config.json</strong></li>
-                    <li>Replace file <strong>admin-config.json</strong> di repo GitHub</li>
-                    <li>Commit & push — semua pengunjung dapat update dalam ±1 menit</li>
+                    <li>Upload / replace file <strong>admin-config.json</strong> di repo GitHub (branch <code>main</code>)</li>
+                    <li>Selesai — website membaca config langsung dari GitHub (±1 menit), <strong>tidak perlu</strong> tunggu Pages deploy</li>
                 </ol>
                 <p style="margin-top:10px;"><strong>Last updated</strong> otomatis dari waktu saat Preview / Download.</p>
-                <p style="margin-top:6px;"><strong>Preview</strong> hanya tampil di browser kamu (localStorage) sampai file di-commit.</p>
+                <p style="margin-top:6px;"><strong>Preview</strong> hanya tampil di browser kamu (localStorage) sampai file di-upload ke GitHub.</p>
+                <p style="margin-top:6px; color:#888;">Error Actions <em>pages build and deployment</em> tidak memblok update config — bisa diabaikan selama upload ke <code>main</code> berhasil.</p>
             </div>
         </div>
     </div>
@@ -195,6 +196,7 @@
         const ADMIN_PIN = '26889';
         const AUTH_KEY = 'arisan_admin_auth';
         const CONFIG_STORAGE = 'arisan_admin_config';
+        const ADMIN_CONFIG_RAW_URL = 'https://raw.githubusercontent.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/main/admin-config.json';
 
         const MATCH_CATALOG = [
             { id: 'group-0',  label: 'Grup — Afrika Selatan vs Kanada' },
@@ -386,7 +388,10 @@
 
         async function loadConfig() {
             try {
-                const res = await fetch('admin-config.json?t=' + Date.now());
+                let res = await fetch(ADMIN_CONFIG_RAW_URL + '?t=' + Date.now());
+                if (!res.ok) {
+                    res = await fetch('admin-config.json?t=' + Date.now());
+                }
                 if (!res.ok) throw new Error('fetch failed');
                 config = await res.json();
                 (config.finishedMatches || []).forEach(m => {

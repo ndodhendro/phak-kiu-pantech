@@ -3148,6 +3148,7 @@
 
     <script>
         window.ADMIN_CONFIG = null;
+        const ADMIN_CONFIG_RAW_URL = 'https://raw.githubusercontent.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/main/admin-config.json';
 
         async function loadAdminConfig() {
             const preview = localStorage.getItem('arisan_admin_config');
@@ -3158,6 +3159,10 @@
                     localStorage.removeItem('arisan_admin_config');
                 }
             }
+            try {
+                const res = await fetch(ADMIN_CONFIG_RAW_URL + '?t=' + Date.now());
+                if (res.ok) return res.json();
+            } catch (e) { /* fallback ke file lokal */ }
             const res = await fetch('admin-config.json?t=' + Date.now());
             if (!res.ok) throw new Error('Failed to load admin-config.json');
             return res.json();

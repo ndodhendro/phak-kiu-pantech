@@ -1,0 +1,41 @@
+{
+  "lastUpdated": "2 Juli 2026, 08:00 WIB",
+  "finishedMatches": [
+    { "id": "group-0",  "label": "Afrika Selatan vs Kanada",       "scores": ["0", "1"],       "winner": 1 },
+    { "id": "group-1",  "label": "Belanda vs Maroko",              "scores": ["1 (2)", "1 (3)"], "winner": 1 },
+    { "id": "group-2",  "label": "Jerman vs Paraguay",             "scores": ["1 (3)", "1 (4)"], "winner": 1 },
+    { "id": "group-3",  "label": "Prancis vs Swedia",              "scores": ["3", "0"],       "winner": 0 },
+    { "id": "group-4",  "label": "Belgia vs Senegal",              "scores": ["3", "2"],       "winner": 0 },
+    { "id": "group-8",  "label": "Brasil vs Jepang",               "scores": ["2", "1"],       "winner": 0 },
+    { "id": "group-9",  "label": "Pantai Gading vs Norwegia",      "scores": ["1", "2"],       "winner": 1 },
+    { "id": "group-10", "label": "Meksiko vs Ekuador",             "scores": ["2", "0"],       "winner": 0 },
+    { "id": "group-11", "label": "Inggris vs RD Kongo",            "scores": ["2", "1"],       "winner": 0 }
+  ],
+  "goldenBoot": [
+    {
+      "name": "Kylian Mbappe",
+      "img": "https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/kylian%20mbappe.png?raw=true",
+      "goals": 2,
+      "supporters": ["Ndod", "Khuang", "Cham", "Wesly"]
+    },
+    {
+      "name": "Lionel Messi",
+      "img": "https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/lionel_messi-removebg-preview.png?raw=true",
+      "goals": 0,
+      "supporters": ["Davin", "Willy"]
+    },
+    {
+      "name": "Lamine Yamal",
+      "img": "https://img.a.transfermarkt.technology/portrait/big/937958-1773173768.jpg?lm=1",
+      "goals": 0,
+      "supporters": ["Marten"]
+    }
+  ],
+  "goldenGlove": [
+    { "name": "Emiliano Martinez", "img": "https://img.a.transfermarkt.technology/portrait/big/111873-1668180824.jpg?lm=1", "supporters": ["Ndod", "Khuang", "Willy"], "eliminated": false, "winner": false },
+    { "name": "Mike Maignan",      "img": "https://cdn.soccerwiki.org/images/player/68131.png", "supporters": ["Cham"], "eliminated": false, "winner": false },
+    { "name": "Vozinha",           "img": "https://img.a.transfermarkt.technology/portrait/big/242277-1713587632.png?lm=1", "supporters": ["Davin"], "eliminated": false, "winner": false },
+    { "name": "Unai Simon",        "img": "https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/194820-removebg-preview.png?raw=true", "supporters": ["Marten"], "eliminated": false, "winner": false },
+    { "name": "Alison Becker",     "img": "https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/images__2_-removebg-preview.png?raw=true", "supporters": ["Wesly"], "eliminated": false, "winner": false }
+  ]
+}

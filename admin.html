@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Arisan WC 2026</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #0f0f23;
+            color: #e8e8f0;
+            min-height: 100vh;
+            padding: 24px 16px 48px;
+        }
+        .wrap { max-width: 920px; margin: 0 auto; }
+        h1 { font-size: 1.4rem; color: #ffd700; margin-bottom: 4px; }
+        .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+        .card {
+            background: #1a1a3e;
+            border: 1px solid #2a2a5a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            font-size: 1rem;
+            color: #00bcd4;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a2a5a;
+        }
+        .card p.hint { font-size: 0.8rem; color: #888; margin-bottom: 12px; line-height: 1.5; }
+        label { display: block; font-size: 0.82rem; color: #aaa; margin-bottom: 6px; }
+        input[type="text"], input[type="password"], input[type="number"], select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #3a3a6a;
+            background: #12122a;
+            color: #fff;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+        input[type="number"] { width: 80px; margin-bottom: 0; }
+        .pin-box { max-width: 360px; margin: 80px auto; text-align: center; }
+        .pin-box input { text-align: center; letter-spacing: 8px; font-size: 1.2rem; }
+        .btn {
+            display: inline-block;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-top: 4px;
+        }
+        .btn-primary { background: #e94560; color: #fff; }
+        .btn-primary:hover { background: #ff6b81; }
+        .btn-secondary { background: #2a2a5a; color: #fff; }
+        .btn-secondary:hover { background: #3a3a7a; }
+        .btn-success { background: #2ecc71; color: #0f0f23; }
+        .btn-success:hover { background: #27ae60; color: #fff; }
+        .btn-danger { background: transparent; color: #e94560; border: 1px solid #e94560; padding: 6px 12px; font-size: 0.8rem; }
+        .btn-danger:hover { background: #e94560; color: #fff; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; align-items: center; }
+        .status { font-size: 0.82rem; color: #2ecc71; min-height: 20px; }
+        .status.error { color: #e94560; }
+        .match-row {
+            display: grid;
+            grid-template-columns: 1fr 70px 70px 120px 36px;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #12122a;
+            border-radius: 8px;
+        }
+        .match-row select { margin-bottom: 0; }
+        .match-row input[type="text"] { margin-bottom: 0; }
+        .match-header {
+            display: grid;
+            grid-template-columns: 1fr 70px 70px 120px 36px;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 6px;
+            padding: 0 10px;
+        }
+        .gb-row, .gg-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: #12122a;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .gb-row .name, .gg-row .name { flex: 1; min-width: 140px; font-weight: 600; }
+        .gg-row label.inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: #ccc; font-size: 0.85rem; cursor: pointer; }
+        .gg-row label.inline input { width: auto; margin: 0; }
+        .deploy-steps {
+            background: #12122a;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: #aaa;
+        }
+        .deploy-steps ol { margin-left: 18px; }
+        .deploy-steps strong { color: #ffd700; }
+        a.link { color: #00bcd4; }
+        .hidden { display: none !important; }
+        @media (max-width: 640px) {
+            .match-row, .match-header { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="pin-screen" class="wrap">
+        <div class="card pin-box">
+            <h1>🔐 Admin Panel</h1>
+            <p class="subtitle" style="margin-bottom: 20px;">Arisan World Cup 2026 HASH PKU</p>
+            <label for="pin-input">PIN 5 digit</label>
+            <input type="password" id="pin-input" maxlength="5" inputmode="numeric" autocomplete="off" placeholder="•••••">
+            <p id="pin-error" class="status error hidden" style="margin-top: 8px;">PIN salah</p>
+            <button class="btn btn-primary" style="width:100%; margin-top: 8px;" onclick="checkPin()">Masuk</button>
+        </div>
+    </div>
+
+    <div id="admin-panel" class="wrap hidden">
+        <h1>⚙️ Admin Panel</h1>
+        <p class="subtitle">Kelola data manual — preview lokal atau deploy ke GitHub Pages</p>
+
+        <div class="toolbar">
+            <button class="btn btn-success" onclick="savePreview()">👁 Preview Website</button>
+            <button class="btn btn-primary" onclick="downloadConfig()">⬇ Download admin-config.json</button>
+            <button class="btn btn-secondary" onclick="clearPreview()">Hapus Preview Cache</button>
+            <a href="index.html" class="btn btn-secondary" target="_blank">Buka Website</a>
+            <button class="btn btn-secondary" onclick="logout()">Keluar</button>
+        </div>
+        <p id="action-status" class="status"></p>
+
+        <!-- 1. Finished Matches -->
+        <div class="card">
+            <h2>1. Hasil Match Selesai</h2>
+            <p class="hint">Skor penalti format: <code>1 (3)</code>. Pemenang = tim 1 atau tim 2. Match live jangan ditambah di sini.</p>
+            <div class="match-header">
+                <span>Match</span><span>Skor T1</span><span>Skor T2</span><span>Pemenang</span><span></span>
+            </div>
+            <div id="matches-list"></div>
+            <button class="btn btn-secondary" onclick="addMatchRow()">+ Tambah Match</button>
+        </div>
+
+        <!-- 2. Golden Boot -->
+        <div class="card">
+            <h2>2. Golden Boot</h2>
+            <p class="hint">Update jumlah gol per pemain.</p>
+            <div id="golden-boot-list"></div>
+        </div>
+
+        <!-- 3. Golden Glove -->
+        <div class="card">
+            <h2>3. Golden Glove</h2>
+            <p class="hint">Centang <strong>Eliminated</strong> jika kiper/country tersingkir. Centang <strong>Winner</strong> saat turnamen selesai (hanya 1).</p>
+            <div id="golden-glove-list"></div>
+        </div>
+
+        <!-- Deploy -->
+        <div class="card">
+            <h2>📤 Deploy ke GitHub Pages</h2>
+            <div class="deploy-steps">
+                <ol>
+                    <li>Klik <strong>Download admin-config.json</strong></li>
+                    <li>Replace file <strong>admin-config.json</strong> di repo GitHub</li>
+                    <li>Commit & push — semua pengunjung dapat update dalam ±1 menit</li>
+                </ol>
+                <p style="margin-top:10px;"><strong>Last updated</strong> otomatis dari waktu saat Preview / Download.</p>
+                <p style="margin-top:6px;"><strong>Preview</strong> hanya tampil di browser kamu (localStorage) sampai file di-commit.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_PIN = '26889';
+        const AUTH_KEY = 'arisan_admin_auth';
+        const CONFIG_STORAGE = 'arisan_admin_config';
+
+        const MATCH_CATALOG = [
+            { id: 'group-0',  label: 'Grup — Afrika Selatan vs Kanada' },
+            { id: 'group-1',  label: 'Grup — Belanda vs Maroko' },
+            { id: 'group-2',  label: 'Grup — Jerman vs Paraguay' },
+            { id: 'group-3',  label: 'Grup — Prancis vs Swedia' },
+            { id: 'group-4',  label: 'Grup — Belgia vs Senegal' },
+            { id: 'group-5',  label: 'Grup — Amerika Serikat vs Bosnia-Herzegovina' },
+            { id: 'group-6',  label: 'Grup — Spanyol vs Austria' },
+            { id: 'group-7',  label: 'Grup — Portugal vs Kroasia' },
+            { id: 'group-8',  label: 'Grup — Brasil vs Jepang' },
+            { id: 'group-9',  label: 'Grup — Pantai Gading vs Norwegia' },
+            { id: 'group-10', label: 'Grup — Meksiko vs Ekuador' },
+            { id: 'group-11', label: 'Grup — Inggris vs RD Kongo' },
+            { id: 'group-12', label: 'Grup — Swiss vs Aljazair' },
+            { id: 'group-13', label: 'Grup — Kolombia vs Ghana' },
+            { id: 'group-14', label: 'Grup — Australia vs Mesir' },
+            { id: 'group-15', label: 'Grup — Argentina vs Tanjung Verde' },
+            { id: 'r16-0',    label: '16 Besar — Kanada vs Maroko' },
+            { id: 'r16-1',    label: '16 Besar — Paraguay vs Prancis' },
+            { id: 'r16-2',    label: '16 Besar — (TBD) vs (TBD)' },
+            { id: 'r16-3',    label: '16 Besar — (TBD) vs (TBD)' },
+            { id: 'r16-4',    label: '16 Besar — Brasil vs Norwegia' },
+            { id: 'r16-5',    label: '16 Besar — Meksiko vs Inggris' },
+            { id: 'r16-6',    label: '16 Besar — (TBD) vs (TBD)' },
+            { id: 'r16-7',    label: '16 Besar — (TBD) vs (TBD)' },
+            { id: 'qf-0',     label: 'Perempat Final — Match 1' },
+            { id: 'qf-1',     label: 'Perempat Final — Match 2' },
+            { id: 'qf-2',     label: 'Perempat Final — Match 3' },
+            { id: 'qf-3',     label: 'Perempat Final — Match 4' },
+            { id: 'sf-0',     label: 'Semifinal — Match 1' },
+            { id: 'sf-1',     label: 'Semifinal — Match 2' },
+            { id: 'final-0',  label: 'Final' },
+        ];
+
+        let config = null;
+
+        function formatLastUpdatedNow() {
+            const d = new Date();
+            const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const jam = String(d.getHours()).padStart(2, '0');
+            const menit = String(d.getMinutes()).padStart(2, '0');
+            return d.getDate() + ' ' + bulan[d.getMonth()] + ' ' + d.getFullYear() + ', ' + jam + ':' + menit + ' WIB';
+        }
+
+        async function checkPin() {
+            const input = document.getElementById('pin-input').value.trim();
+            const err = document.getElementById('pin-error');
+            if (input === ADMIN_PIN) {
+                sessionStorage.setItem(AUTH_KEY, '1');
+                err.classList.add('hidden');
+                await loadConfig();
+                showAdmin();
+            } else {
+                err.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('pin-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') checkPin();
+        });
+
+        function logout() {
+            sessionStorage.removeItem(AUTH_KEY);
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('pin-screen').classList.remove('hidden');
+            document.getElementById('pin-input').value = '';
+        }
+
+        async function loadConfig() {
+            try {
+                const res = await fetch('admin-config.json?t=' + Date.now());
+                if (!res.ok) throw new Error('fetch failed');
+                config = await res.json();
+            } catch (e) {
+                config = { lastUpdated: '', finishedMatches: [], goldenBoot: [], goldenGlove: [] };
+            }
+        }
+
+        function showAdmin() {
+            document.getElementById('pin-screen').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            renderMatches();
+            renderGoldenBoot();
+            renderGoldenGlove();
+        }
+
+        function getMatchLabel(id) {
+            const m = MATCH_CATALOG.find(x => x.id === id);
+            return m ? m.label : id;
+        }
+
+        function renderMatches() {
+            const list = document.getElementById('matches-list');
+            list.innerHTML = '';
+            (config.finishedMatches || []).forEach((match, idx) => {
+                list.appendChild(createMatchRow(match, idx));
+            });
+        }
+
+        function createMatchRow(match, idx) {
+            const row = document.createElement('div');
+            row.className = 'match-row';
+            row.dataset.idx = idx;
+
+            const sel = document.createElement('select');
+            sel.className = 'match-id';
+            MATCH_CATALOG.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.label;
+                if (m.id === match.id) opt.selected = true;
+                sel.appendChild(opt);
+            });
+
+            const s0 = document.createElement('input');
+            s0.type = 'text';
+            s0.className = 'score-0';
+            s0.value = (match.scores && match.scores[0]) || '0';
+            s0.placeholder = '0';
+
+            const s1 = document.createElement('input');
+            s1.type = 'text';
+            s1.className = 'score-1';
+            s1.value = (match.scores && match.scores[1]) || '0';
+            s1.placeholder = '0';
+
+            const winSel = document.createElement('select');
+            winSel.className = 'winner';
+            [['0', 'Tim 1'], ['1', 'Tim 2']].forEach(([v, t]) => {
+                const opt = document.createElement('option');
+                opt.value = v;
+                opt.textContent = t;
+                if (String(match.winner) === v) opt.selected = true;
+                winSel.appendChild(opt);
+            });
+
+            const del = document.createElement('button');
+            del.className = 'btn btn-danger';
+            del.textContent = '✕';
+            del.onclick = () => {
+                config.finishedMatches.splice(idx, 1);
+                renderMatches();
+            };
+
+            row.appendChild(sel);
+            row.appendChild(s0);
+            row.appendChild(s1);
+            row.appendChild(winSel);
+            row.appendChild(del);
+            return row;
+        }
+
+        function addMatchRow() {
+            const used = collectMatches().map(m => m.id);
+            const next = MATCH_CATALOG.find(m => !used.includes(m.id));
+            if (!next) {
+                setStatus('Semua match sudah ditambahkan', true);
+                return;
+            }
+            config.finishedMatches.push({
+                id: next.id,
+                label: next.label,
+                scores: ['0', '0'],
+                winner: 0,
+            });
+            renderMatches();
+        }
+
+        function renderGoldenBoot() {
+            const list = document.getElementById('golden-boot-list');
+            list.innerHTML = '';
+            (config.goldenBoot || []).forEach((p, idx) => {
+                const row = document.createElement('div');
+                row.className = 'gb-row';
+                row.innerHTML = '<span class="name">' + p.name + '</span>';
+                const inp = document.createElement('input');
+                inp.type = 'number';
+                inp.min = 0;
+                inp.value = p.goals;
+                inp.dataset.idx = idx;
+                inp.className = 'gb-goals';
+                row.appendChild(inp);
+                row.appendChild(document.createTextNode(' gol'));
+                list.appendChild(row);
+            });
+        }
+
+        function renderGoldenGlove() {
+            const list = document.getElementById('golden-glove-list');
+            list.innerHTML = '';
+            (config.goldenGlove || []).forEach((p, idx) => {
+                const row = document.createElement('div');
+                row.className = 'gg-row';
+                row.innerHTML = '<span class="name">' + p.name + '</span>';
+
+                const elimLabel = document.createElement('label');
+                elimLabel.className = 'inline';
+                const elimCb = document.createElement('input');
+                elimCb.type = 'checkbox';
+                elimCb.className = 'gg-elim';
+                elimCb.dataset.idx = idx;
+                elimCb.checked = !!p.eliminated;
+                elimLabel.appendChild(elimCb);
+                elimLabel.appendChild(document.createTextNode(' Eliminated'));
+
+                const winLabel = document.createElement('label');
+                winLabel.className = 'inline';
+                const winCb = document.createElement('input');
+                winCb.type = 'checkbox';
+                winCb.className = 'gg-winner';
+                winCb.dataset.idx = idx;
+                winCb.checked = !!p.winner;
+                winCb.onchange = () => {
+                    if (winCb.checked) {
+                        document.querySelectorAll('.gg-winner').forEach((cb, i) => {
+                            if (i !== idx) cb.checked = false;
+                        });
+                    }
+                };
+                winLabel.appendChild(winCb);
+                winLabel.appendChild(document.createTextNode(' Winner'));
+
+                row.appendChild(elimLabel);
+                row.appendChild(winLabel);
+                list.appendChild(row);
+            });
+        }
+
+        function collectMatches() {
+            const rows = document.querySelectorAll('#matches-list .match-row');
+            return Array.from(rows).map(row => {
+                const id = row.querySelector('.match-id').value;
+                return {
+                    id,
+                    label: getMatchLabel(id),
+                    scores: [
+                        row.querySelector('.score-0').value.trim(),
+                        row.querySelector('.score-1').value.trim(),
+                    ],
+                    winner: parseInt(row.querySelector('.winner').value, 10),
+                };
+            });
+        }
+
+        function collectConfig() {
+            const goldenBoot = (config.goldenBoot || []).map((p, idx) => ({
+                ...p,
+                goals: parseInt(document.querySelectorAll('.gb-goals')[idx]?.value || '0', 10) || 0,
+            }));
+
+            const goldenGlove = (config.goldenGlove || []).map((p, idx) => ({
+                ...p,
+                eliminated: document.querySelectorAll('.gg-elim')[idx]?.checked || false,
+                winner: document.querySelectorAll('.gg-winner')[idx]?.checked || false,
+            }));
+
+            return {
+                lastUpdated: formatLastUpdatedNow(),
+                finishedMatches: collectMatches(),
+                goldenBoot,
+                goldenGlove,
+            };
+        }
+
+        function setStatus(msg, isError) {
+            const el = document.getElementById('action-status');
+            el.textContent = msg;
+            el.classList.toggle('error', !!isError);
+            if (msg) setTimeout(() => { el.textContent = ''; }, 4000);
+        }
+
+        function savePreview() {
+            const data = collectConfig();
+            localStorage.setItem(CONFIG_STORAGE, JSON.stringify(data));
+            setStatus('Preview disimpan! Membuka website...');
+            window.open('index.html', '_blank');
+        }
+
+        function downloadConfig() {
+            const data = collectConfig();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'admin-config.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            setStatus('admin-config.json di-download. Upload ke GitHub untuk deploy publik.');
+        }
+
+        function clearPreview() {
+            localStorage.removeItem(CONFIG_STORAGE);
+            setStatus('Preview cache dihapus. Website akan pakai admin-config.json dari server.');
+        }
+
+        (async function init() {
+            if (sessionStorage.getItem(AUTH_KEY) === '1') {
+                await loadConfig();
+                showAdmin();
+            }
+        })();
+    </script>
+</body>
+</html>

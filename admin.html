@@ -12,7 +12,7 @@
             background: #0f0f23;
             color: #e8e8f0;
             min-height: 100vh;
-            padding: 24px 16px 48px;
+            padding: 24px 16px 88px;
         }
         .wrap { max-width: 920px; margin: 0 auto; }
         h1 { font-size: 1.4rem; color: #ffd700; margin-bottom: 4px; }
@@ -65,9 +65,62 @@
         .btn-success:hover { background: #27ae60; color: #fff; }
         .btn-danger { background: transparent; color: #e94560; border: 1px solid #e94560; padding: 6px 12px; font-size: 0.8rem; }
         .btn-danger:hover { background: #e94560; color: #fff; }
-        .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; align-items: center; }
-        .status { font-size: 0.82rem; color: #2ecc71; min-height: 20px; }
-        .status.error { color: #e94560; }
+        .toolbar { display: none; }
+        .floating-nav {
+            position: fixed;
+            bottom: max(16px, env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 12px 8px;
+            background: rgba(18, 18, 42, 0.94);
+            border: 1px solid rgba(42, 42, 90, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .floating-nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .float-status {
+            font-size: 0.78rem;
+            color: #2ecc71;
+            text-align: center;
+            max-width: 280px;
+            line-height: 1.35;
+            padding: 0 6px;
+        }
+        .float-status:empty { display: none; }
+        .float-status.error { color: #e94560; }
+        .float-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+            color: #fff;
+            background: #2a2a5a;
+            transition: background 0.2s, transform 0.15s;
+        }
+        .float-btn:hover { background: #3a3a7a; }
+        .float-btn:active { transform: scale(0.97); }
+        .float-btn-save { background: #2ecc71; color: #0f0f23; }
+        .float-btn-save:hover { background: #27ae60; color: #fff; }
         .match-row {
             display: grid;
             grid-template-columns: minmax(120px, 1fr) 100px 44px 44px 44px 44px 100px;
@@ -181,6 +234,7 @@
                 gap: 16px;
                 width: 100%;
             }
+            .float-btn { padding: 10px 12px; font-size: 0.74rem; }
         }
     </style>
 </head>
@@ -198,12 +252,6 @@
 
     <div id="admin-panel" class="wrap hidden">
         <h1>⚙️ Admin Panel</h1>
-
-        <div class="toolbar">
-            <button class="btn btn-success" id="btn-deploy-supabase" onclick="deployToSupabase()">Save</button>
-            <a href="index.html" class="btn btn-secondary">Halaman Utama</a>
-        </div>
-        <p id="action-status" class="status"></p>
 
         <!-- 1. Match Status & Skor -->
         <div class="card">
@@ -232,6 +280,14 @@
             <div id="golden-glove-list"></div>
         </div>
     </div>
+
+    <nav class="floating-nav hidden" id="floating-nav" aria-label="Navigasi admin">
+        <p id="action-status" class="float-status"></p>
+        <div class="floating-nav-buttons">
+            <a href="index.html" class="float-btn">🏠 Home</a>
+            <button type="button" class="float-btn float-btn-save" id="btn-deploy-supabase" onclick="deployToSupabase()">💾 Save</button>
+        </div>
+    </nav>
 
     <script>
         const ADMIN_PIN = '26889';
@@ -367,7 +423,7 @@
         }
 
         function sortMatchesBySchedule(matches) {
-            matches.sort((a, b) => getMatchScheduleTime(a.id) - getMatchScheduleTime(b.id));
+            matches.sort((a, b) => getMatchScheduleTime(b.id) - getMatchScheduleTime(a.id));
         }
 
         function syncPastScheduleMatches() {
@@ -423,6 +479,7 @@
             document.getElementById('admin-panel').classList.add('hidden');
             document.getElementById('pin-screen').classList.remove('hidden');
             document.getElementById('pin-input').value = '';
+            document.getElementById('floating-nav').classList.add('hidden');
         }
 
         async function loadConfig() {
@@ -439,6 +496,7 @@
         function showAdmin() {
             document.getElementById('pin-screen').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
+            document.getElementById('floating-nav').classList.remove('hidden');
             renderMatches();
             renderGoldenBoot();
             renderGoldenGlove();
@@ -709,11 +767,23 @@
             };
         }
 
+        let statusClearTimer = null;
+
         function setStatus(msg, isError) {
             const el = document.getElementById('action-status');
+            if (!el) return;
+            if (statusClearTimer) {
+                clearTimeout(statusClearTimer);
+                statusClearTimer = null;
+            }
             el.textContent = msg;
             el.classList.toggle('error', !!isError);
-            if (msg) setTimeout(() => { el.textContent = ''; }, 4000);
+            if (msg && msg !== 'Saving...') {
+                statusClearTimer = setTimeout(() => {
+                    el.textContent = '';
+                    statusClearTimer = null;
+                }, 4000);
+            }
         }
 
         async function deployToSupabase() {

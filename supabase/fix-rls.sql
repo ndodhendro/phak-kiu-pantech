@@ -1,22 +1,22 @@
--- Bucket publik untuk admin-config.json
+-- Jalankan di Supabase Dashboard → SQL Editor (fix error RLS upload)
+-- Copy semua baris ini → Run
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('arisan-config', 'arisan-config', true, 1048576, array['application/json'])
 on conflict (id) do update set public = true;
 
--- Hapus policy lama (jika ada)
 drop policy if exists "arisan_config_public_read" on storage.objects;
 drop policy if exists "arisan_config_anon_insert" on storage.objects;
 drop policy if exists "arisan_config_anon_update" on storage.objects;
 drop policy if exists "arisan_config_anon_select" on storage.objects;
+drop policy if exists "arisan_config_anon_delete" on storage.objects;
 drop policy if exists "arisan_config_anon_all" on storage.objects;
 
--- Baca: semua orang (website pengunjung)
 create policy "arisan_config_public_read"
 on storage.objects for select
 to public
 using (bucket_id = 'arisan-config');
 
--- Tulis: anon key dari admin.html (INSERT + SELECT + UPDATE untuk upsert)
 create policy "arisan_config_anon_insert"
 on storage.objects for insert
 to anon

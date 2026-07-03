@@ -18,11 +18,13 @@ window.ARISAN_SUPABASE = {
 };
 ```
 
-## 3. Buat bucket (SQL Editor)
+## 3. Buat bucket + policy RLS (SQL Editor)
 
 Dashboard → **SQL Editor** → jalankan isi file:
 
-`supabase/migrations/20260703100000_storage_bucket.sql`
+`supabase/fix-rls.sql`
+
+(Wajib — tanpa ini upload gagal: *row-level security policy*)
 
 ## 4. Upload website ke GitHub Pages
 

@@ -144,13 +144,9 @@
 
     <div id="admin-panel" class="wrap hidden">
         <h1>⚙️ Admin Panel</h1>
-        <p class="subtitle">Kelola data manual — preview lokal atau deploy ke GitHub Pages</p>
 
         <div class="toolbar">
-            <button class="btn btn-primary" id="btn-deploy-supabase" onclick="deployToSupabase()">🚀 Deploy ke Supabase</button>
-            <button class="btn btn-success" onclick="savePreview()">👁 Preview Website</button>
-            <button class="btn btn-secondary" onclick="downloadConfig()">⬇ Download JSON</button>
-            <button class="btn btn-secondary" onclick="clearPreview()">Hapus Preview Cache</button>
+            <button class="btn btn-success" id="btn-deploy-supabase" onclick="deployToSupabase()">Save</button>
             <a href="index.html" class="btn btn-secondary" target="_blank">Buka Website</a>
             <button class="btn btn-secondary" onclick="logout()">Keluar</button>
         </div>
@@ -159,11 +155,6 @@
         <!-- 1. Match Status & Skor -->
         <div class="card">
             <h2>1. Kelola Match</h2>
-            <p class="hint">
-                Match yang jadwalnya sudah lewat otomatis muncul (urut jadwal, terbaru di bawah).
-                Status: <strong>Selesai</strong> (butuh pemenang), <strong>Live</strong> (skor sementara),
-                <strong>Waiting Admin</strong> (menunggu konfirmasi admin).
-            </p>
             <div class="match-header">
                 <span>Match</span><span>Status</span><span>Skor T1</span><span>Skor T2</span><span>Pemenang</span>
             </div>
@@ -173,34 +164,19 @@
         <!-- 2. Golden Boot -->
         <div class="card">
             <h2>2. Golden Boot</h2>
-            <p class="hint">Update jumlah gol per pemain.</p>
             <div id="golden-boot-list"></div>
         </div>
 
         <!-- 3. Golden Glove -->
         <div class="card">
             <h2>3. Golden Glove</h2>
-            <p class="hint">Centang <strong>Eliminated</strong> jika kiper/country tersingkir. Centang <strong>Winner</strong> saat turnamen selesai (hanya 1).</p>
             <div id="golden-glove-list"></div>
-        </div>
-
-        <!-- Deploy -->
-        <div class="card">
-            <h2>📤 Deploy Config</h2>
-            <div class="deploy-steps">
-                <ol>
-                    <li>Edit match / Golden Boot / Golden Glove</li>
-                    <li>Klik <strong>Deploy ke Supabase</strong> — website update langsung (±detik)</li>
-                </ol>
-                <p style="margin-top:10px;"><strong>Last updated</strong> otomatis dari waktu Deploy / Preview / Download.</p>
-            </div>
         </div>
     </div>
 
     <script>
         const ADMIN_PIN = '26889';
         const AUTH_KEY = 'arisan_admin_auth';
-        const CONFIG_STORAGE = 'arisan_admin_config';
 
         const MATCH_CATALOG = [
             { id: 'group-0',  label: 'Grup — Afrika Selatan vs Kanada' },
@@ -473,7 +449,7 @@
                 winSel.innerHTML = '';
                 if (isFinished) {
                     winSel.disabled = false;
-                    [['0', 'Tim 1'], ['1', 'Tim 2']].forEach(([v, t]) => {
+                    [['0', 'Team 1'], ['1', 'Team 2']].forEach(([v, t]) => {
                         const opt = document.createElement('option');
                         opt.value = v;
                         opt.textContent = t;
@@ -520,7 +496,7 @@
                 inp.dataset.idx = idx;
                 inp.className = 'gb-goals';
                 row.appendChild(inp);
-                row.appendChild(document.createTextNode(' gol'));
+                row.appendChild(document.createTextNode(' Goal'));
                 list.appendChild(row);
             });
         }
@@ -624,29 +600,6 @@
             if (msg) setTimeout(() => { el.textContent = ''; }, 4000);
         }
 
-        function savePreview() {
-            const data = collectConfig();
-            localStorage.setItem(CONFIG_STORAGE, JSON.stringify(data));
-            setStatus('Preview disimpan! Membuka website...');
-            window.open('index.html', '_blank');
-        }
-
-        function downloadConfig() {
-            const data = collectConfig();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'admin-config.json';
-            a.click();
-            URL.revokeObjectURL(a.href);
-            setStatus('admin-config.json di-download. Upload ke GitHub untuk deploy publik.');
-        }
-
-        function clearPreview() {
-            localStorage.removeItem(CONFIG_STORAGE);
-            setStatus('Preview cache dihapus.');
-        }
-
         async function deployToSupabase() {
             if (!ArisanConfigSources.isConfigured()) {
                 setStatus('Supabase belum dikonfigurasi — isi supabase-public.js (lihat SUPABASE_SETUP.md)', true);
@@ -658,14 +611,14 @@
             }
             const btn = document.getElementById('btn-deploy-supabase');
             btn.disabled = true;
-            setStatus('Mengupload ke Supabase...');
+            setStatus('Saving...');
             try {
                 const data = collectConfig();
                 await ArisanConfigSources.uploadConfig(data);
                 config = data;
-                setStatus('Deploy sukses! ' + data.lastUpdated);
+                setStatus('Save sukses! ' + data.lastUpdated);
             } catch (e) {
-                setStatus('Deploy gagal: ' + e.message, true);
+                setStatus('Save gagal: ' + e.message, true);
             } finally {
                 btn.disabled = false;
             }

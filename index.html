@@ -10,6 +10,11 @@
             padding: 0;
             box-sizing: border-box;
         }
+        :root {
+            --glow-rhythm: 2.5s;
+            --glow-rhythm-half: 1.25s;
+            --glow-sync-delay: 0ms;
+        }
         body {
             font-family: 'Segoe UI', Roboto, Arial, sans-serif;
             background: #0f0f23;
@@ -42,6 +47,27 @@
             font-size: 0.75rem;
             margin-top: 4px;
             text-align: center;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+        .admin-panel-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: #2a2a5a;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .admin-panel-link:hover {
+            background: #3a3a7a;
         }
         .bracket-wrapper {
             display: block;
@@ -462,7 +488,8 @@
             inset: -1px;
             border-radius: 8px;
             pointer-events: none;
-            animation: glowPulse 2.5s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: opacity;
         }
         .podium-place-1 .podium-team-card::after {
@@ -841,7 +868,7 @@
             color: #1a1a3e;
         }
 
-        /* === Unified Glow Animation === */
+        /* === Unified Glow Animation (shared rhythm via --glow-rhythm + --glow-sync-delay) === */
         @keyframes glowPulse {
             0%, 100% { opacity: 0.4; }
             50% { opacity: 1; }
@@ -851,7 +878,8 @@
         #podium-goldenglove-container .player-podium-card {
             border-color: rgba(0, 188, 212, 0.5);
             box-shadow: 0 0 16px rgba(0, 188, 212, 0.7), 0 0 32px rgba(0, 188, 212, 0.2);
-            animation: glowPulse 2.5s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: opacity;
         }
 
@@ -859,7 +887,8 @@
         #podium-goldenglove-container .player-podium-card.golden-glove-winner {
             border: 2px solid rgba(255, 215, 0, 0.95);
             box-shadow: 0 0 22px rgba(255, 215, 0, 0.85), 0 0 44px rgba(255, 215, 0, 0.35);
-            animation: glowPulse 2s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             transform: scale(1.03);
         }
         #podium-goldenglove-container .player-podium-card.golden-glove-winner .player-podium-img {
@@ -885,13 +914,15 @@
         .goldenboot-row.top-1 .goldenboot-card {
             border-color: rgba(255, 215, 0, 0.7);
             box-shadow: 0 0 18px rgba(255, 215, 0, 0.7), 0 0 36px rgba(255, 215, 0, 0.2);
-            animation: glowPulse 2.5s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: opacity;
         }
         .goldenboot-row.top-1 .goldenboot-bar-wrapper {
             border-color: rgba(255, 215, 0, 0.5);
             box-shadow: 0 0 18px rgba(255, 215, 0, 0.7), 0 0 36px rgba(255, 215, 0, 0.2);
-            animation: glowPulse 2.5s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: opacity;
         }
 
@@ -899,7 +930,8 @@
         .matchup.today {
             border-color: rgba(52, 152, 219, 0.65) !important;
             box-shadow: 0 0 18px rgba(52, 152, 219, 0.7), 0 0 36px rgba(52, 152, 219, 0.25);
-            animation: glowPulse 2.5s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: opacity;
         }
         .matchup-soon-badge,
@@ -926,8 +958,10 @@
             border-bottom-color: rgba(52, 152, 219, 0.35);
         }
         .matchup-soon-badge {
+            position: relative;
             display: inline-flex;
             align-items: center;
+            gap: 6px;
             padding: 2px 10px;
             border-radius: 999px;
             background: rgba(52, 152, 219, 0.2);
@@ -937,6 +971,41 @@
             letter-spacing: 0.06em;
             text-transform: uppercase;
             font-weight: 700;
+            overflow: hidden;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.35);
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
+            will-change: opacity;
+        }
+        .matchup-soon-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0%;
+            border-radius: inherit;
+            background: linear-gradient(
+                90deg,
+                rgba(52, 152, 219, 0.45) 0%,
+                rgba(126, 200, 240, 0.7) 100%
+            );
+            transition: width 1s linear;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .matchup-soon-badge-inner {
+            position: relative;
+            z-index: 1;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .matchup-soon-countdown {
+            font-variant-numeric: tabular-nums;
+            text-transform: none;
+            letter-spacing: 0.03em;
+            color: #fff;
+            font-size: 0.62rem;
         }
 
         /* Matchup Live Wave Effect */
@@ -953,8 +1022,8 @@
             }
         }
         @keyframes liveWaveShimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+            0%, 100% { background-position: 100% 0; }
+            50% { background-position: 0% 0; }
         }
         @keyframes liveWaveBar {
             0%, 100% { transform: scaleY(0.35); }
@@ -966,7 +1035,8 @@
             overflow: visible;
             z-index: 2;
             cursor: pointer;
-            animation: liveWaveBorder 1.8s ease-in-out infinite;
+            animation: liveWaveBorder var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: box-shadow;
         }
         .matchup.live::before,
@@ -978,19 +1048,20 @@
             border-radius: inherit;
             border: 2px solid rgba(46, 204, 113, 0.45);
             pointer-events: none;
-            animation: liveWaveRing 2.4s ease-out infinite;
+            animation: liveWaveRing var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
         }
         .matchup.live::after {
-            animation-delay: 1.2s;
+            display: none;
         }
         @keyframes liveWaveRing {
-            0% {
+            0%, 100% {
                 transform: scale(1);
-                opacity: 0.7;
+                opacity: 0.35;
             }
-            100% {
+            50% {
                 transform: scale(1.06);
-                opacity: 0;
+                opacity: 0.85;
             }
         }
         .matchup.live .matchup-date {
@@ -1009,7 +1080,8 @@
                 rgba(46, 204, 113, 0.12) 100%
             );
             background-size: 200% 100%;
-            animation: liveWaveShimmer 2.5s linear infinite;
+            animation: liveWaveShimmer var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             color: #2ecc71;
             font-weight: 700;
             border-bottom-color: rgba(46, 204, 113, 0.35);
@@ -1040,11 +1112,9 @@
             background: #2ecc71;
             border-radius: 1px;
             transform-origin: bottom;
-            animation: liveWaveBar 0.9s ease-in-out infinite;
+            animation: liveWaveBar var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
         }
-        .matchup-live-badge .wave-bars span:nth-child(1) { animation-delay: 0s; }
-        .matchup-live-badge .wave-bars span:nth-child(2) { animation-delay: 0.15s; }
-        .matchup-live-badge .wave-bars span:nth-child(3) { animation-delay: 0.3s; }
         .matchup.live .team {
             position: relative;
             z-index: 1;
@@ -1055,7 +1125,8 @@
         .matchup.waiting-admin {
             border-color: rgba(233, 69, 96, 0.75) !important;
             box-shadow: 0 0 18px rgba(233, 69, 96, 0.75), 0 0 36px rgba(233, 69, 96, 0.25);
-            animation: glowPulse 2s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: box-shadow, opacity;
         }
         .matchup.waiting-admin .matchup-date {
@@ -1079,7 +1150,8 @@
             font-size: 0.58rem;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            animation: glowPulse 2s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
         }
 
         /* Matchup Finished Badge */
@@ -1108,13 +1180,15 @@
         .chart-row.top-1 .chart-bar-wrapper {
             border-color: var(--glow-color, #ffd700);
             box-shadow: 0 0 18px color-mix(in srgb, var(--glow-color, #ffd700) 70%, transparent), 0 0 36px color-mix(in srgb, var(--glow-color, #ffd700) 20%, transparent);
-            animation: glowPulse 2.5s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: opacity;
         }
         .chart-row.top-1 .chart-label {
             color: var(--glow-color, #ffd700);
             text-shadow: 0 0 8px var(--glow-color, #ffd700), 0 0 16px color-mix(in srgb, var(--glow-color, #ffd700) 50%, transparent);
-            animation: glowPulse 2.5s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
         }
         .chart-row.top-1 .chart-avatar {
             border-color: var(--glow-color, #ffd700);
@@ -1125,7 +1199,8 @@
         .total-goal-marker-info.glowing {
             border-color: #e94560 !important;
             box-shadow: 0 0 16px rgba(233, 69, 96, 0.8), 0 0 32px rgba(233, 69, 96, 0.4), 0 0 48px rgba(233, 69, 96, 0.2);
-            animation: glowPulse 2.5s ease-in-out infinite;
+            animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
+            animation-delay: var(--glow-sync-delay);
             will-change: opacity;
         }
 
@@ -1475,6 +1550,10 @@
             50% { box-shadow: 0 0 25px rgba(233, 69, 96, 0.6); }
         }
     </style>
+
+    <div class="top-bar">
+        <a href="admin.html" class="admin-panel-link">⚙️ Admin Panel</a>
+    </div>
 
     <div class="header">
         <img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/fifa-world-cup-2026-logo.png?raw=true" alt="FIFA World Cup 2026" class="logo">
@@ -1920,6 +1999,7 @@
 
         const TOURNAMENT_YEAR = 2026;
         const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+        const GLOW_RHYTHM_MS = 2500;
         // Live dimulai 15 menit sebelum kickoff, berakhir 3 jam setelah kickoff
         const LIVE_PREMATCH_MS = 15 * 60 * 1000;
         const LIVE_MATCH_DURATION_MS = 180 * 60 * 1000;
@@ -1991,15 +2071,70 @@
             }
         }
 
-        function setSoonBadge(dateEl, show) {
+        function formatCountdownHMS(ms) {
+            if (ms <= 0) return '00:00:00';
+            const totalSec = Math.floor(ms / 1000);
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            return [h, m, s].map(n => String(n).padStart(2, '0')).join(':');
+        }
+
+        function initGlowSync() {
+            const negDelay = -(Date.now() % GLOW_RHYTHM_MS);
+            document.documentElement.style.setProperty('--glow-sync-delay', negDelay + 'ms');
+        }
+
+        function getSoonProgress(msRemaining) {
+            if (msRemaining <= LIVE_PREMATCH_MS) return 1;
+            if (msRemaining >= TWENTY_FOUR_HOURS_MS) return 0;
+            return 1 - (msRemaining - LIVE_PREMATCH_MS) / (TWENTY_FOUR_HOURS_MS - LIVE_PREMATCH_MS);
+        }
+
+        function setSoonBadge(dateEl, show, msRemaining) {
             const dateText = getOrStoreMatchDateText(dateEl);
             if (show) {
-                if (dateEl.querySelector('.matchup-soon-badge')) return;
+                const countdown = formatCountdownHMS(msRemaining);
+                const progressPct = Math.round(getSoonProgress(msRemaining) * 100);
+                const existing = dateEl.querySelector('.matchup-soon-badge');
+                if (existing) {
+                    const cdEl = existing.querySelector('.matchup-soon-countdown');
+                    if (cdEl) cdEl.textContent = countdown;
+                    const progEl = existing.querySelector('.matchup-soon-progress');
+                    if (progEl) progEl.style.width = progressPct + '%';
+                    return;
+                }
                 dateEl.innerHTML =
-                    '<span class="matchup-soon-badge">Soon</span> ' + dateText;
+                    '<span class="matchup-soon-badge">' +
+                    '<span class="matchup-soon-progress" style="width:' + progressPct + '%"></span>' +
+                    '<span class="matchup-soon-badge-inner">Soon' +
+                    '<span class="matchup-soon-countdown">' + countdown + '</span></span></span> ' + dateText;
             } else if (dateEl.querySelector('.matchup-soon-badge')) {
                 dateEl.textContent = dateText;
             }
+        }
+
+        function updateSoonCountdowns() {
+            const now = Date.now();
+            let needFullUpdate = false;
+            document.querySelectorAll('.bracket .matchup.today').forEach(matchup => {
+                const kickoff = Number(matchup.dataset.kickoff);
+                if (!kickoff) return;
+                const untilKickoff = kickoff - now;
+                if (untilKickoff <= LIVE_PREMATCH_MS) {
+                    needFullUpdate = true;
+                    return;
+                }
+                const badge = matchup.querySelector('.matchup-soon-badge');
+                if (!badge) return;
+                const cdEl = badge.querySelector('.matchup-soon-countdown');
+                if (cdEl) cdEl.textContent = formatCountdownHMS(untilKickoff);
+                const progEl = badge.querySelector('.matchup-soon-progress');
+                if (progEl) {
+                    progEl.style.width = Math.round(getSoonProgress(untilKickoff) * 100) + '%';
+                }
+            });
+            if (needFullUpdate) updateMatchupScheduleStatus();
         }
 
         function setWaitingAdminBadge(dateEl, show) {
@@ -2040,6 +2175,7 @@
                 const untilKickoff = kickoff - now;
 
                 matchup.classList.remove('tbd', 'today', 'live', 'waiting-admin');
+                delete matchup.dataset.kickoff;
                 setLiveBadge(dateEl, false);
                 setSoonBadge(dateEl, false);
                 setWaitingAdminBadge(dateEl, false);
@@ -2058,7 +2194,8 @@
                     matchup.removeAttribute('title');
                 } else if (untilKickoff > LIVE_PREMATCH_MS && untilKickoff < TWENTY_FOUR_HOURS_MS) {
                     matchup.classList.add('today');
-                    setSoonBadge(dateEl, true);
+                    matchup.dataset.kickoff = String(kickoff);
+                    setSoonBadge(dateEl, true, untilKickoff);
                     delete matchup.dataset.liveUrl;
                     matchup.removeAttribute('title');
                 } else {
@@ -3163,12 +3300,14 @@
         }
 
         function startApp() {
+            initGlowSync();
             updateMatchupScheduleStatus();
             applyAdminConfig();
             applyFinishedMatchBadges();
             advanceBracketWinners();
             initLiveMatchupLinks();
             setInterval(updateMatchupScheduleStatus, 60 * 1000);
+            setInterval(updateSoonCountdowns, 1000);
 
             setTimeout(drawBracketLines, 100);
             setTimeout(injectSupporters, 200);

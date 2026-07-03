@@ -48,20 +48,26 @@ window.ArisanConfigSources = {
 
     async uploadConfig(config) {
         const c = window.ARISAN_SUPABASE;
-        const objectPath = c.bucket + '/' + c.configFile;
-        const res = await fetch(c.url + '/storage/v1/object/' + objectPath, {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + c.anonKey,
-                'apikey': c.anonKey,
-                'Content-Type': 'application/json',
-                'x-upsert': 'true',
-            },
-            body: JSON.stringify(config, null, 2),
-        });
+        const body = JSON.stringify(config, null, 2);
+        const url = c.url + '/storage/v1/object/' + c.bucket + '/' + c.configFile;
+        const headers = {
+            'Authorization': 'Bearer ' + c.anonKey,
+            'apikey': c.anonKey,
+            'Content-Type': 'application/json',
+            'x-upsert': 'true',
+        };
+
+        let res = await fetch(url, { method: 'POST', headers, body });
+        if (!res.ok) {
+            res = await fetch(url, { method: 'PUT', headers, body });
+        }
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.message || err.error || 'HTTP ' + res.status);
+            const msg = err.message || err.error || err.statusCode;
+            if (String(msg).toLowerCase().includes('row-level security')) {
+                throw new Error('RLS policy — jalankan supabase/fix-rls.sql di SQL Editor Supabase');
+            }
+            throw new Error(msg || 'HTTP ' + res.status);
         }
     },
 };

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "3 Juli 2026, 14:10 WIB",
+  "lastUpdated": "3 Juli 2026, 14:18 WIB",
   "finishedMatches": [
     {
       "id": "group-0",
@@ -124,12 +124,11 @@
     {
       "id": "group-12",
       "label": "Grup — Swiss vs Aljazair",
-      "status": "finished",
+      "status": "waiting-admin",
       "scores": [
-        "2",
+        "0",
         "0"
-      ],
-      "winner": 0
+      ]
     }
   ],
   "goldenBoot": [

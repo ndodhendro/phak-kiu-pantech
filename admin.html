@@ -69,7 +69,7 @@
         .status.error { color: #e94560; }
         .match-row {
             display: grid;
-            grid-template-columns: minmax(140px, 1fr) 108px 64px 64px 108px 36px;
+            grid-template-columns: minmax(140px, 1fr) 108px 64px 64px 108px;
             gap: 8px;
             align-items: center;
             margin-bottom: 10px;
@@ -80,9 +80,10 @@
         .match-row select { margin-bottom: 0; }
         .match-row input[type="text"] { margin-bottom: 0; }
         .match-row .winner:disabled { opacity: 0.35; cursor: not-allowed; }
+        .match-row .match-label { font-size: 0.85rem; line-height: 1.35; }
         .match-header {
             display: grid;
-            grid-template-columns: minmax(140px, 1fr) 108px 64px 64px 108px 36px;
+            grid-template-columns: minmax(140px, 1fr) 108px 64px 64px 108px;
             gap: 8px;
             font-size: 0.75rem;
             color: #666;
@@ -118,7 +119,7 @@
             .match-row, .match-header {
                 grid-template-columns: 1fr 1fr;
             }
-            .match-row .match-id { grid-column: 1 / -1; }
+            .match-row .match-label { grid-column: 1 / -1; }
         }
     </style>
 </head>
@@ -151,14 +152,14 @@
         <div class="card">
             <h2>1. Kelola Match</h2>
             <p class="hint">
+                Match yang jadwalnya sudah lewat otomatis muncul (urut jadwal, terbaru di bawah).
                 Status: <strong>Selesai</strong> (butuh pemenang), <strong>Live</strong> (skor sementara),
                 <strong>Waiting Admin</strong> (menunggu konfirmasi admin). Skor penalti: <code>1 (3)</code>
             </p>
             <div class="match-header">
-                <span>Match</span><span>Status</span><span>Skor T1</span><span>Skor T2</span><span>Pemenang</span><span></span>
+                <span>Match</span><span>Status</span><span>Skor T1</span><span>Skor T2</span><span>Pemenang</span>
             </div>
             <div id="matches-list"></div>
-            <button class="btn btn-secondary" onclick="addMatchRow()">+ Tambah Match</button>
         </div>
 
         <!-- 2. Golden Boot -->
@@ -235,7 +236,121 @@
             { value: 'waiting-admin', label: 'Waiting Admin' },
         ];
 
+        const TOURNAMENT_YEAR = 2026;
+        const INDONESIAN_MONTHS = {
+            januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
+            juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11
+        };
+
+        const MATCH_SCHEDULE = {
+            'group-0':  'Sen, 6/29, 00:00 WIB',
+            'group-1':  'Sel, 6/30, 08:00 WIB',
+            'group-2':  'Sel, 6/30, 03:30 WIB',
+            'group-3':  'Rab, 1 Juli, 04:00 WIB',
+            'group-4':  'Kam, 2 Juli, 03:00 WIB',
+            'group-5':  'Kam, 2 Juli, 07:00 WIB',
+            'group-6':  'Jum, 3 Juli, 02:00 WIB',
+            'group-7':  'Jum, 3 Juli, 06:00 WIB',
+            'group-8':  'Sel, 6/30, 00:00 WIB',
+            'group-9':  'Rab, 1 Juli, 00:00 WIB',
+            'group-10': 'Rab, 1 Juli, 08:00 WIB',
+            'group-11': 'Rab, 1 Juli, 23:00 WIB',
+            'group-12': 'Jum, 3 Juli, 10:00 WIB',
+            'group-13': 'Sab, 4 Juli, 08:30 WIB',
+            'group-14': 'Sab, 4 Juli, 01:00 WIB',
+            'group-15': 'Sab, 4 Juli, 05:00 WIB',
+            'r16-0':    'Min, 5 Juli, 00:00 WIB',
+            'r16-1':    'Min, 5 Juli, 04:00 WIB',
+            'r16-2':    'Sel, 7 Juli, 07:00 WIB',
+            'r16-3':    'Sel, 7 Juli, 02:00 WIB',
+            'r16-4':    'Sen, 6 Juli, 03:00 WIB',
+            'r16-5':    'Sen, 6 Juli, 07:00 WIB',
+            'r16-6':    'Rab, 8 Juli, 03:00 WIB',
+            'r16-7':    'Sel, 7 Juli, 23:00 WIB',
+            'qf-0':     'Jum, 10 Juli, 03:00 WIB',
+            'qf-1':     'Sab, 11 Juli, 02:00 WIB',
+            'qf-2':     'Min, 12 Juli, 04:00 WIB',
+            'qf-3':     'Min, 12 Juli, 08:00 WIB',
+            'sf-0':     '15 Juli, 02:00 WIB',
+            'sf-1':     '16 Juli, 02:00 WIB',
+            'final-0':  '20 Juli, 02:00 WIB',
+        };
+
         let config = null;
+
+        function makeWIBDate(year, monthIndex, day, hour, minute) {
+            return new Date(Date.UTC(year, monthIndex, day, hour - 7, minute));
+        }
+
+        function parseMatchupDateWIB(dateText) {
+            const text = (dateText || '').trim();
+            if (!text) return null;
+
+            let match = text.match(/^(?:\w+,\s*)?(\d{1,2})\s+(\w+),?\s+(\d{1,2}):(\d{2})\s*WIB$/i);
+            if (match) {
+                const monthIndex = INDONESIAN_MONTHS[match[2].toLowerCase()];
+                if (monthIndex === undefined) return null;
+                return makeWIBDate(
+                    TOURNAMENT_YEAR,
+                    monthIndex,
+                    parseInt(match[1], 10),
+                    parseInt(match[3], 10),
+                    parseInt(match[4], 10)
+                );
+            }
+
+            match = text.match(/^(?:\w+,\s*)?(\d{1,2})\/(\d{1,2}),?\s+(\d{1,2}):(\d{2})\s*WIB$/i);
+            if (match) {
+                return makeWIBDate(
+                    TOURNAMENT_YEAR,
+                    parseInt(match[1], 10) - 1,
+                    parseInt(match[2], 10),
+                    parseInt(match[3], 10),
+                    parseInt(match[4], 10)
+                );
+            }
+
+            return null;
+        }
+
+        function getMatchScheduleTime(matchId) {
+            const scheduleText = MATCH_SCHEDULE[matchId];
+            if (!scheduleText) return Infinity;
+            const matchTime = parseMatchupDateWIB(scheduleText);
+            return matchTime ? matchTime.getTime() : Infinity;
+        }
+
+        function isMatchSchedulePast(matchId) {
+            const t = getMatchScheduleTime(matchId);
+            return t !== Infinity && t <= Date.now();
+        }
+
+        function sortMatchesBySchedule(matches) {
+            matches.sort((a, b) => getMatchScheduleTime(a.id) - getMatchScheduleTime(b.id));
+        }
+
+        function syncPastScheduleMatches() {
+            if (!config.finishedMatches) config.finishedMatches = [];
+            const existingIds = new Set(config.finishedMatches.map(m => m.id));
+            const now = Date.now();
+
+            MATCH_CATALOG.forEach(m => {
+                const scheduleText = MATCH_SCHEDULE[m.id];
+                if (!scheduleText || existingIds.has(m.id)) return;
+                const matchTime = parseMatchupDateWIB(scheduleText);
+                if (!matchTime || matchTime.getTime() > now) return;
+                config.finishedMatches.push({
+                    id: m.id,
+                    label: m.label,
+                    status: 'waiting-admin',
+                    scores: ['0', '0'],
+                });
+                existingIds.add(m.id);
+            });
+
+            config.finishedMatches = config.finishedMatches.filter(m => isMatchSchedulePast(m.id));
+            sortMatchesBySchedule(config.finishedMatches);
+        }
 
         function formatLastUpdatedNow() {
             const d = new Date();
@@ -296,6 +411,7 @@
         }
 
         function renderMatches() {
+            syncPastScheduleMatches();
             const list = document.getElementById('matches-list');
             list.innerHTML = '';
             (config.finishedMatches || []).forEach((match, idx) => {
@@ -307,18 +423,13 @@
             const row = document.createElement('div');
             row.className = 'match-row';
             row.dataset.idx = idx;
+            row.dataset.matchId = match.id;
 
             const status = match.status || 'finished';
 
-            const sel = document.createElement('select');
-            sel.className = 'match-id';
-            MATCH_CATALOG.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                opt.textContent = m.label;
-                if (m.id === match.id) opt.selected = true;
-                sel.appendChild(opt);
-            });
+            const label = document.createElement('span');
+            label.className = 'match-label';
+            label.textContent = getMatchLabel(match.id);
 
             const statusSel = document.createElement('select');
             statusSel.className = 'match-status';
@@ -361,37 +472,12 @@
             statusSel.addEventListener('change', syncWinnerField);
             syncWinnerField();
 
-            const del = document.createElement('button');
-            del.className = 'btn btn-danger';
-            del.textContent = '✕';
-            del.onclick = () => {
-                config.finishedMatches.splice(idx, 1);
-                renderMatches();
-            };
-
-            row.appendChild(sel);
+            row.appendChild(label);
             row.appendChild(statusSel);
             row.appendChild(s0);
             row.appendChild(s1);
             row.appendChild(winSel);
-            row.appendChild(del);
             return row;
-        }
-
-        function addMatchRow() {
-            const used = collectMatches().map(m => m.id);
-            const next = MATCH_CATALOG.find(m => !used.includes(m.id));
-            if (!next) {
-                setStatus('Semua match sudah ditambahkan', true);
-                return;
-            }
-            config.finishedMatches.push({
-                id: next.id,
-                label: next.label,
-                status: 'live',
-                scores: ['0', '0'],
-            });
-            renderMatches();
         }
 
         function renderGoldenBoot() {
@@ -457,7 +543,7 @@
         function collectMatches() {
             const rows = document.querySelectorAll('#matches-list .match-row');
             return Array.from(rows).map(row => {
-                const id = row.querySelector('.match-id').value;
+                const id = row.dataset.matchId;
                 const status = row.querySelector('.match-status').value;
                 const winnerVal = row.querySelector('.winner').value;
                 const entry = {

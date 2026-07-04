@@ -328,11 +328,56 @@
             border: 2px solid #444;
             margin-right: 8px;
             vertical-align: middle;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
         }
         .standings-table td:nth-child(2) {
             white-space: nowrap;
             min-width: 110px;
             text-align: left;
+        }
+        .standings-table td.participant-cell {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+        .participant-name-battery {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            background: transparent;
+            overflow: hidden;
+            min-width: 4.5em;
+            box-shadow: 0 0 6px rgba(255, 255, 255, 0.08);
+        }
+        .participant-battery-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0%;
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: 0;
+            transition: width 0.45s ease, background 0.45s ease, opacity 0.45s ease;
+        }
+        .participant-name-battery strong {
+            position: relative;
+            z-index: 1;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+        }
+        .participant-name-battery.is-empty {
+            border-color: rgba(255, 255, 255, 0.35);
+            box-shadow: none;
+        }
+        .participant-name-battery.is-empty .participant-battery-fill {
+            opacity: 0;
+            background: transparent;
         }
         .table-section-title {
             font-size: 1rem;
@@ -2464,7 +2509,7 @@
                 <tbody>
                     <tr>
                         <td>1</td>
-                        <td><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/DAV.jpg?raw=true" alt="Davin" class="participant-avatar"><strong>Davin</strong></td>
+                        <td class="participant-cell"><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/DAV.jpg?raw=true" alt="Davin" class="participant-avatar"><span class="participant-name-battery"><span class="participant-battery-fill"></span><strong>Davin</strong></span></td>
                         <td class="pot1">Portugal</td>
                         <td class="pot1">Argentina</td>
                         <td class="pot2">Amerika Serikat</td>
@@ -2476,7 +2521,7 @@
                     </tr>
                     <tr>
                         <td>2</td>
-                        <td><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/NDO.jpeg?raw=true" alt="Ndod" class="participant-avatar"><strong>Ndod</strong></td>
+                        <td class="participant-cell"><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/NDO.jpeg?raw=true" alt="Ndod" class="participant-avatar"><span class="participant-name-battery"><span class="participant-battery-fill"></span><strong>Ndod</strong></span></td>
                         <td class="pot1">Prancis</td>
                         <td class="pot1">Argentina</td>
                         <td class="pot2">Maroko</td>
@@ -2488,7 +2533,7 @@
                     </tr>
                     <tr>
                         <td>3</td>
-                        <td><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/KHU.png?raw=true" alt="Khuang" class="participant-avatar"><strong>Khuang</strong></td>
+                        <td class="participant-cell"><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/KHU.png?raw=true" alt="Khuang" class="participant-avatar"><span class="participant-name-battery"><span class="participant-battery-fill"></span><strong>Khuang</strong></span></td>
                         <td class="pot1">Spanyol</td>
                         <td class="pot1">Argentina</td>
                         <td class="pot2">Belgia</td>
@@ -2500,7 +2545,7 @@
                     </tr>
                     <tr>
                         <td>4</td>
-                        <td><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/MAR.jpg?raw=true" alt="Marten" class="participant-avatar"><strong>Marten</strong></td>
+                        <td class="participant-cell"><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/MAR.jpg?raw=true" alt="Marten" class="participant-avatar"><span class="participant-name-battery"><span class="participant-battery-fill"></span><strong>Marten</strong></span></td>
                         <td class="pot1">Spanyol</td>
                         <td class="pot1">Argentina</td>
                         <td class="pot2">Jepang</td>
@@ -2512,7 +2557,7 @@
                     </tr>
                     <tr>
                         <td>5</td>
-                        <td><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/CHA.jpg?raw=true" alt="Cham" class="participant-avatar"><strong>Cham</strong></td>
+                        <td class="participant-cell"><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/CHA.jpg?raw=true" alt="Cham" class="participant-avatar"><span class="participant-name-battery"><span class="participant-battery-fill"></span><strong>Cham</strong></span></td>
                         <td class="pot1">Prancis</td>
                         <td class="pot1">Argentina</td>
                         <td class="pot2">Kolombia</td>
@@ -2524,7 +2569,7 @@
                     </tr>
                     <tr>
                         <td>6</td>
-                        <td><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/WIL.png?raw=true" alt="Willy" class="participant-avatar"><strong>Willy</strong></td>
+                        <td class="participant-cell"><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/WIL.png?raw=true" alt="Willy" class="participant-avatar"><span class="participant-name-battery"><span class="participant-battery-fill"></span><strong>Willy</strong></span></td>
                         <td class="pot1">Argentina</td>
                         <td class="pot1">Prancis</td>
                         <td class="pot2">Belgia</td>
@@ -2536,7 +2581,7 @@
                     </tr>
                     <tr>
                         <td>7</td>
-                        <td><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/WES.jpg?raw=true" alt="Wesly" class="participant-avatar"><strong>Wesly</strong></td>
+                        <td class="participant-cell"><img src="https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/WES.jpg?raw=true" alt="Wesly" class="participant-avatar"><span class="participant-name-battery"><span class="participant-battery-fill"></span><strong>Wesly</strong></span></td>
                         <td class="pot1">Brasil</td>
                         <td class="pot1">Spanyol</td>
                         <td class="pot2">Jepang</td>
@@ -2681,6 +2726,76 @@
                 }
 
                 if (isEliminated) cell.classList.add('eliminated');
+            });
+
+            updateMainQuestBatteries(table);
+        }
+
+        function getBatteryFillColor(ratio) {
+            // Green (120) when full → red (0) when empty
+            const hue = Math.round(Math.max(0, Math.min(1, ratio)) * 120);
+            return {
+                solid: `hsla(${hue}, 72%, 42%, 0.72)`,
+                soft: `hsla(${hue}, 80%, 58%, 0.45)`,
+                border: `hsla(${hue}, 70%, 55%, 0.55)`,
+                glow: `hsla(${hue}, 70%, 50%, 0.35)`,
+            };
+        }
+
+        function updateMainQuestBatteries(table) {
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const rowStats = rows.map(row => {
+                const teamCells = row.querySelectorAll('td.pot1, td.pot2, td.pot3, td.pot4');
+                const total = teamCells.length;
+                let alive = 0;
+                teamCells.forEach(cell => {
+                    if (!cell.classList.contains('eliminated')) alive += 1;
+                });
+                return { row, alive, total };
+            });
+
+            rowStats.forEach(({ row, alive, total }) => {
+                const battery = row.querySelector('.participant-name-battery');
+                const fill = row.querySelector('.participant-battery-fill');
+                if (!battery || !fill) return;
+
+                const ratio = total > 0 ? alive / total : 0;
+                const pct = Math.round(ratio * 100);
+
+                fill.style.width = pct + '%';
+
+                if (alive === 0) {
+                    battery.classList.add('is-empty');
+                    fill.style.background = 'transparent';
+                    battery.style.borderColor = 'rgba(255, 255, 255, 0.35)';
+                    battery.style.boxShadow = 'none';
+                } else {
+                    battery.classList.remove('is-empty');
+                    const colors = getBatteryFillColor(ratio);
+                    fill.style.background = `linear-gradient(90deg, ${colors.soft} 0%, ${colors.solid} 100%)`;
+                    battery.style.borderColor = colors.border;
+                    battery.style.boxShadow = `0 0 8px ${colors.glow}`;
+                }
+
+                battery.title = alive + '/' + total + ' negara masih didukung';
+                row.dataset.batteryAlive = String(alive);
+            });
+
+            // Sort: most remaining countries (battery) first
+            rowStats.sort((a, b) => {
+                if (b.alive !== a.alive) return b.alive - a.alive;
+                const nameA = a.row.querySelector('.participant-name-battery strong')?.textContent.trim() || '';
+                const nameB = b.row.querySelector('.participant-name-battery strong')?.textContent.trim() || '';
+                return nameA.localeCompare(nameB);
+            });
+
+            rowStats.forEach(({ row }, index) => {
+                tbody.appendChild(row);
+                const noCell = row.querySelector('td:first-child');
+                if (noCell) noCell.textContent = String(index + 1);
             });
         }
 

@@ -2748,6 +2748,7 @@
             const tbody = table.querySelector('tbody');
             if (!tbody) return;
 
+            const standingsPoints = calculateStandingsPointsFromBracket();
             const rows = Array.from(tbody.querySelectorAll('tr'));
             const rowStats = rows.map(row => {
                 const teamCells = row.querySelectorAll('td.pot1, td.pot2, td.pot3, td.pot4');
@@ -2756,7 +2757,9 @@
                 teamCells.forEach(cell => {
                     if (!cell.classList.contains('eliminated')) alive += 1;
                 });
-                return { row, alive, total };
+                const name = row.querySelector('.participant-name-battery strong')?.textContent.trim() || '';
+                const points = standingsPoints[name] ?? 0;
+                return { row, alive, total, name, points };
             });
 
             rowStats.forEach(({ row, alive, total }) => {
@@ -2786,12 +2789,11 @@
                 row.dataset.batteryAlive = String(alive);
             });
 
-            // Sort: most remaining countries (battery) first
+            // Sort: most battery first; tie-break by standings points (desc), then name
             rowStats.sort((a, b) => {
                 if (b.alive !== a.alive) return b.alive - a.alive;
-                const nameA = a.row.querySelector('.participant-name-battery strong')?.textContent.trim() || '';
-                const nameB = b.row.querySelector('.participant-name-battery strong')?.textContent.trim() || '';
-                return nameA.localeCompare(nameB);
+                if (b.points !== a.points) return b.points - a.points;
+                return a.name.localeCompare(b.name);
             });
 
             rowStats.forEach(({ row }, index) => {

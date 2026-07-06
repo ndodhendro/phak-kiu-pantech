@@ -3475,8 +3475,14 @@
         window.ADMIN_CONFIG = null;
 
         async function loadAdminConfig() {
-            // Bersihkan sisa preview lama dari versi terdahulu (kalau ada).
-            localStorage.removeItem('arisan_admin_config');
+            const preview = localStorage.getItem('arisan_admin_config');
+            if (preview) {
+                try {
+                    return JSON.parse(preview);
+                } catch (e) {
+                    localStorage.removeItem('arisan_admin_config');
+                }
+            }
             return ArisanConfigSources.fetchConfig();
         }
 

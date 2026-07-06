@@ -3474,10 +3474,10 @@
     <script>
         window.ADMIN_CONFIG = null;
 
-    async function loadAdminConfig() {
-        localStorage.removeItem('arisan_admin_config');   // sapu sisa lama, jangan pernah dibaca
-        return ArisanConfigSources.fetchConfig();          // selalu dari Supabase
-}
+        async function loadAdminConfig() {
+            // Bersihkan sisa preview lama dari versi terdahulu (kalau ada).
+            localStorage.removeItem('arisan_admin_config');
+            return ArisanConfigSources.fetchConfig();
         }
 
         function startApp() {

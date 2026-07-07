@@ -219,6 +219,12 @@
             color: #666;
             font-style: italic;
         }
+        /* FIX: nama tim yang sudah pasti (bukan "Ditentukan Nanti") tidak boleh abu-abu/italic
+           walau matchup-nya masih berstatus .tbd (belum tanding). */
+        .tbd .team-name.confirmed {
+            color: #fff;
+            font-style: normal;
+        }
         .timezone-note {
             text-align: center;
             font-size: 0.8rem;
@@ -1958,7 +1964,12 @@
         function drawBracketLines() {
             const bracket = document.querySelector('.bracket');
             // Select rounds that pair into next round (exclude trophy)
-            const rounds = bracket.querySelectorAll('.round-group, .round-r16, .round-qf, .round-sf, .round-3rd, .round-final');
+            // FIX: '.round-3rd' sengaja TIDAK dimasukkan ke rantai pairwise ini.
+            // Kalau ikut disertakan, algoritma generik di bawah akan menarik garis
+            // SF -> Juara 3 dengan logam yang sama seperti SF -> Final, sehingga dua
+            // set garis saling tumpang tindih/menyilang di kolom Juara 3 (terlihat berantakan).
+            // Garis SF -> Juara 3 digambar terpisah (dashed, warna redup) di blok khusus di bawah.
+            const rounds = bracket.querySelectorAll('.round-group, .round-r16, .round-qf, .round-sf, .round-final');
 
             const existingSvg = bracket.querySelector('.bracket-lines');
             if (existingSvg) existingSvg.remove();
@@ -2038,6 +2049,31 @@
                     path.setAttribute('d', `M${x1},${y1} H${midX} V${y3} H${x3}`);
                     path.setAttribute('stroke', '#444');
                     path.setAttribute('stroke-width', '1.5');
+                    path.setAttribute('fill', 'none');
+                    svg.appendChild(path);
+                });
+            }
+
+            // FIX: garis SF -> Perebutan Juara 3, digambar terpisah dan simetris
+            // (dashed + warna redup) supaya tidak menyatu/menyilang dengan garis SF -> Final.
+            const thirdMatchupForLines = bracket.querySelector('.round-3rd .matchup');
+            if (sfMatches.length >= 2 && thirdMatchupForLines) {
+                const targetRect = thirdMatchupForLines.getBoundingClientRect();
+                const x3 = targetRect.left - bracketRect.left;
+                const y3 = targetRect.top + targetRect.height / 2 - bracketRect.top;
+                const xSfEnd = sfMatches[1].getBoundingClientRect().right - bracketRect.left;
+                const midX = (xSfEnd + x3) / 2;
+
+                [0, 1].forEach(i => {
+                    const mRect = sfMatches[i].getBoundingClientRect();
+                    const x1 = mRect.right - bracketRect.left;
+                    const y1 = mRect.top + mRect.height / 2 - bracketRect.top;
+
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', `M${x1},${y1} H${midX} V${y3} H${x3}`);
+                    path.setAttribute('stroke', '#665');
+                    path.setAttribute('stroke-width', '1.2');
+                    path.setAttribute('stroke-dasharray', '4 3');
                     path.setAttribute('fill', 'none');
                     svg.appendChild(path);
                 });
@@ -2452,6 +2488,15 @@
                 const loser = getMatchupLoser(sfMatches[index]);
                 if (!loser) return;
                 setTeamSlot(slots[index], loser);
+            });
+        }
+
+        function markConfirmedTeamNames() {
+            // FIX: matchup boleh berstatus .tbd (belum tanding), tapi kalau nama tim sudah
+            // pasti (bukan placeholder "Ditentukan Nanti"), teks tidak boleh tampil abu-abu.
+            document.querySelectorAll('.matchup .team-name').forEach(nameEl => {
+                const isPlaceholder = nameEl.textContent.trim() === 'Ditentukan Nanti';
+                nameEl.classList.toggle('confirmed', !isPlaceholder);
             });
         }
 
@@ -3559,6 +3604,7 @@
             updateMatchupScheduleStatus();
             applyAdminConfig();
             advanceBracketWinners();
+            markConfirmedTeamNames();
             applyFinishedMatchBadges();
             initLiveMatchupLinks();
             setInterval(updateMatchupScheduleStatus, 60 * 1000);

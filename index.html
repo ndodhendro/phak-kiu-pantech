@@ -156,6 +156,53 @@
         .round-final .matchup { border-color: rgba(231, 76, 60, 0.4); }
         .round-final .matchup:hover { border-color: #e74c3c; box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3); }
         .round-final .matchup-date { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+
+        /* Juara 3 di posisi Final (sedikit ke bawah); Final di kanan juara 3 + piala */
+        .round-final-stage {
+            min-width: 420px;
+            justify-content: center;
+            padding: 0 5px;
+        }
+        .final-stage-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .round-final-stage .round-3rd,
+        .round-final-stage .round-final {
+            display: flex;
+            flex-direction: column;
+            flex: 0 0 auto;
+            min-width: 200px;
+            padding: 0;
+        }
+        .round-final-stage .round-3rd {
+            margin-top: 52px; /* sedikit lebih rendah dari Final */
+        }
+        .round-final-stage .round-matches {
+            flex: 0 0 auto;
+            justify-content: flex-start;
+            gap: 0;
+            min-width: 200px;
+        }
+        .final-match-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .round-trophy {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            margin-left: -4px;
+        }
+        .round-trophy img {
+            width: 80px;
+            height: auto;
+            display: block;
+        }
         .round-matches {
             display: flex;
             flex-direction: column;
@@ -741,14 +788,22 @@
             position: relative;
             margin: 0 auto;
         }
+        .total-goal-zone-v {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            z-index: 1;
+            opacity: 0.9;
+        }
         .total-goal-fill-v {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             background: linear-gradient(180deg, #e94560 0%, #f39c12 100%);
-            border-radius: 3px;
+            border-radius: 3px 3px 0 0;
             transition: height 1s ease;
+            z-index: 2;
         }
         .total-goal-start-label,
         .total-goal-end-label {
@@ -780,7 +835,7 @@
             font-weight: 700;
             color: #fff;
             box-shadow: 0 0 8px rgba(233, 69, 96, 0.6);
-            z-index: 3;
+            z-index: 5;
         }
         .total-goal-current-line {
             position: absolute;
@@ -807,6 +862,7 @@
             align-items: center;
             gap: 6px;
             transform: translateY(-50%);
+            z-index: 4;
         }
         .total-goal-marker-line-v {
             width: 20px;
@@ -1283,6 +1339,29 @@
             animation-delay: var(--glow-sync-delay);
             will-change: opacity;
         }
+        .total-goal-marker-v.eliminated {
+            opacity: 0.4;
+            filter: grayscale(0.5);
+        }
+        .total-goal-marker-v.eliminated .total-goal-marker-info {
+            border-color: #555 !important;
+            box-shadow: none !important;
+            animation: none !important;
+        }
+        .total-goal-marker-v.eliminated .total-goal-marker-name-v {
+            color: #e74c3c;
+            text-decoration: line-through;
+        }
+        .total-goal-marker-v.eliminated .total-goal-marker-value-v {
+            color: #888 !important;
+        }
+        .total-goal-marker-v.eliminated .total-goal-marker-avatar-v {
+            border-color: #555 !important;
+            filter: grayscale(1);
+        }
+        .total-goal-marker-v.eliminated .total-goal-marker-line-v {
+            background: #555 !important;
+        }
 
         /* Responsive - Mobile */
         @media (max-width: 768px) {
@@ -1651,17 +1730,17 @@
                 <div class="round-header">Babak Penyisihan Grup</div>
                 <div class="round-matches">
                     <div class="matchup tbd" data-match-id="group-0">
-                        <div class="matchup-date">Sen, 6/29, 00:00 WIB</div>
+                        <div class="matchup-date">Sen, 29 Juni, 00:00 WIB</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/za.png" alt="ZAF"></span><span class="team-name">Afrika Selatan</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ca.png" alt="CAN"></span><span class="team-name">Kanada</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-1">
-                        <div class="matchup-date">Sel, 6/30, 08:00 WIB</div>
+                        <div class="matchup-date">Sel, 30 Juni, 08:00 WIB</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/nl.png" alt="NED"></span><span class="team-name">Belanda</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ma.png" alt="MAR"></span><span class="team-name">Maroko</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-2">
-                        <div class="matchup-date">Sel, 6/30, 03:30 WIB</div>
+                        <div class="matchup-date">Sel, 30 Juni, 03:30 WIB</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/de.png" alt="GER"></span><span class="team-name">Jerman</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/py.png" alt="PAR"></span><span class="team-name">Paraguay</span></div>
                     </div>
@@ -1812,45 +1891,47 @@
                 <div class="round-header">Semifinal</div>
                 <div class="round-matches">
                     <div class="matchup tbd" data-match-id="sf-0">
-                        <div class="matchup-date">15 Juli, 02:00 WIB</div>
+                        <div class="matchup-date">Rab, 15 Juli, 02:00 WIB</div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="sf-1">
-                        <div class="matchup-date">16 Juli, 02:00 WIB</div>
+                        <div class="matchup-date">Kam, 16 Juli, 02:00 WIB</div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Perebutan Juara 3 -->
-            <div class="round round-3rd">
-                <div class="round-header">🥉 Perebutan Juara 3</div>
-                <div class="round-matches">
-                    <div class="matchup tbd" data-match-id="third-0">
-                        <div class="matchup-date">18 Juli, 02:00 WIB</div>
-                        <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
-                        <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
+            <!-- Juara 3 (posisi Final, sedikit ke bawah) + Final di kanan + Piala -->
+            <div class="round round-final-stage">
+                <div class="final-stage-row">
+                    <div class="round-3rd">
+                        <div class="round-header">🥉 Perebutan Juara 3</div>
+                        <div class="round-matches">
+                            <div class="matchup tbd" data-match-id="third-0">
+                                <div class="matchup-date">Min, 19 Juli, 04:00 WIB</div>
+                                <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
+                                <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="round-final">
+                        <div class="round-header">🏆 Final</div>
+                        <div class="final-match-row">
+                            <div class="round-matches">
+                                <div class="matchup tbd" data-match-id="final-0">
+                                    <div class="matchup-date">Sen, 20 Juli, 02:00 WIB</div>
+                                    <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
+                                    <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
+                                </div>
+                            </div>
+                            <div class="round-trophy">
+                                <img src="https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp" alt="Trophy">
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Final -->
-            <div class="round round-final">
-                <div class="round-header">🏆 Final</div>
-                <div class="round-matches">
-                    <div class="matchup tbd" data-match-id="final-0">
-                        <div class="matchup-date">20 Juli, 02:00 WIB</div>
-                        <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
-                        <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Trophy -->
-            <div class="round" style="min-width: 80px; padding: 0; margin-left: -5px; display: flex; justify-content: center; align-items: center;">
-                <img src="https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp" alt="Trophy" style="width: 80px; height: auto; align-self: center; margin-left: -40px; margin-top: 50px;">
             </div>
         </div>
     </div>
@@ -1895,6 +1976,19 @@
             return String(fullTime);
         }
 
+        function resolveFinishedWinnerIndex(match) {
+            const explicit = parseInt(match?.winner, 10);
+            if (explicit === 0 || explicit === 1) return explicit;
+
+            // Fallback: tentukan pemenang dari skor jika admin lupa pilih winner.
+            const parts = getMatchScoreParts(match);
+            const total0 = parts.ft[0] + parts.et[0];
+            const total1 = parts.ft[1] + parts.et[1];
+            if (total0 > total1) return 0;
+            if (total1 > total0) return 1;
+            return null;
+        }
+
         function applyAdminConfig() {
             if (!window.ADMIN_CONFIG) return;
 
@@ -1937,8 +2031,9 @@
                 if (typeof setWaitingAdminBadge === 'function') setWaitingAdminBadge(dateEl, false);
 
                 if (status === 'finished') {
-                    if (match.winner !== undefined && teams[match.winner]) {
-                        teams[match.winner].classList.add('winner');
+                    const winnerIdx = resolveFinishedWinnerIndex(match);
+                    if (winnerIdx !== null && teams[winnerIdx]) {
+                        teams[winnerIdx].classList.add('winner');
                     }
                     el.classList.add('finished');
                     delete el.dataset.liveUrl;
@@ -1963,12 +2058,8 @@
     <script>
         function drawBracketLines() {
             const bracket = document.querySelector('.bracket');
-            // Select rounds that pair into next round (exclude trophy)
-            // FIX: '.round-3rd' sengaja TIDAK dimasukkan ke rantai pairwise ini.
-            // Kalau ikut disertakan, algoritma generik di bawah akan menarik garis
-            // SF -> Juara 3 dengan logam yang sama seperti SF -> Final, sehingga dua
-            // set garis saling tumpang tindih/menyilang di kolom Juara 3 (terlihat berantakan).
-            // Garis SF -> Juara 3 digambar terpisah (dashed, warna redup) di blok khusus di bawah.
+            // Rantai pairwise: grup → R16 → QF → SF → Final.
+            // Juara 3 tidak ikut rantai (ditumpuk di bawah Final di kolom yang sama).
             const rounds = bracket.querySelectorAll('.round-group, .round-r16, .round-qf, .round-sf, .round-final');
 
             const existingSvg = bracket.querySelector('.bracket-lines');
@@ -2010,9 +2101,17 @@
                         const x3 = targetRect.left - bracketRect.left;
                         const y3 = targetRect.top + targetRect.height / 2 - bracketRect.top;
 
-                        const midX = (x1 + x3) / 2;
+                        let midX = (x1 + x3) / 2;
+                        // SF → Final: letakkan siku di kanan kolom juara 3 supaya
+                        // garis tidak memotong kotak perebutan juara 3 di bawah.
+                        if (rounds[i].classList.contains('round-sf') && rounds[i + 1].classList.contains('round-final')) {
+                            const thirdRound = bracket.querySelector('.round-3rd');
+                            if (thirdRound) {
+                                const thirdRight = thirdRound.getBoundingClientRect().right - bracketRect.left;
+                                midX = (thirdRight + x3) / 2;
+                            }
+                        }
 
-                        // Horizontal from match1, then vertical to midpoint Y, then horizontal to target
                         const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                         path1.setAttribute('d', `M${x1},${y1} H${midX} V${y3} H${x3}`);
                         path1.setAttribute('stroke', '#444');
@@ -2020,7 +2119,6 @@
                         path1.setAttribute('fill', 'none');
                         svg.appendChild(path1);
 
-                        // Horizontal from match2 to midpoint X, then vertical to midpoint Y
                         const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                         path2.setAttribute('d', `M${x2},${y2} H${midX} V${y3}`);
                         path2.setAttribute('stroke', '#444');
@@ -2031,49 +2129,28 @@
                 }
             }
 
+            // SF (15 & 16 Juli) → Perebutan Juara 3 (penyisih)
             const sfMatches = bracket.querySelectorAll('.round-sf .matchup');
-            const finalMatchup = bracket.querySelector('.round-final .matchup');
-            if (sfMatches.length >= 2 && finalMatchup) {
-                const targetRect = finalMatchup.getBoundingClientRect();
-                const x3 = targetRect.left - bracketRect.left;
-                const y3 = targetRect.top + targetRect.height / 2 - bracketRect.top;
-                const xSfEnd = sfMatches[1].getBoundingClientRect().right - bracketRect.left;
-                const midX = (xSfEnd + x3) / 2;
+            const thirdMatchup = bracket.querySelector('.round-3rd .matchup');
+            if (sfMatches.length >= 2 && thirdMatchup) {
+                const tRect = thirdMatchup.getBoundingClientRect();
+                const x3 = tRect.left - bracketRect.left;
+                const y3 = tRect.top + tRect.height / 2 - bracketRect.top;
+                const midX = (sfMatches[0].getBoundingClientRect().right - bracketRect.left + x3) / 2;
 
-                [0, 1].forEach(i => {
+                [0, 1].forEach((i, idx) => {
                     const mRect = sfMatches[i].getBoundingClientRect();
                     const x1 = mRect.right - bracketRect.left;
                     const y1 = mRect.top + mRect.height / 2 - bracketRect.top;
 
                     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    path.setAttribute('d', `M${x1},${y1} H${midX} V${y3} H${x3}`);
+                    if (idx === 0) {
+                        path.setAttribute('d', `M${x1},${y1} H${midX} V${y3} H${x3}`);
+                    } else {
+                        path.setAttribute('d', `M${x1},${y1} H${midX} V${y3}`);
+                    }
                     path.setAttribute('stroke', '#444');
                     path.setAttribute('stroke-width', '1.5');
-                    path.setAttribute('fill', 'none');
-                    svg.appendChild(path);
-                });
-            }
-
-            // FIX: garis SF -> Perebutan Juara 3, digambar terpisah dan simetris
-            // (dashed + warna redup) supaya tidak menyatu/menyilang dengan garis SF -> Final.
-            const thirdMatchupForLines = bracket.querySelector('.round-3rd .matchup');
-            if (sfMatches.length >= 2 && thirdMatchupForLines) {
-                const targetRect = thirdMatchupForLines.getBoundingClientRect();
-                const x3 = targetRect.left - bracketRect.left;
-                const y3 = targetRect.top + targetRect.height / 2 - bracketRect.top;
-                const xSfEnd = sfMatches[1].getBoundingClientRect().right - bracketRect.left;
-                const midX = (xSfEnd + x3) / 2;
-
-                [0, 1].forEach(i => {
-                    const mRect = sfMatches[i].getBoundingClientRect();
-                    const x1 = mRect.right - bracketRect.left;
-                    const y1 = mRect.top + mRect.height / 2 - bracketRect.top;
-
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    path.setAttribute('d', `M${x1},${y1} H${midX} V${y3} H${x3}`);
-                    path.setAttribute('stroke', '#665');
-                    path.setAttribute('stroke-width', '1.2');
-                    path.setAttribute('stroke-dasharray', '4 3');
                     path.setAttribute('fill', 'none');
                     svg.appendChild(path);
                 });
@@ -2424,10 +2501,49 @@
         function getMatchupWinner(matchup) {
             if (!matchup.classList.contains('finished')) return null;
 
-            const winnerEl = matchup.querySelector('.team.winner');
+            let winnerEl = matchup.querySelector(':scope > .team.winner');
+
+            if (!winnerEl) {
+                const matchId = matchup.dataset.matchId;
+                const match = (window.ADMIN_CONFIG?.finishedMatches || []).find(m => m.id === matchId);
+                const winnerIdx = typeof resolveFinishedWinnerIndex === 'function'
+                    ? resolveFinishedWinnerIndex(match)
+                    : null;
+                if (winnerIdx === 0 || winnerIdx === 1) {
+                    winnerEl = matchup.querySelectorAll(':scope > .team')[winnerIdx];
+                }
+            }
+
             if (!winnerEl) return null;
 
-            return getTeamDataFromElement(winnerEl);
+            const data = getTeamDataFromElement(winnerEl);
+            if (!data || data.name === 'Ditentukan Nanti') return null;
+            return data;
+        }
+
+        function getMatchupLoser(matchup) {
+            if (!matchup.classList.contains('finished')) return null;
+
+            const teams = matchup.querySelectorAll(':scope > .team');
+            let loserEl = Array.from(teams).find(teamEl => !teamEl.classList.contains('winner'));
+
+            // Fallback: tentukan dari config bila class winner belum ada di DOM
+            if (!loserEl || !getTeamDataFromElement(loserEl) || getTeamDataFromElement(loserEl).name === 'Ditentukan Nanti') {
+                const matchId = matchup.dataset.matchId;
+                const match = (window.ADMIN_CONFIG?.finishedMatches || []).find(m => m.id === matchId);
+                const winnerIdx = typeof resolveFinishedWinnerIndex === 'function'
+                    ? resolveFinishedWinnerIndex(match)
+                    : null;
+                if (winnerIdx === 0 || winnerIdx === 1) {
+                    loserEl = teams[1 - winnerIdx];
+                }
+            }
+
+            if (!loserEl) return null;
+
+            const data = getTeamDataFromElement(loserEl);
+            if (!data || data.name === 'Ditentukan Nanti') return null;
+            return data;
         }
 
         function setTeamSlot(teamEl, teamData) {
@@ -2435,6 +2551,8 @@
             const nameEl = teamEl.querySelector('.team-name');
             const scoreEl = teamEl.querySelector('.team-score');
 
+            // Hanya ganti identitas tim. Skor/winner di-restore lewat applyAdminConfig
+            // setelah advance, supaya tidak hilang di babak tujuan.
             teamEl.classList.remove('winner');
 
             if (!teamData) {
@@ -2460,17 +2578,21 @@
             delete teamEl.dataset.supporterInjected;
         }
 
-        function getMatchupLoser(matchup) {
-            if (!matchup.classList.contains('finished')) return null;
+        function fillNextRoundSlots(currentMatches, nextMatches) {
+            for (let j = 0; j < nextMatches.length; j++) {
+                const nextTeams = nextMatches[j].querySelectorAll(':scope > .team');
+                if (nextTeams.length < 2) continue;
 
-            const teams = matchup.querySelectorAll(':scope > .team');
-            const loserEl = Array.from(teams).find(teamEl => !teamEl.classList.contains('winner'));
-            if (!loserEl) return null;
+                [j * 2, j * 2 + 1].forEach((matchIndex, slotIndex) => {
+                    const sourceMatchup = currentMatches[matchIndex];
+                    if (!sourceMatchup) return;
 
-            const name = loserEl.querySelector('.team-name')?.textContent.trim();
-            if (!name || name === 'Ditentukan Nanti') return null;
+                    const winner = getMatchupWinner(sourceMatchup);
+                    if (!winner) return;
 
-            return getTeamDataFromElement(loserEl);
+                    setTeamSlot(nextTeams[slotIndex], winner);
+                });
+            }
         }
 
         function advanceThirdPlaceMatch() {
@@ -2504,30 +2626,21 @@
             const bracket = document.querySelector('.bracket');
             if (!bracket) return;
 
-            // Hanya babak gugur — penyisihan grup tidak memetakan pemenang ke slot berikutnya.
+            // Babak gugur berantai. setTeamSlot menghapus skor/winner di slot tujuan,
+            // jadi applyAdminConfig harus dipanggil ulang setelah setiap langkah supaya
+            // babak berikutnya masih punya .winner sebelum di-advance lagi.
+            // Rantai: R16 → QF → SF → Final, plus penyisih SF → Juara 3.
             const rounds = bracket.querySelectorAll('.round-r16, .round-qf, .round-sf, .round-final');
 
             for (let i = 0; i < rounds.length - 1; i++) {
                 const currentMatches = rounds[i].querySelectorAll('.matchup');
                 const nextMatches = rounds[i + 1].querySelectorAll('.matchup');
-
-                for (let j = 0; j < nextMatches.length; j++) {
-                    const nextTeams = nextMatches[j].querySelectorAll('.team');
-                    if (nextTeams.length < 2) continue;
-
-                    [j * 2, j * 2 + 1].forEach((matchIndex, slotIndex) => {
-                        const sourceMatchup = currentMatches[matchIndex];
-                        if (!sourceMatchup) return;
-
-                        const winner = getMatchupWinner(sourceMatchup);
-                        if (!winner) return;
-
-                        setTeamSlot(nextTeams[slotIndex], winner);
-                    });
-                }
+                fillNextRoundSlots(currentMatches, nextMatches);
+                applyAdminConfig();
             }
 
             advanceThirdPlaceMatch();
+            applyAdminConfig();
         }
 
         function initLiveMatchupLinks() {
@@ -2926,11 +3039,17 @@
             const container = document.getElementById(containerId);
             if (!container) return;
 
-            // Sort by supporters count descending, then by country name ascending
+            // 1) Belum gugur dulu, lalu yang sudah gugur
+            // 2) Supporter terbanyak
+            // 3) Tie-breaker: nama negara ascending
             const sorted = Object.entries(data).sort((a, b) => {
-                const diff = b[1].supporters.length - a[1].supporters.length;
-                if (diff !== 0) return diff;
-                return a[0].localeCompare(b[0]);
+                const elimDiff = Number(!!a[1].eliminated) - Number(!!b[1].eliminated);
+                if (elimDiff !== 0) return elimDiff;
+
+                const supporterDiff = b[1].supporters.length - a[1].supporters.length;
+                if (supporterDiff !== 0) return supporterDiff;
+
+                return a[0].localeCompare(b[0], 'id');
             });
 
             sorted.forEach(([team, info]) => {
@@ -3246,6 +3365,33 @@
             track.className = 'total-goal-track-v';
             track.style.height = trackHeight + 'px';
 
+            const goalToPx = (goal) =>
+                ((goal - startValue) / (endValue - startValue)) * trackHeight;
+
+            const sorted = [...totalGoalData].sort((a, b) => a.goal - b.goal);
+
+            // Wilayah di atas currentGoal: tiap segmen midpoint antar prediksi
+            // diwarnai sesuai warna peserta arisan
+            sorted.forEach((p, index) => {
+                const from = index === 0
+                    ? startValue
+                    : (sorted[index - 1].goal + p.goal) / 2;
+                const to = index === sorted.length - 1
+                    ? endValue
+                    : (p.goal + sorted[index + 1].goal) / 2;
+
+                const segFrom = Math.max(from, currentGoal);
+                if (to <= currentGoal || to <= segFrom) return;
+
+                const zone = document.createElement('div');
+                zone.className = 'total-goal-zone-v';
+                zone.style.top = goalToPx(segFrom) + 'px';
+                zone.style.height = (goalToPx(to) - goalToPx(segFrom)) + 'px';
+                zone.style.background = participantColors[p.name] || '#555';
+                zone.title = p.name + ' (' + Math.ceil(segFrom) + '–' + Math.floor(to) + ')';
+                track.appendChild(zone);
+            });
+
             // Fill to current goal position
             const currentPct = ((currentGoal - startValue) / (endValue - startValue)) * 100;
             const fill = document.createElement('div');
@@ -3282,13 +3428,14 @@
 
             track.appendChild(currentIndicator);
 
-            // Sort by goal ascending
-            const sorted = [...totalGoalData].sort((a, b) => a.goal - b.goal);
+            // Peserta yang prediksinya sudah terlewati skor aktual = sudah kalah
+            const isEliminated = (p) => currentGoal > p.goal;
 
-            // Find participant closest to currentGoal
+            // Glow hanya untuk yang masih bertahan (prediksi >= current), terdekat ke currentGoal
             let closestName = '';
             let closestDiff = Infinity;
             sorted.forEach(p => {
+                if (isEliminated(p)) return;
                 const diff = Math.abs(p.goal - currentGoal);
                 if (diff < closestDiff) {
                     closestDiff = diff;
@@ -3306,6 +3453,7 @@
                 const marker = document.createElement('div');
                 marker.className = 'total-goal-marker-v';
                 marker.style.top = finalTop + 'px';
+                if (isEliminated(p)) marker.classList.add('eliminated');
 
                 // Index ganjil di kiri, selain itu di kanan
                 if (index % 2 !== 0) {
@@ -3323,7 +3471,7 @@
                 info.style.borderColor = participantColors[p.name] || '#2a2a5a';
 
                 // Add glowing effect if this participant is closest to currentGoal
-                if (p.name === closestName && currentGoal > 0) {
+                if (!isEliminated(p) && p.name === closestName && currentGoal > 0) {
                     info.classList.add('glowing');
                 }
 
@@ -3602,6 +3750,8 @@
         function startApp() {
             initGlowSync();
             updateMatchupScheduleStatus();
+            // 1) Tandai skor/pemenang dari config
+            // 2) Advance isi slot babak berikutnya (internal: apply ulang config tiap langkah)
             applyAdminConfig();
             advanceBracketWinners();
             markConfirmedTeamNames();

@@ -743,7 +743,20 @@
                     },
                 };
                 if (status === 'finished') {
-                    entry.winner = parseInt(winnerVal, 10);
+                    const winnerIdx = parseInt(winnerVal, 10);
+                    if (winnerIdx === 0 || winnerIdx === 1) {
+                        entry.winner = winnerIdx;
+                    } else {
+                        // Infer dari skor bila dropdown winner belum dipilih
+                        const ft0 = parseScoreInput(row.querySelector('.score-ft-0').value);
+                        const ft1 = parseScoreInput(row.querySelector('.score-ft-1').value);
+                        const et0 = parseScoreInput(row.querySelector('.score-et-0').value);
+                        const et1 = parseScoreInput(row.querySelector('.score-et-1').value);
+                        const total0 = ft0 + et0;
+                        const total1 = ft1 + et1;
+                        if (total0 > total1) entry.winner = 0;
+                        else if (total1 > total0) entry.winner = 1;
+                    }
                 }
                 return entry;
             });

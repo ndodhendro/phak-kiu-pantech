@@ -3515,6 +3515,94 @@
             return Number.isNaN(score) ? null : score;
         }
 
+        function addPointsToSupporters(points, supporters, amount) {
+            (supporters || []).forEach(name => {
+                if (!name || points[name] === undefined) return;
+                points[name] += amount;
+            });
+        }
+
+        function getFinishedMatchTeam(matchId, role) {
+            const matchup = document.querySelector('[data-match-id="' + matchId + '"]');
+            if (!matchup || !matchup.classList.contains('finished')) return null;
+            if (role === 'winner') {
+                return typeof getMatchupWinner === 'function' ? getMatchupWinner(matchup) : null;
+            }
+            return typeof getMatchupLoser === 'function' ? getMatchupLoser(matchup) : null;
+        }
+
+        function applyFinalSideQuestBonuses(points) {
+            const champion = getFinishedMatchTeam('final-0', 'winner');
+            const runnerUp = getFinishedMatchTeam('final-0', 'loser');
+            const third = getFinishedMatchTeam('third-0', 'winner');
+
+            if (champion) {
+                addPointsToSupporters(points, sideQuestPodium.champion[champion.name]?.supporters, 10);
+            }
+            if (runnerUp) {
+                addPointsToSupporters(points, sideQuestPodium.runnerup[runnerUp.name]?.supporters, 5);
+            }
+            if (third) {
+                addPointsToSupporters(points, sideQuestPodium.third[third.name]?.supporters, 3);
+            }
+        }
+
+        function applyGoldenBootBonus(points) {
+            const bootData = (window.ADMIN_CONFIG && window.ADMIN_CONFIG.goldenBoot) || [];
+            if (!bootData.length) return;
+
+            const maxGoals = Math.max(...bootData.map(p => p.goals || 0));
+            if (maxGoals <= 0) return;
+
+            bootData
+                .filter(p => (p.goals || 0) === maxGoals)
+                .forEach(player => {
+                    addPointsToSupporters(points, player.supporters, 5);
+                });
+        }
+
+        function applyGoldenGloveBonus(points) {
+            const gloveData = (window.ADMIN_CONFIG && window.ADMIN_CONFIG.goldenGlove) || [];
+            gloveData
+                .filter(p => p.winner)
+                .forEach(player => {
+                    addPointsToSupporters(points, player.supporters, 5);
+                });
+        }
+
+        function applyTotalGoalBonus(points) {
+            const currentGoal = typeof calculateCurrentGoalFromBracket === 'function'
+                ? calculateCurrentGoalFromBracket()
+                : 0;
+
+            let closestName = '';
+            let closestDiff = Infinity;
+            totalGoalData.forEach(p => {
+                // Sama seperti glowing: hanya prediksi yang belum terlewati
+                if (currentGoal > p.goal) return;
+                const diff = Math.abs(p.goal - currentGoal);
+                if (diff < closestDiff || (diff === closestDiff && p.name.localeCompare(closestName) < 0)) {
+                    closestDiff = diff;
+                    closestName = p.name;
+                }
+            });
+
+            // Jika semua prediksi terlewati, ambil yang paling dekat secara absolut
+            if (!closestName) {
+                totalGoalData.forEach(p => {
+                    const diff = Math.abs(p.goal - currentGoal);
+                    if (diff < closestDiff || (diff === closestDiff && p.name.localeCompare(closestName) < 0)) {
+                        closestDiff = diff;
+                        closestName = p.name;
+                    }
+                });
+            }
+
+            if (closestName && points[closestName] !== undefined) {
+                points[closestName] += 5;
+            }
+        }
+
         function calculateStandingsPointsFromBracket() {
             const points = {};
             Object.keys(participantAvatars).forEach(name => {
@@ -3561,6 +3649,15 @@
                     });
                 });
             });
+
+            // Bonus side quest & awards — hanya setelah Final selesai
+            const finalMatch = document.querySelector('[data-match-id="final-0"]');
+            if (finalMatch && finalMatch.classList.contains('finished')) {
+                applyFinalSideQuestBonuses(points);
+                applyGoldenBootBonus(points);
+                applyGoldenGloveBonus(points);
+                applyTotalGoalBonus(points);
+            }
 
             return points;
         }

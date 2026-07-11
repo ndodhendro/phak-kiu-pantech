@@ -122,73 +122,143 @@
             border-bottom: 2px solid #e94560;
         }
         /* Round colors */
+        /* Round colors — kotak matchup & matchup-date mengikuti warna header */
         .round-group .round-header { color: #9b59b6; border-bottom-color: #9b59b6; }
-        .round-group .matchup { border-color: rgba(155, 89, 182, 0.4); }
-        .round-group .matchup:hover { border-color: #9b59b6; box-shadow: 0 4px 20px rgba(155, 89, 182, 0.2); }
-        .round-group .matchup-date { background: rgba(155, 89, 182, 0.1); }
-        .round-group .matchup.finished { border-color: rgba(46, 204, 113, 0.6); }
-        .round-group .matchup.finished .matchup-date { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
-        .team-score { margin-left: auto; font-weight: 700; font-size: 0.85rem; color: #fff; }
+        .round-group .matchup {
+            background: rgba(155, 89, 182, 0.1);
+            border-color: rgba(155, 89, 182, 0.45);
+        }
+        .round-group .matchup:hover {
+            border-color: #9b59b6;
+            box-shadow: 0 4px 20px rgba(155, 89, 182, 0.25);
+        }
+        .round-group .matchup-date {
+            background: rgba(155, 89, 182, 0.14);
+            color: #bb8fce;
+            border-bottom-color: rgba(155, 89, 182, 0.35);
+        }
+        .round-group .matchup.finished {
+            background: rgba(155, 89, 182, 0.1);
+            border-color: rgba(155, 89, 182, 0.55);
+        }
+        .round-group .matchup.finished .matchup-date {
+            background: rgba(155, 89, 182, 0.14);
+            color: #bb8fce;
+            border-bottom-color: rgba(155, 89, 182, 0.35);
+        }
+
+        .team-score {
+            margin-left: auto;
+            min-width: 1.5em;
+            text-align: right;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+        }
         .team.winner .team-name { color: #2ecc71; font-weight: 600; }
         .team.winner .team-score { color: #2ecc71; }
 
         .round-r16 .round-header { color: #3498db; border-bottom-color: #3498db; }
-        .round-r16 .matchup { border-color: rgba(52, 152, 219, 0.4); }
-        .round-r16 .matchup:hover { border-color: #3498db; box-shadow: 0 4px 20px rgba(52, 152, 219, 0.2); }
-        .round-r16 .matchup-date { background: rgba(52, 152, 219, 0.1); }
+        .round-r16 .matchup {
+            background: rgba(52, 152, 219, 0.1);
+            border-color: rgba(52, 152, 219, 0.45);
+        }
+        .round-r16 .matchup:hover {
+            border-color: #3498db;
+            box-shadow: 0 4px 20px rgba(52, 152, 219, 0.25);
+        }
+        .round-r16 .matchup-date {
+            background: rgba(52, 152, 219, 0.14);
+            color: #5dade2;
+            border-bottom-color: rgba(52, 152, 219, 0.35);
+        }
 
         .round-qf .round-header { color: #2ecc71; border-bottom-color: #2ecc71; }
-        .round-qf .matchup { border-color: rgba(46, 204, 113, 0.4); }
-        .round-qf .matchup:hover { border-color: #2ecc71; box-shadow: 0 4px 20px rgba(46, 204, 113, 0.2); }
-        .round-qf .matchup-date { background: rgba(46, 204, 113, 0.1); }
+        .round-qf .matchup {
+            background: rgba(46, 204, 113, 0.1);
+            border-color: rgba(46, 204, 113, 0.45);
+        }
+        .round-qf .matchup:hover {
+            border-color: #2ecc71;
+            box-shadow: 0 4px 20px rgba(46, 204, 113, 0.25);
+        }
+        .round-qf .matchup-date {
+            background: rgba(46, 204, 113, 0.14);
+            color: #58d68d;
+            border-bottom-color: rgba(46, 204, 113, 0.35);
+        }
 
         .round-sf .round-header { color: #f39c12; border-bottom-color: #f39c12; }
-        .round-sf .matchup { border-color: rgba(243, 156, 18, 0.4); }
-        .round-sf .matchup:hover { border-color: #f39c12; box-shadow: 0 4px 20px rgba(243, 156, 18, 0.2); }
-        .round-sf .matchup-date { background: rgba(243, 156, 18, 0.1); }
+        .round-sf .matchup {
+            background: rgba(243, 156, 18, 0.1);
+            border-color: rgba(243, 156, 18, 0.45);
+        }
+        .round-sf .matchup:hover {
+            border-color: #f39c12;
+            box-shadow: 0 4px 20px rgba(243, 156, 18, 0.25);
+        }
+        .round-sf .matchup-date {
+            background: rgba(243, 156, 18, 0.14);
+            color: #f5b041;
+            border-bottom-color: rgba(243, 156, 18, 0.35);
+        }
 
         .round-3rd .round-header { color: #cd7f32; border-bottom-color: #cd7f32; }
-        .round-3rd .matchup { border-color: rgba(205, 127, 50, 0.4); }
-        .round-3rd .matchup:hover { border-color: #cd7f32; box-shadow: 0 4px 20px rgba(205, 127, 50, 0.2); }
-        .round-3rd .matchup-date { background: rgba(205, 127, 50, 0.12); }
+        .round-3rd .matchup {
+            background: rgba(205, 127, 50, 0.1);
+            border-color: rgba(205, 127, 50, 0.45);
+        }
+        .round-3rd .matchup:hover {
+            border-color: #cd7f32;
+            box-shadow: 0 4px 20px rgba(205, 127, 50, 0.25);
+        }
+        .round-3rd .matchup-date {
+            background: rgba(205, 127, 50, 0.14);
+            color: #d4a574;
+            border-bottom-color: rgba(205, 127, 50, 0.35);
+        }
 
         .round-final .round-header { color: #e74c3c; border-bottom-color: #e74c3c; }
-        .round-final .matchup { border-color: rgba(231, 76, 60, 0.4); }
-        .round-final .matchup:hover { border-color: #e74c3c; box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3); }
-        .round-final .matchup-date { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+        .round-final .matchup {
+            background: rgba(231, 76, 60, 0.1);
+            border-color: rgba(231, 76, 60, 0.45);
+        }
+        .round-final .matchup:hover {
+            border-color: #e74c3c;
+            box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3);
+        }
+        .round-final .matchup-date {
+            background: rgba(231, 76, 60, 0.14);
+            color: #ec7063;
+            border-bottom-color: rgba(231, 76, 60, 0.35);
+        }
 
-        /* Juara 3 di posisi Final (sedikit ke bawah); Final di kanan juara 3 + piala */
-        .round-final-stage {
-            min-width: 420px;
-            justify-content: center;
-            padding: 0 5px;
-        }
-        .final-stage-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-        .round-final-stage .round-3rd,
-        .round-final-stage .round-final {
-            display: flex;
-            flex-direction: column;
-            flex: 0 0 auto;
+        /* Juara 3 & Final: header di atas, kotak matchup vertical center */
+        .round-3rd {
             min-width: 200px;
-            padding: 0;
         }
-        .round-final-stage .round-3rd {
-            margin-top: 52px; /* sedikit lebih rendah dari Final */
+        .round-3rd .round-matches {
+            flex: 1;
+            justify-content: center;
+            gap: 0;
+            margin-top: 0;
         }
-        .round-final-stage .round-matches {
+        .round-final {
+            min-width: 290px;
+        }
+        .round-final .final-match-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+            margin-top: 0;
+        }
+        .round-final .round-matches {
             flex: 0 0 auto;
             justify-content: flex-start;
             gap: 0;
             min-width: 200px;
-        }
-        .final-match-row {
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
         .round-trophy {
             flex: 0 0 auto;
@@ -238,6 +308,31 @@
         }
         .team:last-child {
             border-bottom: none;
+        }
+        .team-place-badge-slot {
+            width: 34px;
+            height: 28px;
+            margin-left: 6px;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .team-place-badge-slot img {
+            object-fit: contain;
+            display: block;
+        }
+        .team-place-badge-slot.badge-champion img {
+            width: 30px;
+            height: 30px;
+        }
+        .team-place-badge-slot.badge-runnerup img {
+            width: 16px;
+            height: 16px;
+        }
+        .team-place-badge-slot.badge-third img {
+            width: 16px;
+            height: 16px;
         }
         .team-flag {
             margin-right: 8px;
@@ -1730,82 +1825,82 @@
                 <div class="round-header">Babak Penyisihan Grup</div>
                 <div class="round-matches">
                     <div class="matchup tbd" data-match-id="group-0">
-                        <div class="matchup-date">Sen, 29 Juni, 00:00 WIB</div>
+                        <div class="matchup-date">Sen, 29 Juni, 00:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/za.png" alt="ZAF"></span><span class="team-name">Afrika Selatan</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ca.png" alt="CAN"></span><span class="team-name">Kanada</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-1">
-                        <div class="matchup-date">Sel, 30 Juni, 08:00 WIB</div>
+                        <div class="matchup-date">Sel, 30 Juni, 08:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/nl.png" alt="NED"></span><span class="team-name">Belanda</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ma.png" alt="MAR"></span><span class="team-name">Maroko</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-2">
-                        <div class="matchup-date">Sel, 30 Juni, 03:30 WIB</div>
+                        <div class="matchup-date">Sel, 30 Juni, 03:30</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/de.png" alt="GER"></span><span class="team-name">Jerman</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/py.png" alt="PAR"></span><span class="team-name">Paraguay</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-3">
-                        <div class="matchup-date">Rab, 1 Juli, 04:00 WIB</div>
+                        <div class="matchup-date">Rab, 1 Juli, 04:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/fr.png" alt="FRA"></span><span class="team-name">Prancis</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/se.png" alt="SWE"></span><span class="team-name">Swedia</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-4">
-                        <div class="matchup-date">Kam, 2 Juli, 03:00 WIB</div>
+                        <div class="matchup-date">Kam, 2 Juli, 03:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/be.png" alt="BEL"></span><span class="team-name">Belgia</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/sn.png" alt="SEN"></span><span class="team-name">Senegal</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-5">
-                        <div class="matchup-date">Kam, 2 Juli, 07:00 WIB</div>
+                        <div class="matchup-date">Kam, 2 Juli, 07:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/us.png" alt="USA"></span><span class="team-name">Amerika Serikat</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ba.png" alt="BIH"></span><span class="team-name">Bosnia-Herzegovina</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-6">
-                        <div class="matchup-date">Jum, 3 Juli, 02:00 WIB</div>
+                        <div class="matchup-date">Jum, 3 Juli, 02:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/es.png" alt="ESP"></span><span class="team-name">Spanyol</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/at.png" alt="AUT"></span><span class="team-name">Austria</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-7">
-                        <div class="matchup-date">Jum, 3 Juli, 06:00 WIB</div>
+                        <div class="matchup-date">Jum, 3 Juli, 06:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/pt.png" alt="POR"></span><span class="team-name">Portugal</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/hr.png" alt="CRO"></span><span class="team-name">Kroasia</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-8">
-                        <div class="matchup-date">Sel, 6/30, 00:00 WIB</div>
+                        <div class="matchup-date">Sel, 6/30, 00:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/br.png" alt="BRA"></span><span class="team-name">Brasil</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/jp.png" alt="JPN"></span><span class="team-name">Jepang</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-9">
-                        <div class="matchup-date">Rab, 1 Juli, 00:00 WIB</div>
+                        <div class="matchup-date">Rab, 1 Juli, 00:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ci.png" alt="CIV"></span><span class="team-name">Pantai Gading</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/no.png" alt="NOR"></span><span class="team-name">Norwegia</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-10">
-                        <div class="matchup-date">Rab, 1 Juli, 08:00 WIB</div>
+                        <div class="matchup-date">Rab, 1 Juli, 08:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/mx.png" alt="MEX"></span><span class="team-name">Meksiko</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ec.png" alt="ECU"></span><span class="team-name">Ekuador</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-11">
-                        <div class="matchup-date">Rab, 1 Juli, 23:00 WIB</div>
+                        <div class="matchup-date">Rab, 1 Juli, 23:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/gb-eng.png" alt="ENG"></span><span class="team-name">Inggris</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/cd.png" alt="COD"></span><span class="team-name">RD Kongo</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-12">
-                        <div class="matchup-date">Jum, 3 Juli, 10:00 WIB</div>
+                        <div class="matchup-date">Jum, 3 Juli, 10:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ch.png" alt="SUI"></span><span class="team-name">Swiss</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/dz.png" alt="ALG"></span><span class="team-name">Aljazair</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-13">
-                        <div class="matchup-date">Sab, 4 Juli, 08:30 WIB</div>
+                        <div class="matchup-date">Sab, 4 Juli, 08:30</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/co.png" alt="COL"></span><span class="team-name">Kolombia</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/gh.png" alt="GHA"></span><span class="team-name">Ghana</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-14">
-                        <div class="matchup-date">Sab, 4 Juli, 01:00 WIB</div>
+                        <div class="matchup-date">Sab, 4 Juli, 01:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/au.png" alt="AUS"></span><span class="team-name">Australia</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/eg.png" alt="EGY"></span><span class="team-name">Mesir</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="group-15">
-                        <div class="matchup-date">Sab, 4 Juli, 05:00 WIB</div>
+                        <div class="matchup-date">Sab, 4 Juli, 05:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ar.png" alt="ARG"></span><span class="team-name">Argentina</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/cv.png" alt="CPV"></span><span class="team-name">Tanjung Verde</span></div>
                     </div>
@@ -1817,42 +1912,42 @@
                 <div class="round-header">16 Besar</div>
                 <div class="round-matches">
                     <div class="matchup tbd" data-match-id="r16-0">
-                        <div class="matchup-date">Min, 5 Juli, 00:00 WIB</div>
+                        <div class="matchup-date">Min, 5 Juli, 00:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ca.png" alt="CAN"></span><span class="team-name">Kanada</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ma.png" alt="MAR"></span><span class="team-name">Maroko</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="r16-1">
-                        <div class="matchup-date">Min, 5 Juli, 04:00 WIB</div>
+                        <div class="matchup-date">Min, 5 Juli, 04:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/py.png" alt="CAN"></span><span class="team-name">Paraguay</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/fr.png" alt="FRA"></span><span class="team-name">Prancis</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="r16-2">
-                        <div class="matchup-date">Sel, 7 Juli, 07:00 WIB</div>
+                        <div class="matchup-date">Sel, 7 Juli, 07:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/us.png" alt="USA"></span><span class="team-name">Amerika Serikat</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/be.png" alt="BEL"></span><span class="team-name">Belgia</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="r16-3">
-                        <div class="matchup-date">Sel, 7 Juli, 02:00 WIB</div>
+                        <div class="matchup-date">Sel, 7 Juli, 02:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/pt.png" alt="POR"></span><span class="team-name">Portugal</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/es.png" alt="ESP"></span><span class="team-name">Spanyol</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="r16-4">
-                        <div class="matchup-date">Sen, 6 Juli, 03:00 WIB</div>
+                        <div class="matchup-date">Sen, 6 Juli, 03:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/br.png" alt="BRA"></span><span class="team-name">Brasil</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/no.png" alt="NOR"></span><span class="team-name">Norwegia</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="r16-5">
-                        <div class="matchup-date">Sen, 6 Juli, 07:00 WIB</div>
+                        <div class="matchup-date">Sen, 6 Juli, 07:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/mx.png" alt="MEX"></span><span class="team-name">Meksiko</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/gb-eng.png" alt="ENG"></span><span class="team-name">Inggris</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="r16-6">
-                        <div class="matchup-date">Rab, 8 Juli, 03:00 WIB</div>
+                        <div class="matchup-date">Rab, 8 Juli, 03:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ch.png" alt="SUI"></span><span class="team-name">Swiss</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/co.png" alt="COL"></span><span class="team-name">Kolombia</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="r16-7">
-                        <div class="matchup-date">Sel, 7 Juli, 23:00 WIB</div>
+                        <div class="matchup-date">Sel, 7 Juli, 23:00</div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/ar.png" alt="ARG"></span><span class="team-name">Argentina</span></div>
                         <div class="team"><span class="team-flag"><img src="https://flagcdn.com/w40/eg.png" alt="EGY"></span><span class="team-name">Mesir</span></div>
                     </div>
@@ -1864,22 +1959,22 @@
                 <div class="round-header">Perempat Final</div>
                 <div class="round-matches">
                     <div class="matchup tbd" data-match-id="qf-0">
-                        <div class="matchup-date">Jum, 10 Juli, 03:00 WIB</div>
+                        <div class="matchup-date">Jum, 10 Juli, 03:00</div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="qf-1">
-                        <div class="matchup-date">Sab, 11 Juli, 02:00 WIB</div>
+                        <div class="matchup-date">Sab, 11 Juli, 02:00</div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="qf-2">
-                        <div class="matchup-date">Min, 12 Juli, 04:00 WIB</div>
+                        <div class="matchup-date">Min, 12 Juli, 04:00</div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="qf-3">
-                        <div class="matchup-date">Min, 12 Juli, 08:00 WIB</div>
+                        <div class="matchup-date">Min, 12 Juli, 08:00</div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                     </div>
@@ -1891,45 +1986,43 @@
                 <div class="round-header">Semifinal</div>
                 <div class="round-matches">
                     <div class="matchup tbd" data-match-id="sf-0">
-                        <div class="matchup-date">Rab, 15 Juli, 02:00 WIB</div>
+                        <div class="matchup-date">Rab, 15 Juli, 02:00</div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                     </div>
                     <div class="matchup tbd" data-match-id="sf-1">
-                        <div class="matchup-date">Kam, 16 Juli, 02:00 WIB</div>
+                        <div class="matchup-date">Kam, 16 Juli, 02:00</div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Juara 3 (posisi Final, sedikit ke bawah) + Final di kanan + Piala -->
-            <div class="round round-final-stage">
-                <div class="final-stage-row">
-                    <div class="round-3rd">
-                        <div class="round-header">🥉 Perebutan Juara 3</div>
-                        <div class="round-matches">
-                            <div class="matchup tbd" data-match-id="third-0">
-                                <div class="matchup-date">Min, 19 Juli, 04:00 WIB</div>
-                                <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
-                                <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
-                            </div>
+            <!-- Perebutan Juara 3 -->
+            <div class="round round-3rd">
+                <div class="round-header">Perebutan Juara 3</div>
+                <div class="round-matches">
+                    <div class="matchup tbd" data-match-id="third-0">
+                        <div class="matchup-date">Min, 19 Juli, 04:00</div>
+                        <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
+                        <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final + Piala -->
+            <div class="round round-final">
+                <div class="round-header">Final</div>
+                <div class="final-match-row">
+                    <div class="round-matches">
+                        <div class="matchup tbd" data-match-id="final-0">
+                            <div class="matchup-date">Sen, 20 Juli, 02:00</div>
+                            <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
+                            <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
                         </div>
                     </div>
-                    <div class="round-final">
-                        <div class="round-header">🏆 Final</div>
-                        <div class="final-match-row">
-                            <div class="round-matches">
-                                <div class="matchup tbd" data-match-id="final-0">
-                                    <div class="matchup-date">Sen, 20 Juli, 02:00 WIB</div>
-                                    <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
-                                    <div class="team"><span class="team-flag"><img src="https://img.icons8.com/ios-filled/50/6b7280/shield.png" alt="TBD" style="opacity:0.4"></span><span class="team-name">Ditentukan Nanti</span></div>
-                                </div>
-                            </div>
-                            <div class="round-trophy">
-                                <img src="https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp" alt="Trophy">
-                            </div>
-                        </div>
+                    <div class="round-trophy">
+                        <img src="https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp" alt="Trophy">
                     </div>
                 </div>
             </div>
@@ -2550,6 +2643,7 @@
             const flagEl = teamEl.querySelector('.team-flag');
             const nameEl = teamEl.querySelector('.team-name');
             const scoreEl = teamEl.querySelector('.team-score');
+            teamEl.querySelectorAll('.team-place-badge, .team-place-badge-slot').forEach(el => el.remove());
 
             // Hanya ganti identitas tim. Skor/winner di-restore lewat applyAdminConfig
             // setelah advance, supaya tidak hilang di babak tujuan.
@@ -2641,6 +2735,123 @@
 
             advanceThirdPlaceMatch();
             applyAdminConfig();
+            applyFinalPlacementBadges();
+        }
+
+        const FINAL_PLACE_IMAGES = {
+            champion: 'https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp',
+            runnerup: 'https://png.pngtree.com/png-clipart/20250717/original/pngtree-silver-second-place-trophy-with-number-two-png-image_21318342.png',
+            third: 'https://static.vecteezy.com/system/resources/previews/063/104/243/non_2x/bronze-medal-with-number-three-and-laurel-wreath-isolated-on-transparent-background-png.png',
+        };
+
+        function appendTeamPlaceBadge(teamEl, src, alt, variant) {
+            if (!teamEl) return;
+            const slot = document.createElement('span');
+            slot.className = 'team-place-badge-slot' + (variant ? ' badge-' + variant : '');
+            if (src) {
+                const img = document.createElement('img');
+                img.src = src;
+                img.alt = alt || '';
+                img.title = alt || '';
+                slot.appendChild(img);
+            }
+            teamEl.appendChild(slot);
+        }
+
+        function resolveMatchWinnerTeamEl(matchup, matchId) {
+            if (!matchup) return null;
+            const teams = matchup.querySelectorAll(':scope > .team');
+            const winnerEl = matchup.querySelector(':scope > .team.winner');
+            if (winnerEl) return winnerEl;
+
+            if (typeof resolveFinishedWinnerIndex !== 'function') return null;
+            const match = (window.ADMIN_CONFIG?.finishedMatches || []).find(m => m.id === matchId);
+            const idx = resolveFinishedWinnerIndex(match);
+            return (idx === 0 || idx === 1) ? teams[idx] : null;
+        }
+
+        function applyFinalPlacementBadges() {
+            const finalMatch = document.querySelector('[data-match-id="final-0"]');
+            if (finalMatch) {
+                finalMatch.querySelectorAll('.team-place-badge, .team-place-badge-slot').forEach(el => el.remove());
+                if (finalMatch.classList.contains('finished')) {
+                    const teams = finalMatch.querySelectorAll(':scope > .team');
+                    const winnerEl = resolveMatchWinnerTeamEl(finalMatch, 'final-0');
+                    if (winnerEl) {
+                        const loserEl = Array.from(teams).find(teamEl => teamEl !== winnerEl);
+                        appendTeamPlaceBadge(winnerEl, FINAL_PLACE_IMAGES.champion, 'Champion', 'champion');
+                        appendTeamPlaceBadge(loserEl, FINAL_PLACE_IMAGES.runnerup, 'Runner-Up', 'runnerup');
+                    }
+                }
+            }
+
+            const thirdMatch = document.querySelector('[data-match-id="third-0"]');
+            if (thirdMatch) {
+                thirdMatch.querySelectorAll('.team-place-badge, .team-place-badge-slot').forEach(el => el.remove());
+                if (thirdMatch.classList.contains('finished')) {
+                    const teams = thirdMatch.querySelectorAll(':scope > .team');
+                    const winnerEl = resolveMatchWinnerTeamEl(thirdMatch, 'third-0');
+                    if (winnerEl) {
+                        const loserEl = Array.from(teams).find(teamEl => teamEl !== winnerEl);
+                        appendTeamPlaceBadge(winnerEl, FINAL_PLACE_IMAGES.third, '3rd Rank', 'third');
+                        // Slot kosong agar skor 4th rank sejajar dengan 3rd
+                        appendTeamPlaceBadge(loserEl, null, '', '');
+                    }
+                }
+            }
+        }
+
+        // Contoh preview badge: buka index.html?preview-podium=1
+        function applyPodiumBadgePreviewDemo() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('preview-podium') !== '1') return;
+
+            function fillDemoMatch(matchId, team0, team1, winnerIdx, scores) {
+                const matchup = document.querySelector('[data-match-id="' + matchId + '"]');
+                if (!matchup) return;
+                const teams = matchup.querySelectorAll(':scope > .team');
+                const dateEl = matchup.querySelector('.matchup-date');
+                [{ ...team0, score: scores[0] }, { ...team1, score: scores[1] }].forEach((t, i) => {
+                    if (!teams[i]) return;
+                    const flagEl = teams[i].querySelector('.team-flag');
+                    const nameEl = teams[i].querySelector('.team-name');
+                    if (flagEl) {
+                        flagEl.innerHTML = '<img src="https://flagcdn.com/w40/' + t.flag + '.png" alt="' + t.alt + '">';
+                    }
+                    if (nameEl) {
+                        nameEl.textContent = t.name;
+                        nameEl.classList.add('confirmed');
+                    }
+                    let scoreEl = teams[i].querySelector('.team-score');
+                    if (!scoreEl) {
+                        scoreEl = document.createElement('span');
+                        scoreEl.className = 'team-score';
+                        teams[i].appendChild(scoreEl);
+                    }
+                    scoreEl.textContent = String(t.score);
+                    teams[i].classList.toggle('winner', i === winnerIdx);
+                });
+                matchup.classList.remove('tbd', 'today', 'live', 'waiting-admin');
+                matchup.classList.add('finished');
+                matchup.dataset.adminManaged = 'true';
+                if (dateEl && !dateEl.querySelector('.matchup-finished-badge')) {
+                    const dateText = (dateEl.dataset.scheduleDate || dateEl.textContent || '').replace(/^✅\s*/, '').trim();
+                    dateEl.dataset.scheduleDate = dateText;
+                    dateEl.innerHTML = '<span class="matchup-finished-badge">Match Finished</span> ' + dateText;
+                }
+            }
+
+            fillDemoMatch('third-0',
+                { name: 'Spanyol', flag: 'es', alt: 'ESP' },
+                { name: 'Brasil', flag: 'br', alt: 'BRA' },
+                0, [2, 1]);
+            fillDemoMatch('final-0',
+                { name: 'Argentina', flag: 'ar', alt: 'ARG' },
+                { name: 'Prancis', flag: 'fr', alt: 'FRA' },
+                0, [3, 1]);
+
+            applyFinalPlacementBadges();
+            if (typeof drawBracketLines === 'function') drawBracketLines();
         }
 
         function initLiveMatchupLinks() {
@@ -3853,6 +4064,8 @@
             advanceBracketWinners();
             markConfirmedTeamNames();
             applyFinishedMatchBadges();
+            applyFinalPlacementBadges();
+            applyPodiumBadgePreviewDemo();
             initLiveMatchupLinks();
             setInterval(updateMatchupScheduleStatus, 60 * 1000);
             setInterval(updateSoonCountdowns, 1000);

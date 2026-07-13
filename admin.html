@@ -385,7 +385,8 @@
             const text = (dateText || '').trim();
             if (!text) return null;
 
-            let match = text.match(/^(?:\w+,\s*)?(\d{1,2})\s+(\w+),?\s+(\d{1,2}):(\d{2})\s*WIB$/i);
+            // WIB optional — display strings may omit it; timezone still treated as WIB
+            let match = text.match(/^(?:\w+,\s*)?(\d{1,2})\s+(\w+),?\s+(\d{1,2}):(\d{2})(?:\s*WIB)?$/i);
             if (match) {
                 const monthIndex = INDONESIAN_MONTHS[match[2].toLowerCase()];
                 if (monthIndex === undefined) return null;
@@ -398,7 +399,7 @@
                 );
             }
 
-            match = text.match(/^(?:\w+,\s*)?(\d{1,2})\/(\d{1,2}),?\s+(\d{1,2}):(\d{2})\s*WIB$/i);
+            match = text.match(/^(?:\w+,\s*)?(\d{1,2})\/(\d{1,2}),?\s+(\d{1,2}):(\d{2})(?:\s*WIB)?$/i);
             if (match) {
                 return makeWIBDate(
                     TOURNAMENT_YEAR,

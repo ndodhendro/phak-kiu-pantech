@@ -841,12 +841,37 @@
             font-size: 1.2rem;
             flex-shrink: 0;
         }
+        .player-podium-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
         .player-podium-name {
             font-size: 0.75rem;
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+        .player-podium-country {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.6rem;
+            font-weight: 500;
+            color: #9aa0b5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-podium-country img {
+            width: 16px;
+            height: 12px;
+            object-fit: cover;
+            border-radius: 1px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.35);
         }
         .player-podium-count {
             margin-left: auto;
@@ -1002,8 +1027,8 @@
             align-items: flex-start;
         }
         .goldenboot-card {
-            width: 160px;
-            min-width: 160px;
+            width: 180px;
+            min-width: 180px;
             background: #1a1a3e;
             border-radius: 8px;
             border: 1px solid rgba(255, 215, 0, 0.4);
@@ -1022,11 +1047,38 @@
             padding: 6px 8px;
             gap: 8px;
         }
-        .goldenboot-card-info span {
+        .goldenboot-player-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        .goldenboot-player-name {
             font-size: 10.4px;
             font-weight: 600;
             color: #ddd;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .goldenboot-player-country {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.58rem;
+            font-weight: 500;
+            color: #9aa0b5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .goldenboot-player-country img {
+            width: 16px;
+            height: 12px;
+            object-fit: cover;
+            border-radius: 1px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.35);
         }
         .goldenboot-supporters-btn {
             display: block;
@@ -1594,12 +1646,15 @@
                 font-size: 0.6rem;
             }
             .goldenboot-card {
-                width: 140px;
-                min-width: 140px;
+                width: 150px;
+                min-width: 150px;
                 margin-right: 8px;
             }
-            .goldenboot-card-info span {
+            .goldenboot-player-name {
                 font-size: 0.7rem;
+            }
+            .goldenboot-player-country {
+                font-size: 0.55rem;
             }
             .goldenboot-avatar {
                 width: 30px;
@@ -1702,12 +1757,15 @@
                 left: auto;
             }
             .goldenboot-card {
-                width: 120px;
-                min-width: 120px;
+                width: 132px;
+                min-width: 132px;
                 margin-right: 8px;
             }
-            .goldenboot-card-info span {
+            .goldenboot-player-name {
                 font-size: 0.6rem;
+            }
+            .goldenboot-player-country {
+                font-size: 0.5rem;
             }
             .goldenboot-avatar {
                 width: 28px;
@@ -2104,8 +2162,6 @@
                     formatScoreForDisplay(scoreParts.ft[1], scoreParts.et[1], hasExtraTime),
                 ];
 
-                el.dataset.adminManaged = 'true';
-
                 displayScores.forEach((score, i) => {
                     if (!teams[i]) return;
                     let scoreEl = teams[i].querySelector('.team-score');
@@ -2124,6 +2180,8 @@
                 if (typeof setWaitingAdminBadge === 'function') setWaitingAdminBadge(dateEl, false);
 
                 if (status === 'finished') {
+                    // Hanya finished yang di-freeze dari timer schedule
+                    el.dataset.adminManaged = 'true';
                     const winnerIdx = resolveFinishedWinnerIndex(match);
                     if (winnerIdx !== null && teams[winnerIdx]) {
                         teams[winnerIdx].classList.add('winner');
@@ -2132,6 +2190,8 @@
                     delete el.dataset.liveUrl;
                     el.removeAttribute('title');
                 } else if (status === 'live') {
+                    // live / waiting-admin tetap bisa di-advance timer
+                    delete el.dataset.adminManaged;
                     el.classList.add('live');
                     if (typeof setLiveBadge === 'function') setLiveBadge(dateEl, true);
                     if (typeof LIVE_STREAM_URL !== 'undefined') {
@@ -2139,6 +2199,7 @@
                     }
                     el.title = 'Tonton live';
                 } else if (status === 'waiting-admin') {
+                    delete el.dataset.adminManaged;
                     el.classList.add('waiting-admin');
                     if (typeof setWaitingAdminBadge === 'function') setWaitingAdminBadge(dateEl, true);
                     delete el.dataset.liveUrl;
@@ -2376,7 +2437,7 @@
 
         function extractMatchupDateText(dateEl) {
             const text = dateEl.textContent.replace(/\s+/g, ' ').trim();
-            const match = text.match(/((?:\w+,\s*)?(?:\d{1,2}\s+\w+|\d{1,2}\/\d{1,2}),?\s+\d{1,2}:\d{2}\s*WIB)/i);
+            const match = text.match(/((?:\w+,\s*)?(?:\d{1,2}\s+\w+|\d{1,2}\/\d{1,2}),?\s+\d{1,2}:\d{2}(?:\s*WIB)?)/i);
             return match ? match[1].trim() : text.replace(/^✅\s*/, '').trim();
         }
 
@@ -2384,7 +2445,8 @@
             const text = (dateText || '').replace(/^✅\s*/, '').trim();
             if (!text) return null;
 
-            let match = text.match(/^(?:\w+,\s*)?(\d{1,2})\s+(\w+),?\s+(\d{1,2}):(\d{2})\s*WIB$/i);
+            // WIB optional — display strings omit it for brevity; timezone still treated as WIB
+            let match = text.match(/^(?:\w+,\s*)?(\d{1,2})\s+(\w+),?\s+(\d{1,2}):(\d{2})(?:\s*WIB)?$/i);
             if (match) {
                 const monthIndex = INDONESIAN_MONTHS[match[2].toLowerCase()];
                 if (monthIndex === undefined) return null;
@@ -2397,7 +2459,7 @@
                 );
             }
 
-            match = text.match(/^(?:\w+,\s*)?(\d{1,2})\/(\d{1,2}),?\s+(\d{1,2}):(\d{2})\s*WIB$/i);
+            match = text.match(/^(?:\w+,\s*)?(\d{1,2})\/(\d{1,2}),?\s+(\d{1,2}):(\d{2})(?:\s*WIB)?$/i);
             if (match) {
                 return makeWIBDate(
                     TOURNAMENT_YEAR,
@@ -3326,6 +3388,48 @@
             { name: 'Cham', goal: 117 }
         ];
 
+        // Negara pemain Golden Boot / Golden Glove (override via player.country + player.flag di config)
+        const PLAYER_NATIONALITY = {
+            'kylian mbappe': { country: 'Prancis', flag: 'fr' },
+            'lionel messi': { country: 'Argentina', flag: 'ar' },
+            'lamine yamal': { country: 'Spanyol', flag: 'es' },
+            'emiliano martinez': { country: 'Argentina', flag: 'ar' },
+            'mike maignan': { country: 'Prancis', flag: 'fr' },
+            'vozinha': { country: 'Tanjung Verde', flag: 'cv' },
+            'unai simon': { country: 'Spanyol', flag: 'es' },
+            'alison becker': { country: 'Brasil', flag: 'br' },
+            'alisson becker': { country: 'Brasil', flag: 'br' },
+        };
+
+        function getPlayerNationality(player) {
+            if (player && player.country && player.flag) {
+                return { country: player.country, flag: player.flag };
+            }
+            const key = String(player?.name || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
+            return PLAYER_NATIONALITY[key] || null;
+        }
+
+        function appendPlayerCountry(container, player, countryClass) {
+            const nationality = getPlayerNationality(player);
+            if (!nationality || !container) return;
+
+            const countryEl = document.createElement('span');
+            countryEl.className = countryClass;
+
+            const flagImg = document.createElement('img');
+            flagImg.src = 'https://flagcdn.com/w40/' + nationality.flag + '.png';
+            flagImg.alt = nationality.country;
+            flagImg.onerror = function() { this.style.display = 'none'; };
+
+            countryEl.appendChild(flagImg);
+            countryEl.appendChild(document.createTextNode(nationality.country));
+            container.appendChild(countryEl);
+        }
+
         function buildPlayerPodium(containerId, data, icon) {
             const container = document.getElementById(containerId);
             if (!container) return;
@@ -3373,10 +3477,14 @@
                     info.appendChild(iconSpan);
                 }
 
+                const meta = document.createElement('div');
+                meta.className = 'player-podium-meta';
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'player-podium-name';
                 nameSpan.textContent = player.name;
-                info.appendChild(nameSpan);
+                meta.appendChild(nameSpan);
+                appendPlayerCountry(meta, player, 'player-podium-country');
+                info.appendChild(meta);
                 card.appendChild(info);
 
                 // Toggle button
@@ -3442,12 +3550,17 @@
                 const card = document.createElement('div');
                 card.className = 'goldenboot-card';
 
-                // Card info (player name)
+                // Card info (player name + country)
                 const cardInfo = document.createElement('div');
                 cardInfo.className = 'goldenboot-card-info';
+                const meta = document.createElement('div');
+                meta.className = 'goldenboot-player-meta';
                 const nameSpan = document.createElement('span');
+                nameSpan.className = 'goldenboot-player-name';
                 nameSpan.textContent = player.name;
-                cardInfo.appendChild(nameSpan);
+                meta.appendChild(nameSpan);
+                appendPlayerCountry(meta, player, 'goldenboot-player-country');
+                cardInfo.appendChild(meta);
                 card.appendChild(cardInfo);
 
                 // Supporters toggle button
@@ -4057,11 +4170,12 @@
 
         function startApp() {
             initGlowSync();
-            updateMatchupScheduleStatus();
-            // 1) Tandai skor/pemenang dari config
+            // 1) Tandai skor/pemenang dari config (finished di-freeze)
             // 2) Advance isi slot babak berikutnya (internal: apply ulang config tiap langkah)
+            // 3) Baru apply status schedule — live / waiting-admin tetap di-advance timer
             applyAdminConfig();
             advanceBracketWinners();
+            updateMatchupScheduleStatus();
             markConfirmedTeamNames();
             applyFinishedMatchBadges();
             applyFinalPlacementBadges();

@@ -572,6 +572,25 @@
             font-weight: 700;
             text-decoration: none;
         }
+        /* Main Quest podium / contention colors */
+        .standings-table td.mq-gold {
+            color: #ffd700 !important;
+            font-weight: 700;
+            background: rgba(255, 215, 0, 0.22);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.35);
+        }
+        .standings-table td.mq-silver {
+            color: #f0f0f0 !important;
+            font-weight: 700;
+            background: rgba(192, 192, 192, 0.28);
+            text-shadow: 0 0 10px rgba(220, 220, 220, 0.3);
+        }
+        .standings-table td.mq-bronze {
+            color: #e0a05a !important;
+            font-weight: 700;
+            background: rgba(205, 127, 50, 0.28);
+            text-shadow: 0 0 10px rgba(205, 127, 50, 0.35);
+        }
 
         /* Supporters Toggle */
         .supporters-toggle {
@@ -3160,7 +3179,7 @@
             runnerup: {
                 'Argentina': { flag: 'ar', supporters: ['Cham', 'Davin', 'Ndod', 'Marten'], eliminated: false },
                 'Spanyol': { flag: 'es', supporters: ['Khuang', 'Wesly'], eliminated: false },
-                'Prancis': { flag: 'fr', supporters: [, 'Willy'], eliminated: false }
+                'Prancis': { flag: 'fr', supporters: ['Willy'], eliminated: false }
             },
             third: {
                 'Brasil': { flag: 'br', supporters: ['Davin', 'Marten'], eliminated: false },
@@ -3181,20 +3200,55 @@
             return null;
         }
 
+        function getThirdPlaceContenders() {
+            const names = new Set();
+            const flags = new Set();
+            const thirdMatchup = document.querySelector('[data-match-id="third-0"]');
+            const ongoing = !!(thirdMatchup && !thirdMatchup.classList.contains('finished'));
+
+            if (!ongoing) return { names, flags, ongoing: false };
+
+            const addContender = (teamName, flagCode) => {
+                if (teamName && teamName !== 'Ditentukan Nanti') names.add(teamName);
+                if (flagCode) flags.add(flagCode);
+            };
+
+            thirdMatchup.querySelectorAll(':scope > .team').forEach(teamEl => {
+                addContender(
+                    teamEl.querySelector('.team-name')?.textContent.trim(),
+                    getTeamFlagCode(teamEl)
+                );
+            });
+
+            document.querySelectorAll('.round-sf .matchup.finished').forEach(matchup => {
+                const loser = typeof getMatchupLoser === 'function' ? getMatchupLoser(matchup) : null;
+                if (!loser) return;
+                const src = loser.flagSrc || '';
+                const flagMatch = src.match(/flagcdn\.com\/w\d+\/([a-z0-9-]+)\.png/i);
+                addContender(loser.name, flagMatch ? flagMatch[1].toLowerCase() : null);
+            });
+
+            return { names, flags, ongoing: true };
+        }
+
         function getEliminatedFromBracket() {
             const names = new Set();
             const flags = new Set();
+            const pendingThird = getThirdPlaceContenders();
 
             document.querySelectorAll('.bracket .matchup.finished').forEach(matchup => {
-                matchup.querySelectorAll('.team').forEach(teamEl => {
+                matchup.querySelectorAll(':scope > .team').forEach(teamEl => {
                     if (teamEl.classList.contains('winner')) return;
 
                     const teamName = teamEl.querySelector('.team-name')?.textContent.trim();
                     if (!teamName || teamName === 'Ditentukan Nanti') return;
 
-                    names.add(teamName);
-
                     const flagCode = getTeamFlagCode(teamEl);
+                    if (pendingThird.names.has(teamName) || (flagCode && pendingThird.flags.has(flagCode))) {
+                        return;
+                    }
+
+                    names.add(teamName);
                     if (flagCode) flags.add(flagCode);
                 });
             });
@@ -3202,18 +3256,143 @@
             return { names, flags };
         }
 
-        function updateSideQuestEliminatedStatus() {
-            const { flags } = getEliminatedFromBracket();
+        function mainQuestTeamMatchesResult(teamName, resultTeam, flagCodes) {
+            if (!resultTeam) return false;
+            if (resultTeam.name === teamName) return true;
 
-            Object.values(sideQuestPodium).forEach(category => {
-                Object.values(category).forEach(info => {
-                    info.eliminated = flags.has(info.flag);
-                });
+            const flag = flagCodes[teamName];
+            if (!flag) return false;
+
+            const src = resultTeam.flagSrc || '';
+            const flagMatch = src.match(/flagcdn\.com\/w\d+\/([a-z0-9-]+)\.png/i);
+            return !!(flagMatch && flagMatch[1].toLowerCase() === flag);
+        }
+
+        function mainQuestTeamInSet(teamName, names, flags, flagCodes) {
+            if (names.has(teamName)) return true;
+            const flag = flagCodes[teamName];
+            return !!(flag && flags.has(flag));
+        }
+
+        function podiumTeamMatchesResult(teamName, info, resultTeam) {
+            if (!resultTeam) return false;
+            if (resultTeam.name === teamName) return true;
+
+            const src = resultTeam.flagSrc || '';
+            const flagMatch = src.match(/flagcdn\.com\/w\d+\/([a-z0-9-]+)\.png/i);
+            return !!(flagMatch && flagMatch[1].toLowerCase() === info.flag);
+        }
+
+        function podiumTeamInMatchup(teamName, info, matchId) {
+            const matchup = document.querySelector('[data-match-id="' + matchId + '"]');
+            if (!matchup) return false;
+
+            return Array.from(matchup.querySelectorAll(':scope > .team')).some(teamEl => {
+                const name = teamEl.querySelector('.team-name')?.textContent.trim();
+                if (!name || name === 'Ditentukan Nanti') return false;
+                if (name === teamName) return true;
+                const flagCode = getTeamFlagCode(teamEl);
+                return !!(flagCode && flagCode === info.flag);
+            });
+        }
+
+        function isPodiumTeamFinalist(teamName, info) {
+            if (podiumTeamInMatchup(teamName, info, 'final-0')) return true;
+
+            return Array.from(document.querySelectorAll('.round-sf .matchup.finished')).some(matchup => {
+                const winner = typeof getMatchupWinner === 'function' ? getMatchupWinner(matchup) : null;
+                return podiumTeamMatchesResult(teamName, info, winner);
+            });
+        }
+
+        function isPodiumTeamInThirdPlace(teamName, info) {
+            if (podiumTeamInMatchup(teamName, info, 'third-0')) return true;
+
+            return Array.from(document.querySelectorAll('.round-sf .matchup.finished')).some(matchup => {
+                const loser = typeof getMatchupLoser === 'function' ? getMatchupLoser(matchup) : null;
+                return podiumTeamMatchesResult(teamName, info, loser);
+            });
+        }
+
+        function isPodiumTeamMatchLoser(teamName, info, matchup) {
+            const loser = typeof getMatchupLoser === 'function' ? getMatchupLoser(matchup) : null;
+            return podiumTeamMatchesResult(teamName, info, loser);
+        }
+
+        function isPodiumTeamKnockedOut(teamName, info) {
+            // Gugur di match finished mana pun (termasuk SF → ke juara 3 / Final)
+            return Array.from(document.querySelectorAll('.bracket .matchup.finished')).some(matchup => {
+                return isPodiumTeamMatchLoser(teamName, info, matchup);
+            });
+        }
+
+        function isPodiumTeamKnockedOutBeforeSf(teamName, info) {
+            // Gugur sebelum semifinal (tidak lagi berpeluang juara 3)
+            return Array.from(document.querySelectorAll('.bracket .matchup.finished')).some(matchup => {
+                const matchId = matchup.dataset.matchId || '';
+                if (matchId.startsWith('sf-') || matchId === 'final-0' || matchId === 'third-0') return false;
+                return isPodiumTeamMatchLoser(teamName, info, matchup);
+            });
+        }
+
+        function updateSideQuestEliminatedStatus() {
+            // Default: semua glowing. Matikan glow sesuai status bracket per kolom.
+            const finalFinished = !!document.querySelector('[data-match-id="final-0"].finished');
+            const thirdFinished = !!document.querySelector('[data-match-id="third-0"].finished');
+            const champion = typeof getFinishedMatchTeam === 'function'
+                ? getFinishedMatchTeam('final-0', 'winner')
+                : null;
+            const runnerUp = typeof getFinishedMatchTeam === 'function'
+                ? getFinishedMatchTeam('final-0', 'loser')
+                : null;
+            const thirdWinner = typeof getFinishedMatchTeam === 'function'
+                ? getFinishedMatchTeam('third-0', 'winner')
+                : null;
+
+            Object.entries(sideQuestPodium.champion).forEach(([name, info]) => {
+                if (finalFinished) {
+                    // Setelah Final: hanya juara yang glowing
+                    info.eliminated = !podiumTeamMatchesResult(name, info, champion);
+                    return;
+                }
+                // Gugur atau masuk perebutan juara 3 → tidak glowing
+                info.eliminated = isPodiumTeamKnockedOut(name, info) || isPodiumTeamInThirdPlace(name, info);
+            });
+
+            Object.entries(sideQuestPodium.runnerup).forEach(([name, info]) => {
+                if (finalFinished) {
+                    // Setelah Final: hanya runner-up (kalah Final) yang glowing
+                    info.eliminated = !podiumTeamMatchesResult(name, info, runnerUp);
+                    return;
+                }
+                // Gugur atau masuk perebutan juara 3 → tidak glowing
+                info.eliminated = isPodiumTeamKnockedOut(name, info) || isPodiumTeamInThirdPlace(name, info);
+            });
+
+            Object.entries(sideQuestPodium.third).forEach(([name, info]) => {
+                if (thirdFinished) {
+                    // Setelah perebutan juara 3: hanya pemenang yang glowing
+                    info.eliminated = !podiumTeamMatchesResult(name, info, thirdWinner);
+                    return;
+                }
+                // Sudah lolos Final → tidak glowing di 3rd rank
+                if (isPodiumTeamFinalist(name, info)) {
+                    info.eliminated = true;
+                    return;
+                }
+                // Sudah di slot perebutan juara 3 → tetap glowing
+                if (isPodiumTeamInThirdPlace(name, info)) {
+                    info.eliminated = false;
+                    return;
+                }
+                // Gugur sebelum SF → tidak glowing; selain itu default glowing
+                info.eliminated = isPodiumTeamKnockedOutBeforeSf(name, info);
             });
         }
 
         function updateMainQuestEliminatedStatus() {
             const { names, flags } = getEliminatedFromBracket();
+            const pendingThird = getThirdPlaceContenders();
             const table = document.querySelector('.standings-table');
             if (!table) return;
 
@@ -3222,17 +3401,50 @@
                 'Aljazair': 'dz',
             };
 
+            const champion = typeof getFinishedMatchTeam === 'function'
+                ? getFinishedMatchTeam('final-0', 'winner')
+                : null;
+            const runnerUp = typeof getFinishedMatchTeam === 'function'
+                ? getFinishedMatchTeam('final-0', 'loser')
+                : null;
+            const thirdWinner = typeof getFinishedMatchTeam === 'function'
+                ? getFinishedMatchTeam('third-0', 'winner')
+                : null;
+
+            const statusClasses = ['eliminated', 'mq-gold', 'mq-silver', 'mq-bronze'];
+
             table.querySelectorAll('tbody td.pot1, tbody td.pot2, tbody td.pot3, tbody td.pot4').forEach(cell => {
                 const teamName = cell.textContent.trim();
-                cell.classList.remove('eliminated');
+                cell.classList.remove(...statusClasses);
 
-                let isEliminated = names.has(teamName);
-                if (!isEliminated) {
-                    const flag = mainQuestTeamFlagCodes[teamName];
-                    if (flag) isEliminated = flags.has(flag);
+                // Hasil akhir podium
+                if (mainQuestTeamMatchesResult(teamName, champion, mainQuestTeamFlagCodes)) {
+                    cell.classList.add('mq-gold');
+                    return;
+                }
+                if (mainQuestTeamMatchesResult(teamName, runnerUp, mainQuestTeamFlagCodes)) {
+                    cell.classList.add('mq-silver');
+                    return;
+                }
+                if (mainQuestTeamMatchesResult(teamName, thirdWinner, mainQuestTeamFlagCodes)) {
+                    cell.classList.add('mq-bronze');
+                    return;
                 }
 
-                if (isEliminated) cell.classList.add('eliminated');
+                // Sudah gugur (dan bukan kontestan juara 3 yang masih berjalan)
+                if (mainQuestTeamInSet(teamName, names, flags, mainQuestTeamFlagCodes)) {
+                    cell.classList.add('eliminated');
+                    return;
+                }
+
+                // Masih berpotensi juara 3
+                if (mainQuestTeamInSet(teamName, pendingThird.names, pendingThird.flags, mainQuestTeamFlagCodes)) {
+                    cell.classList.add('mq-bronze');
+                    return;
+                }
+
+                // Masih berpotensi juara 1
+                cell.classList.add('mq-gold');
             });
 
             updateMainQuestBatteries(table);
@@ -3830,9 +4042,10 @@
             const text = (scoreText || '').trim();
             if (!text) return null;
 
-            const penaltyMatch = text.match(/^(\d+)\s*\(\s*(\d+)\s*\)$/);
-            if (penaltyMatch) {
-                return parseInt(penaltyMatch[1], 10);
+            // Format skor knockout: FT (ET) — total gol = FT + ET (sama seperti penentuan pemenang)
+            const extraTimeMatch = text.match(/^(\d+)\s*\(\s*(\d+)\s*\)$/);
+            if (extraTimeMatch) {
+                return parseInt(extraTimeMatch[1], 10) + parseInt(extraTimeMatch[2], 10);
             }
 
             const score = parseInt(text, 10);
@@ -3934,7 +4147,7 @@
             });
 
             document.querySelectorAll('.bracket .matchup.finished').forEach(matchup => {
-                const teams = matchup.querySelectorAll('.team');
+                const teams = matchup.querySelectorAll(':scope > .team');
                 if (teams.length !== 2) return;
 
                 const teamData = Array.from(teams).map(teamEl => ({
@@ -3945,21 +4158,29 @@
                 if (!teamData[0].name || !teamData[1].name) return;
                 if (teamData[0].name === 'Ditentukan Nanti' || teamData[1].name === 'Ditentukan Nanti') return;
 
-                const score1 = parseFullTimeScore(teamData[0].scoreText);
-                const score2 = parseFullTimeScore(teamData[1].scoreText);
-                if (score1 === null || score2 === null) return;
-
                 let team1Points;
                 let team2Points;
-                if (score1 > score2) {
-                    team1Points = 3;
-                    team2Points = 0;
-                } else if (score1 < score2) {
-                    team1Points = 0;
-                    team2Points = 3;
+
+                // Prioritas: class/config pemenang (menghormati ET & adu penalti)
+                const winner = typeof getMatchupWinner === 'function' ? getMatchupWinner(matchup) : null;
+                if (winner) {
+                    team1Points = winner.name === teamData[0].name ? 3 : 0;
+                    team2Points = winner.name === teamData[1].name ? 3 : 0;
                 } else {
-                    team1Points = 1;
-                    team2Points = 1;
+                    const score1 = parseFullTimeScore(teamData[0].scoreText);
+                    const score2 = parseFullTimeScore(teamData[1].scoreText);
+                    if (score1 === null || score2 === null) return;
+
+                    if (score1 > score2) {
+                        team1Points = 3;
+                        team2Points = 0;
+                    } else if (score1 < score2) {
+                        team1Points = 0;
+                        team2Points = 3;
+                    } else {
+                        team1Points = 1;
+                        team2Points = 1;
+                    }
                 }
 
                 [
@@ -3974,10 +4195,12 @@
                 });
             });
 
-            // Bonus side quest & awards — hanya setelah Final selesai
+            // Bonus side quest: diterapkan per match yang sudah selesai (Final / perebutan juara 3)
+            applyFinalSideQuestBonuses(points);
+
+            // Bonus awards lain — hanya setelah Final selesai
             const finalMatch = document.querySelector('[data-match-id="final-0"]');
             if (finalMatch && finalMatch.classList.contains('finished')) {
-                applyFinalSideQuestBonuses(points);
                 applyGoldenBootBonus(points);
                 applyGoldenGloveBonus(points);
                 applyTotalGoalBonus(points);

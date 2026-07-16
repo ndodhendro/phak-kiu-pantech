@@ -3835,14 +3835,15 @@
         }
 
         // Build Total Goal Vertical Progress Bar
+        // Current goal = FT + ET (format "FT (ET)"). Gol penalti tidak dicatat / tidak dihitung.
         function parseTeamScore(scoreText) {
             const text = (scoreText || '').trim();
             if (!text) return 0;
 
-            // Supports: 1(1), 1 (1), 1  (1), 1 ( 1 )
-            const penaltyMatch = text.match(/^(\d+)\s*\(\s*(\d+)\s*\)$/);
-            if (penaltyMatch) {
-                return parseInt(penaltyMatch[1], 10) + parseInt(penaltyMatch[2], 10);
+            // Supports: 1(1), 1 (1), 1  (1), 1 ( 1 ) → FT + ET
+            const extraTimeMatch = text.match(/^(\d+)\s*\(\s*(\d+)\s*\)$/);
+            if (extraTimeMatch) {
+                return parseInt(extraTimeMatch[1], 10) + parseInt(extraTimeMatch[2], 10);
             }
 
             const score = parseInt(text, 10);
@@ -4038,14 +4039,15 @@
             container.appendChild(vertical);
         }
 
+        // Standings points memakai skor Full Time saja (abaikan ET & penalti)
         function parseFullTimeScore(scoreText) {
             const text = (scoreText || '').trim();
             if (!text) return null;
 
-            // Format skor knockout: FT (ET) — total gol = FT + ET (sama seperti penentuan pemenang)
+            // Format "FT (ET)" → ambil FT saja
             const extraTimeMatch = text.match(/^(\d+)\s*\(\s*(\d+)\s*\)$/);
             if (extraTimeMatch) {
-                return parseInt(extraTimeMatch[1], 10) + parseInt(extraTimeMatch[2], 10);
+                return parseInt(extraTimeMatch[1], 10);
             }
 
             const score = parseInt(text, 10);
@@ -4158,29 +4160,22 @@
                 if (!teamData[0].name || !teamData[1].name) return;
                 if (teamData[0].name === 'Ditentukan Nanti' || teamData[1].name === 'Ditentukan Nanti') return;
 
+                // Aturan: 3 = menang FT, 1 = seri FT, 0 = kalah FT (ET/penalti tidak mempengaruhi poin)
+                const score1 = parseFullTimeScore(teamData[0].scoreText);
+                const score2 = parseFullTimeScore(teamData[1].scoreText);
+                if (score1 === null || score2 === null) return;
+
                 let team1Points;
                 let team2Points;
-
-                // Prioritas: class/config pemenang (menghormati ET & adu penalti)
-                const winner = typeof getMatchupWinner === 'function' ? getMatchupWinner(matchup) : null;
-                if (winner) {
-                    team1Points = winner.name === teamData[0].name ? 3 : 0;
-                    team2Points = winner.name === teamData[1].name ? 3 : 0;
+                if (score1 > score2) {
+                    team1Points = 3;
+                    team2Points = 0;
+                } else if (score1 < score2) {
+                    team1Points = 0;
+                    team2Points = 3;
                 } else {
-                    const score1 = parseFullTimeScore(teamData[0].scoreText);
-                    const score2 = parseFullTimeScore(teamData[1].scoreText);
-                    if (score1 === null || score2 === null) return;
-
-                    if (score1 > score2) {
-                        team1Points = 3;
-                        team2Points = 0;
-                    } else if (score1 < score2) {
-                        team1Points = 0;
-                        team2Points = 3;
-                    } else {
-                        team1Points = 1;
-                        team2Points = 1;
-                    }
+                    team1Points = 1;
+                    team2Points = 1;
                 }
 
                 [

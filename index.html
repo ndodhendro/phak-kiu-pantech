@@ -3834,6 +3834,13 @@
             });
         }
 
+        // Perebutan juara 3: hanya untuk Side Quest 3rd rank (bukan Main Quest / current goal)
+        const THIRD_PLACE_MATCH_ID = 'third-0';
+
+        function isThirdPlaceMatchup(matchup) {
+            return matchup?.dataset?.matchId === THIRD_PLACE_MATCH_ID;
+        }
+
         // Build Total Goal Vertical Progress Bar
         // Current goal = FT + ET (format "FT (ET)"). Gol penalti tidak dicatat / tidak dihitung.
         function parseTeamScore(scoreText) {
@@ -3854,6 +3861,9 @@
             let total = 0;
 
             document.querySelectorAll('.bracket .matchup.finished, .bracket .matchup.live').forEach(matchup => {
+                // Perebutan juara 3 tidak masuk current goal
+                if (isThirdPlaceMatchup(matchup)) return;
+
                 matchup.querySelectorAll('.team-score').forEach(scoreEl => {
                     total += parseTeamScore(scoreEl.textContent);
                 });
@@ -4073,7 +4083,7 @@
         function applyFinalSideQuestBonuses(points) {
             const champion = getFinishedMatchTeam('final-0', 'winner');
             const runnerUp = getFinishedMatchTeam('final-0', 'loser');
-            const third = getFinishedMatchTeam('third-0', 'winner');
+            const third = getFinishedMatchTeam(THIRD_PLACE_MATCH_ID, 'winner');
 
             if (champion) {
                 addPointsToSupporters(points, sideQuestPodium.champion[champion.name]?.supporters, 10);
@@ -4081,6 +4091,7 @@
             if (runnerUp) {
                 addPointsToSupporters(points, sideQuestPodium.runnerup[runnerUp.name]?.supporters, 5);
             }
+            // Perebutan juara 3: hanya bonus Side Quest 3rd rank (+3), bukan poin Main Quest
             if (third) {
                 addPointsToSupporters(points, sideQuestPodium.third[third.name]?.supporters, 3);
             }
@@ -4149,6 +4160,9 @@
             });
 
             document.querySelectorAll('.bracket .matchup.finished').forEach(matchup => {
+                // Perebutan juara 3: tidak ada poin Main Quest 3/1/0
+                if (isThirdPlaceMatchup(matchup)) return;
+
                 const teams = matchup.querySelectorAll(':scope > .team');
                 if (teams.length !== 2) return;
 
@@ -4190,7 +4204,7 @@
                 });
             });
 
-            // Bonus side quest: diterapkan per match yang sudah selesai (Final / perebutan juara 3)
+            // Bonus Side Quest (Champion / Runner-Up / 3rd rank) — 3rd rank dari perebutan juara 3 saja
             applyFinalSideQuestBonuses(points);
 
             // Bonus awards lain — hanya setelah Final selesai

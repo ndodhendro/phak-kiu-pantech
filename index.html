@@ -1798,6 +1798,146 @@
                 font-size: 0.6rem;
             }
         }
+
+        .winner-celebration {
+            position: fixed;
+            inset: 0;
+            z-index: 100000;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .winner-fireworks {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .winner-announcement {
+            position: absolute;
+            top: max(24px, env(safe-area-inset-top));
+            left: 50%;
+            z-index: 2;
+            width: min(90vw, 520px);
+            padding: 14px 24px;
+            border: 1px solid rgba(255, 215, 0, 0.8);
+            border-radius: 999px;
+            background: rgba(15, 15, 35, 0.82);
+            box-shadow: 0 0 35px rgba(255, 215, 0, 0.32);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            animation: winnerAnnouncementIn 0.7s ease-out both,
+                winnerAnnouncementOut 0.8s ease-in 10.5s forwards;
+        }
+        .winner-announcement strong {
+            display: block;
+            color: #ffd700;
+            font-size: clamp(1rem, 3.5vw, 1.5rem);
+        }
+        .winner-announcement span {
+            display: block;
+            margin-top: 3px;
+            color: #fff;
+            font-size: clamp(0.65rem, 2vw, 0.82rem);
+        }
+        .winner-balloon {
+            --balloon-size: 72px;
+            position: absolute;
+            left: var(--balloon-left);
+            bottom: calc(-1 * var(--balloon-size) - 80px);
+            width: var(--balloon-size);
+            filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.35));
+            animation: winnerBalloonRise var(--balloon-duration) linear var(--balloon-delay) both;
+        }
+        .winner-balloon-body {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 0.84;
+            overflow: hidden;
+            border: 3px solid rgba(255, 255, 255, 0.9);
+            border-radius: 50% 50% 48% 48% / 44% 44% 56% 56%;
+            background: #fff;
+            box-shadow: inset -10px -10px 18px rgba(0, 0, 0, 0.18),
+                inset 8px 8px 14px rgba(255, 255, 255, 0.3);
+        }
+        .winner-balloon-body::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(125deg, rgba(255,255,255,0.5), transparent 35%, rgba(0,0,0,0.12));
+        }
+        .winner-balloon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .winner-balloon-knot {
+            width: 0;
+            height: 0;
+            margin: -1px auto 0;
+            border-right: 7px solid transparent;
+            border-bottom: 10px solid rgba(255, 255, 255, 0.9);
+            border-left: 7px solid transparent;
+        }
+        .winner-balloon-string {
+            display: block;
+            width: 1px;
+            height: 58px;
+            margin: -1px auto 0;
+            background: rgba(255, 255, 255, 0.7);
+            transform: rotate(var(--string-tilt));
+            transform-origin: top;
+        }
+        .winner-floating-object {
+            display: flex;
+            justify-content: center;
+        }
+        .winner-floating-object img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45));
+            animation: winnerObjectSway 1.8s ease-in-out infinite alternate;
+        }
+        .winner-floating-object.object-trophy img {
+            width: 82%;
+        }
+        @keyframes winnerBalloonRise {
+            0% {
+                transform: translate3d(0, 0, 0) rotate(-4deg);
+                opacity: 0;
+            }
+            8% { opacity: 1; }
+            50% {
+                transform: translate3d(var(--balloon-drift), -58vh, 0) rotate(5deg);
+            }
+            92% { opacity: 1; }
+            100% {
+                transform: translate3d(var(--balloon-drift-end), -125vh, 0) rotate(-5deg);
+                opacity: 0;
+            }
+        }
+        @keyframes winnerObjectSway {
+            from { transform: rotate(-10deg) scale(0.92); }
+            to { transform: rotate(10deg) scale(1.06); }
+        }
+        @keyframes winnerAnnouncementIn {
+            from { opacity: 0; transform: translate(-50%, -24px) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+        @keyframes winnerAnnouncementOut {
+            to { opacity: 0; transform: translate(-50%, -18px) scale(0.96); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .winner-balloon { display: none; }
+            .winner-announcement {
+                animation: winnerAnnouncementIn 0.2s ease-out both,
+                    winnerAnnouncementOut 0.3s ease-in 3.5s forwards;
+            }
+            .winner-fireworks { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -2882,6 +3022,176 @@
             }
         }
 
+        let pendingFinalCelebrationWinner = null;
+        let finalCelebrationStarted = false;
+        const WINNER_CELEBRATION_BALL_SRC = 'https://png.pngtree.com/png-vector/20260610/ourmid/pngtree-vibrant-trionda-soccer-football-official-fifa-world-cup-2026-design-png-image_19512258.webp';
+
+        function scheduleFinalWinnerCelebration() {
+            const finalMatch = document.querySelector('[data-match-id="final-0"].finished');
+            const winner = finalMatch ? getMatchupWinner(finalMatch) : null;
+            if (!winner || !winner.flagSrc) return;
+
+            pendingFinalCelebrationWinner = winner;
+            if (typeof hasEntered !== 'undefined' && hasEntered) {
+                playFinalWinnerCelebration();
+            }
+        }
+
+        function playFinalWinnerCelebration() {
+            if (finalCelebrationStarted || !pendingFinalCelebrationWinner) return;
+            finalCelebrationStarted = true;
+
+            const winner = pendingFinalCelebrationWinner;
+            const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const overlay = document.createElement('div');
+            overlay.className = 'winner-celebration';
+            overlay.setAttribute('aria-hidden', 'true');
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'winner-fireworks';
+            overlay.appendChild(canvas);
+
+            const announcement = document.createElement('div');
+            announcement.className = 'winner-announcement';
+            const title = document.createElement('strong');
+            title.textContent = '🏆 ' + winner.name;
+            const subtitle = document.createElement('span');
+            subtitle.textContent = 'Juara Dunia 2026';
+            announcement.append(title, subtitle);
+            overlay.appendChild(announcement);
+
+            if (!reducedMotion) {
+                const balloonCount = window.innerWidth < 600 ? 12 : 20;
+                for (let i = 0; i < balloonCount; i += 1) {
+                    const balloon = document.createElement('div');
+                    balloon.className = 'winner-balloon';
+                    balloon.style.setProperty('--balloon-left', (2 + Math.random() * 92).toFixed(1) + '%');
+                    balloon.style.setProperty('--balloon-size', Math.round(50 + Math.random() * 42) + 'px');
+                    balloon.style.setProperty('--balloon-delay', (Math.random() * 5.5).toFixed(2) + 's');
+                    balloon.style.setProperty('--balloon-duration', (7 + Math.random() * 3.5).toFixed(2) + 's');
+                    const drift = Math.round(-45 + Math.random() * 90);
+                    balloon.style.setProperty('--balloon-drift', drift + 'px');
+                    balloon.style.setProperty('--balloon-drift-end', Math.round(drift * -0.35) + 'px');
+                    balloon.style.setProperty('--string-tilt', Math.round(-8 + Math.random() * 16) + 'deg');
+
+                    const itemType = ['flag', 'ball', 'flag', 'trophy'][i % 4];
+                    if (itemType !== 'flag') {
+                        balloon.classList.add('winner-floating-object', 'object-' + itemType);
+                        const floatingImage = document.createElement('img');
+                        floatingImage.src = itemType === 'ball'
+                            ? WINNER_CELEBRATION_BALL_SRC
+                            : FINAL_PLACE_IMAGES.champion;
+                        floatingImage.alt = '';
+                        balloon.appendChild(floatingImage);
+                        overlay.appendChild(balloon);
+                        continue;
+                    }
+
+                    const body = document.createElement('div');
+                    body.className = 'winner-balloon-body';
+                    const flag = document.createElement('img');
+                    flag.src = winner.flagSrc;
+                    flag.alt = '';
+                    body.appendChild(flag);
+
+                    const knot = document.createElement('span');
+                    knot.className = 'winner-balloon-knot';
+                    const string = document.createElement('span');
+                    string.className = 'winner-balloon-string';
+                    balloon.append(body, knot, string);
+                    overlay.appendChild(balloon);
+                }
+            }
+
+            document.body.appendChild(overlay);
+            if (!reducedMotion) startWinnerFireworks(canvas, 10500);
+            window.setTimeout(() => overlay.remove(), reducedMotion ? 4200 : 13000);
+        }
+
+        function startWinnerFireworks(canvas, duration) {
+            const context = canvas.getContext('2d');
+            if (!context) return;
+
+            const colors = ['#ffd700', '#ff4d6d', '#50e3c2', '#4da3ff', '#ffffff', '#b967ff'];
+            const particles = [];
+            const startedAt = performance.now();
+            let nextBurstAt = startedAt;
+            let width = 0;
+            let height = 0;
+            let pixelRatio = 1;
+
+            function resizeCanvas() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+                canvas.width = Math.round(width * pixelRatio);
+                canvas.height = Math.round(height * pixelRatio);
+                context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            }
+
+            function createBurst() {
+                const x = width * (0.12 + Math.random() * 0.76);
+                const y = height * (0.1 + Math.random() * 0.48);
+                const particleCount = width < 600 ? 36 : 54;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+
+                for (let i = 0; i < particleCount; i += 1) {
+                    const angle = (Math.PI * 2 * i / particleCount) + Math.random() * 0.14;
+                    const speed = 1.5 + Math.random() * 4.2;
+                    particles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        alpha: 1,
+                        color,
+                        size: 1.2 + Math.random() * 2,
+                    });
+                }
+            }
+
+            function render(now) {
+                context.clearRect(0, 0, width, height);
+
+                if (now < startedAt + duration && now >= nextBurstAt) {
+                    createBurst();
+                    if (Math.random() > 0.45) createBurst();
+                    nextBurstAt = now + 450 + Math.random() * 650;
+                }
+
+                context.globalCompositeOperation = 'lighter';
+                for (let i = particles.length - 1; i >= 0; i -= 1) {
+                    const particle = particles[i];
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vx *= 0.985;
+                    particle.vy = particle.vy * 0.985 + 0.045;
+                    particle.alpha -= 0.012;
+
+                    if (particle.alpha <= 0) {
+                        particles.splice(i, 1);
+                        continue;
+                    }
+
+                    context.globalAlpha = particle.alpha;
+                    context.fillStyle = particle.color;
+                    context.beginPath();
+                    context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    context.fill();
+                }
+                context.globalAlpha = 1;
+                context.globalCompositeOperation = 'source-over';
+
+                if (now < startedAt + duration || particles.length) {
+                    requestAnimationFrame(render);
+                }
+            }
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas, { once: true });
+            requestAnimationFrame(render);
+        }
+
         // Contoh preview badge: buka index.html?preview-podium=1
         function applyPodiumBadgePreviewDemo() {
             const params = new URLSearchParams(window.location.search);
@@ -2923,11 +3233,11 @@
             }
 
             fillDemoMatch('third-0',
-                { name: 'Spanyol', flag: 'es', alt: 'ESP' },
+                { name: 'Argentina', flag: 'ar', alt: 'ARG' },
                 { name: 'Brasil', flag: 'br', alt: 'BRA' },
                 0, [2, 1]);
             fillDemoMatch('final-0',
-                { name: 'Argentina', flag: 'ar', alt: 'ARG' },
+                { name: 'Spanyol', flag: 'es', alt: 'ESP' },
                 { name: 'Prancis', flag: 'fr', alt: 'FRA' },
                 0, [3, 1]);
 
@@ -4344,6 +4654,7 @@
             // Hilangkan splash overlay
             document.getElementById('splash-overlay').classList.add('hidden');
             hasEntered = true;
+            window.setTimeout(playFinalWinnerCelebration, 450);
             // Mulai musik
             audio.play();
             var btn = document.getElementById('music-toggle');
@@ -4412,6 +4723,7 @@
             applyFinishedMatchBadges();
             applyFinalPlacementBadges();
             applyPodiumBadgePreviewDemo();
+            scheduleFinalWinnerCelebration();
             initLiveMatchupLinks();
             setInterval(updateMatchupScheduleStatus, 60 * 1000);
             setInterval(updateSoonCountdowns, 1000);

@@ -3064,9 +3064,13 @@
                 canvas.className = 'winner-fireworks';
                 overlay.appendChild(canvas);
 
-                const balloonCount = isMobile ? 6 : 8;
+                const balloonCount = isMobile ? 12 : 20;
                 const flagSrc = getCelebrationFlagSrc(winner.flagSrc);
                 const fragment = document.createDocumentFragment();
+                const itemPattern = [
+                    'flag', 'flag', 'trophy', 'flag', 'ball',
+                    'flag', 'trophy', 'flag', 'trophy', 'flag'
+                ];
 
                 for (let i = 0; i < balloonCount; i += 1) {
                     const balloon = document.createElement('div');
@@ -3078,7 +3082,7 @@
                     balloon.style.setProperty('--balloon-drift', Math.round(-30 + Math.random() * 60) + 'px');
                     balloon.style.setProperty('--string-tilt', Math.round(-6 + Math.random() * 12) + 'deg');
 
-                    const itemType = ['flag', 'ball', 'flag', 'trophy'][i % 4];
+                    const itemType = itemPattern[i % itemPattern.length];
                     if (itemType !== 'flag') {
                         balloon.classList.add('winner-floating-object', 'object-' + itemType);
                         const floatingImage = document.createElement('img');

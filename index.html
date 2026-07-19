@@ -4315,16 +4315,15 @@
 
             track.appendChild(currentIndicator);
 
-            // Peserta yang prediksinya sudah terlewati skor aktual = sudah kalah
+            // Peserta yang prediksinya sudah terlewati skor aktual = sudah kalah (visual saja)
             const isEliminated = (p) => currentGoal > p.goal;
 
-            // Glow hanya untuk yang masih bertahan (prediksi >= current), terdekat ke currentGoal
+            // Glow: siapa yang paling dekat secara angka ke currentGoal (absolut)
             let closestName = '';
             let closestDiff = Infinity;
             sorted.forEach(p => {
-                if (isEliminated(p)) return;
                 const diff = Math.abs(p.goal - currentGoal);
-                if (diff < closestDiff) {
+                if (diff < closestDiff || (diff === closestDiff && p.name.localeCompare(closestName) < 0)) {
                     closestDiff = diff;
                     closestName = p.name;
                 }
@@ -4336,11 +4335,13 @@
                 const baseTop = pct * trackHeight;
                 const offset = markerOffsets[p.name] || 0;
                 const finalTop = baseTop + offset;
+                const isClosest = p.name === closestName && currentGoal > 0;
 
                 const marker = document.createElement('div');
                 marker.className = 'total-goal-marker-v';
                 marker.style.top = finalTop + 'px';
-                if (isEliminated(p)) marker.classList.add('eliminated');
+                // Closest (glowing) tetap penuh; jangan dimatikan style eliminated
+                if (isEliminated(p) && !isClosest) marker.classList.add('eliminated');
 
                 // Index ganjil di kiri, selain itu di kanan
                 if (index % 2 !== 0) {
@@ -4357,8 +4358,7 @@
                 info.className = 'total-goal-marker-info';
                 info.style.borderColor = participantColors[p.name] || '#2a2a5a';
 
-                // Add glowing effect if this participant is closest to currentGoal
-                if (!isEliminated(p) && p.name === closestName && currentGoal > 0) {
+                if (isClosest) {
                     info.classList.add('glowing');
                 }
 
@@ -4465,28 +4465,16 @@
                 ? calculateCurrentGoalFromBracket()
                 : 0;
 
+            // Sama seperti glowing: paling dekat secara angka (absolut) ke currentGoal
             let closestName = '';
             let closestDiff = Infinity;
             totalGoalData.forEach(p => {
-                // Sama seperti glowing: hanya prediksi yang belum terlewati
-                if (currentGoal > p.goal) return;
                 const diff = Math.abs(p.goal - currentGoal);
                 if (diff < closestDiff || (diff === closestDiff && p.name.localeCompare(closestName) < 0)) {
                     closestDiff = diff;
                     closestName = p.name;
                 }
             });
-
-            // Jika semua prediksi terlewati, ambil yang paling dekat secara absolut
-            if (!closestName) {
-                totalGoalData.forEach(p => {
-                    const diff = Math.abs(p.goal - currentGoal);
-                    if (diff < closestDiff || (diff === closestDiff && p.name.localeCompare(closestName) < 0)) {
-                        closestDiff = diff;
-                        closestName = p.name;
-                    }
-                });
-            }
 
             if (closestName && points[closestName] !== undefined) {
                 points[closestName] += 5;

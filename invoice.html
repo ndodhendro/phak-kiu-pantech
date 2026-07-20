@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice — Arisan WC 2026 HASH PKU</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #1a1f2e;
+            --muted: #5c6578;
+            --line: #d8dde8;
+            --paper: #f7f5f0;
+            --accent: #0b6e4f;
+            --accent-soft: #e8f5ef;
+            --gold: #c4a35a;
+            --white: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: "DM Sans", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(ellipse 80% 50% at 10% 0%, rgba(11, 110, 79, 0.08), transparent),
+                radial-gradient(ellipse 60% 40% at 100% 100%, rgba(196, 163, 90, 0.12), transparent),
+                var(--paper);
+            min-height: 100vh;
+            padding: 40px 20px 60px;
+            line-height: 1.5;
+        }
+
+        .sheet {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--white);
+            border: 1px solid var(--line);
+            box-shadow: 0 24px 60px rgba(26, 31, 46, 0.08);
+            padding: 48px 52px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sheet::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--accent), var(--gold));
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            align-items: flex-start;
+            margin-bottom: 40px;
+        }
+
+        .brand-mark {
+            font-family: "Instrument Serif", Georgia, serif;
+            font-size: 2rem;
+            letter-spacing: -0.02em;
+            color: var(--ink);
+        }
+
+        .brand-mark span {
+            color: var(--accent);
+            font-style: italic;
+        }
+
+        .brand-sub {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .invoice-meta {
+            text-align: right;
+        }
+
+        .invoice-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .invoice-number {
+            font-family: "Instrument Serif", Georgia, serif;
+            font-size: 1.75rem;
+            margin-top: 2px;
+        }
+
+        .meta-row {
+            margin-top: 10px;
+            font-size: 0.875rem;
+            color: var(--muted);
+        }
+
+        .meta-row strong { color: var(--ink); font-weight: 600; }
+
+        .parties {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-bottom: 36px;
+            padding: 20px 0;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .party-label {
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .party-name {
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 4px;
+        }
+
+        .party-detail {
+            font-size: 0.875rem;
+            color: var(--muted);
+        }
+
+        .project-banner {
+            background: var(--accent-soft);
+            border-left: 3px solid var(--accent);
+            padding: 14px 18px;
+            margin-bottom: 28px;
+            font-size: 0.9rem;
+        }
+
+        .project-banner strong {
+            display: block;
+            color: var(--accent);
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        h2.section {
+            font-family: "Instrument Serif", Georgia, serif;
+            font-size: 1.25rem;
+            font-weight: 400;
+            margin: 28px 0 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead th {
+            text-align: left;
+            font-size: 0.68rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+            padding: 0 0 10px;
+            border-bottom: 2px solid var(--ink);
+        }
+
+        thead th:last-child,
+        tbody td:last-child,
+        thead th:nth-child(3),
+        tbody td:nth-child(3) {
+            text-align: right;
+        }
+
+        thead th.qty,
+        tbody td.qty {
+            text-align: center;
+            width: 64px;
+        }
+
+        tbody td {
+            padding: 14px 0;
+            border-bottom: 1px solid var(--line);
+            vertical-align: top;
+        }
+
+        .item-name {
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .item-desc {
+            font-size: 0.8rem;
+            color: var(--muted);
+            max-width: 420px;
+        }
+
+        .totals {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .totals-box {
+            width: 280px;
+            font-size: 0.9rem;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            color: var(--muted);
+        }
+
+        .totals-row.grand {
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 2px solid var(--ink);
+            color: var(--ink);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .totals-row.grand span:last-child {
+            color: var(--accent);
+            font-family: "Instrument Serif", Georgia, serif;
+            font-size: 1.35rem;
+            font-weight: 400;
+        }
+
+        .notes {
+            margin-top: 36px;
+            display: grid;
+            grid-template-columns: 1fr 1.15fr;
+            gap: 28px;
+        }
+
+        .notes h3 {
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .notes ul {
+            padding-left: 18px;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .notes li { margin-bottom: 4px; }
+
+        .payment-methods {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .payment-box {
+            background: #faf9f6;
+            border: 1px solid var(--line);
+            padding: 14px 16px;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .payment-box strong {
+            display: block;
+            color: var(--ink);
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }
+
+        .payment-box .method-tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--accent);
+            background: var(--accent-soft);
+            padding: 2px 8px;
+            margin-bottom: 8px;
+        }
+
+        .qris-box {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+
+        .qris-box img {
+            width: 148px;
+            height: auto;
+            border-radius: 6px;
+            flex-shrink: 0;
+            border: 1px solid var(--line);
+        }
+
+        .qris-meta {
+            font-size: 0.8rem;
+            color: var(--muted);
+            padding-top: 2px;
+        }
+
+        .qris-meta .qris-name {
+            color: var(--ink);
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+
+        .qris-meta .qris-hint {
+            margin-top: 8px;
+            font-size: 0.72rem;
+            line-height: 1.4;
+            color: #8a7380;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 24px;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .sign {
+            text-align: center;
+            min-width: 180px;
+        }
+
+        .sign-line {
+            margin-top: 56px;
+            border-top: 1px solid var(--ink);
+            padding-top: 8px;
+            color: var(--ink);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .print-bar {
+            max-width: 800px;
+            margin: 0 auto 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .print-bar button {
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 10px 18px;
+            border: 1px solid var(--ink);
+            background: var(--ink);
+            color: var(--white);
+            cursor: pointer;
+        }
+
+        .print-bar button.secondary {
+            background: transparent;
+            color: var(--ink);
+        }
+
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+            }
+            .print-bar { display: none; }
+            .sheet {
+                box-shadow: none;
+                border: none;
+                max-width: none;
+                padding: 24px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .sheet { padding: 28px 22px; }
+            .top, .parties, .notes, .footer {
+                grid-template-columns: 1fr;
+                flex-direction: column;
+            }
+            .invoice-meta { text-align: left; }
+            .parties { display: flex; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-bar">
+        <button type="button" class="secondary" onclick="window.print()">Cetak / PDF</button>
+    </div>
+
+    <article class="sheet">
+        <header class="top">
+            <div>
+                <div class="brand-mark">Ndod <span>Tech</span></div>
+                <p class="brand-sub">Pengembangan &amp; perawatan website kustom</p>
+            </div>
+            <div class="invoice-meta">
+                <div class="invoice-label">Invoice</div>
+                <div class="invoice-number">INV-2026-071</div>
+                <div class="meta-row">Tanggal: <strong>20 Juli 2026</strong></div>
+                <div class="meta-row">Jatuh tempo: <strong>3 Agustus 2026</strong></div>
+                <div class="meta-row">Status: <strong>Belum dibayar</strong></div>
+            </div>
+        </header>
+
+        <div class="parties">
+            <div>
+                <div class="party-label">Dari</div>
+                <div class="party-name">Ndod Tech</div>
+                <p class="party-detail">Developer</p>
+                <p class="party-detail">Indonesia</p>
+            </div>
+            <div>
+                <div class="party-label">Kepada</div>
+                <div class="party-name">HASH PKU</div>
+                <p class="party-detail">Komunitas Arisan World Cup 2026</p>
+                <p class="party-detail">Pekanbaru, Indonesia</p>
+            </div>
+        </div>
+
+        <div class="project-banner">
+            <strong>Proyek</strong>
+            Website Arisan World Cup 2026 HASH PKU — bracket knockout, standings peserta,
+            Main Quest &amp; Side Quest, panel admin, serta deploy konfigurasi via Supabase / GitHub Pages.
+        </div>
+
+        <h2 class="section">A. Biaya Implementasi (sekali bayar)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Deskripsi</th>
+                    <th class="qty">Qty</th>
+                    <th>Harga</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <div class="item-name">Desain &amp; UI/UX Website</div>
+                        <div class="item-desc">Tema FIFA WC 2026, splash screen, layout responsif desktop &amp; mobile</div>
+                    </td>
+                    <td class="qty">1</td>
+                    <td>Rp 1.500.000</td>
+                    <td>Rp 1.500.000</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="item-name">Frontend Publik — Bracket &amp; Standings</div>
+                        <div class="item-desc">Knockout tree, standings points peserta, Main Quest, Side Quest, live link match</div>
+                    </td>
+                    <td class="qty">1</td>
+                    <td>Rp 3.500.000</td>
+                    <td>Rp 3.500.000</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="item-name">Panel Admin &amp; Manajemen Data</div>
+                        <div class="item-desc">Admin PIN, kelola peserta/negara/skor, editor konfigurasi arisan</div>
+                    </td>
+                    <td class="qty">1</td>
+                    <td>Rp 2.000.000</td>
+                    <td>Rp 2.000.000</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="item-name">Integrasi Supabase &amp; Deploy</div>
+                        <div class="item-desc">Storage config, RLS, deploy 1-klik, setup GitHub Pages</div>
+                    </td>
+                    <td class="qty">1</td>
+                    <td>Rp 1.250.000</td>
+                    <td>Rp 1.250.000</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="item-name">Aset &amp; Finishing</div>
+                        <div class="item-desc">Integrasi logo, foto peserta, background music, polish &amp; QA</div>
+                    </td>
+                    <td class="qty">1</td>
+                    <td>Rp 750.000</td>
+                    <td>Rp 750.000</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="section">B. Biaya Maintenance (periode WC 2026)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Deskripsi</th>
+                    <th class="qty">Qty</th>
+                    <th>Harga</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <div class="item-name">Maintenance bulanan</div>
+                        <div class="item-desc">Update skor/jadwal, perbaikan bug minor, penyesuaian data peserta, dukungan teknis</div>
+                    </td>
+                    <td class="qty">4 bln</td>
+                    <td>Rp 500.000</td>
+                    <td>Rp 2.000.000</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="item-name">Hosting &amp; infrastruktur</div>
+                        <div class="item-desc">GitHub Pages + kuota Supabase (periode turnamen)</div>
+                    </td>
+                    <td class="qty">1</td>
+                    <td>Rp 0</td>
+                    <td>Rp 0</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="totals-box">
+                <div class="totals-row">
+                    <span>Subtotal implementasi</span>
+                    <span>Rp 9.000.000</span>
+                </div>
+                <div class="totals-row">
+                    <span>Subtotal maintenance</span>
+                    <span>Rp 2.000.000</span>
+                </div>
+                <div class="totals-row">
+                    <span>Diskon komunitas HASH PKU</span>
+                    <span>− Rp 1.000.000</span>
+                </div>
+                <div class="totals-row">
+                    <span>PPN</span>
+                    <span>Tidak dikenakan</span>
+                </div>
+                <div class="totals-row grand">
+                    <span>Total</span>
+                    <span>Rp 10.000.000</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="notes">
+            <div>
+                <h3>Catatan &amp; ruang lingkup</h3>
+                <ul>
+                    <li>Harga dalam Rupiah (IDR), sudah final untuk ruang lingkup di atas.</li>
+                    <li>Maintenance mencakup update rutin selama fase knockout WC 2026 (~4 bulan).</li>
+                    <li>Fitur baru di luar scope (mis. aplikasi mobile, login multi-user) ditagih terpisah.</li>
+                    <li>Pembayaran dapat dicicil: 50% di muka, 50% setelah go-live.</li>
+                </ul>
+            </div>
+            <div>
+                <h3>Informasi pembayaran</h3>
+                <div class="payment-methods">
+                    <div class="payment-box">
+                        <span class="method-tag">Metode 1</span>
+                        <strong>Transfer Bank BCA</strong>
+                        No. Rekening: 5271334649<br>
+                        Atas nama: Hendro<br>
+                        Berita: INV-2026-071 HASH PKU
+                    </div>
+                    <div class="payment-box">
+                        <span class="method-tag">Metode 2 — Alternatif</span>
+                        <strong>QRIS (BCA)</strong>
+                        <div class="qris-box">
+                            <img src="assets/qris-bca-hendro.png" alt="QRIS BCA atas nama Hendro" width="148" height="220">
+                            <div class="qris-meta">
+                                <div class="qris-name">HENDRO</div>
+                                Scan dengan aplikasi bank / e-wallet yang mendukung QRIS.<br>
+                                Nominal: sesuai total invoice.<br>
+                                <p class="qris-hint">QR berlaku untuk 1 transaksi. Setelah bayar, kirim bukti transfer ke Ndod Tech.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>Terima kasih. Invoice ini sah tanpa tanda tangan basah<br>jika dikirim secara digital.</p>
+            <div class="sign">
+                <div class="sign-line">Ndod Tech</div>
+                <span>Developer</span>
+            </div>
+        </footer>
+    </article>
+</body>
+</html>

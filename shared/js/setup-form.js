@@ -323,8 +323,8 @@ window.ArisanSetupForm = (function () {
         if (!v) return DEFAULT_PLAYER_SILHOUETTE;
         if (isHttpUrl(v)) return v;
         const communitySlug = document.getElementById('community-slug')?.value;
-        if (communitySlug) {
-            return '../communities/' + communitySlug + '/assets/' + v.replace(/^\//, '');
+        if (communitySlug && window.ArisanDB && typeof ArisanDB.communityAssetBase === 'function') {
+            return ArisanDB.communityAssetBase(communitySlug) + v.replace(/^\//, '');
         }
         return DEFAULT_PLAYER_SILHOUETTE;
     }

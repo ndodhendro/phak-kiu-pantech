@@ -756,7 +756,7 @@
             try {
                 window.LEAGUE_CONTEXT = {
                     communitySlug, leagueSlug,
-                    assetBase: '../communities/' + communitySlug + '/assets/',
+                    assetBase: ArisanDB.communityAssetBase(communitySlug),
                 };
                 const bundle = await ArisanDB.fetchLeagueBundle(communitySlug, leagueSlug);
                 const data = ArisanDB.bundleToSetupForm(bundle);

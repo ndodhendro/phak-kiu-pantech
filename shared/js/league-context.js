@@ -58,6 +58,13 @@ window.ArisanLeagueContext = (function () {
         } catch (e) {}
     }
 
+    function communityAssetBase(communitySlug) {
+        if (window.ArisanDB && typeof ArisanDB.communityAssetBase === 'function') {
+            return ArisanDB.communityAssetBase(communitySlug);
+        }
+        return '';
+    }
+
     function buildContext(parts) {
         if (!parts || !parts.communitySlug || !parts.leagueSlug) return null;
         const root = appRoot();
@@ -65,7 +72,7 @@ window.ArisanLeagueContext = (function () {
             communitySlug: parts.communitySlug,
             leagueSlug: parts.leagueSlug,
             appRoot: root,
-            assetBase: root + '/communities/' + encodeURIComponent(parts.communitySlug) + '/assets/',
+            assetBase: communityAssetBase(parts.communitySlug),
         };
     }
 

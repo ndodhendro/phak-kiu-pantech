@@ -321,15 +321,7 @@
         const defaultAvatar = 'https://img.icons8.com/ios-filled/50/6b7280/shield.png';
 
         // Fallback lokal; diganti dari LEAGUE_DATA.participantAvatars saat sync DB.
-        let participantAvatars = {
-            'Davin': '../../assets/QIU.png',
-            'Ndod': '../../assets/NDO.jpeg',
-            'Khuang': '../../assets/KHU.png',
-            'Marten': '../../assets/MAR.jpg',
-            'Cham': '../../assets/CHA.jpg',
-            'Willy': '../../assets/WIL.png',
-            'Wesly': '../../assets/WES.jpg'
-        };
+        let participantAvatars = {};
 
         function applyParticipantAvatar(img, name) {
             if (!img) return;
@@ -1149,9 +1141,11 @@
                 const balloonCount = isMobile ? 12 : 20;
                 const fragment = document.createDocumentFragment();
                 const itemPattern = [
-                    'flag', 'flag', 'trophy', 'flag', 'ball',
-                    'flag', 'league-icon', 'flag', 'league-icon', 'flag'
+                    'flag', 'participant', 'trophy', 'flag', 'ball',
+                    'participant', 'league-icon', 'flag', 'participant', 'flag'
                 ];
+                const rankOneParticipants = getStandingsRankOneParticipants();
+                let participantFloatIndex = 0;
 
                 for (let i = 0; i < balloonCount; i += 1) {
                     const balloon = document.createElement('div');
@@ -1163,7 +1157,20 @@
                     balloon.style.setProperty('--balloon-drift', Math.round(-30 + Math.random() * 60) + 'px');
                     balloon.style.setProperty('--string-tilt', Math.round(-6 + Math.random() * 12) + 'deg');
 
-                    const itemType = itemPattern[i % itemPattern.length];
+                    let itemType = itemPattern[i % itemPattern.length];
+                    if (itemType === 'participant') {
+                        if (rankOneParticipants.length) {
+                            balloon.classList.add('winner-floating-object', 'object-participant');
+                            const floatingImage = document.createElement('img');
+                            const participantName = rankOneParticipants[participantFloatIndex % rankOneParticipants.length];
+                            participantFloatIndex += 1;
+                            applyParticipantAvatar(floatingImage, participantName);
+                            balloon.appendChild(floatingImage);
+                            fragment.appendChild(balloon);
+                            continue;
+                        }
+                        itemType = 'flag';
+                    }
                     if (itemType !== 'flag') {
                         balloon.classList.add('winner-floating-object', 'object-' + itemType);
                         const floatingImage = document.createElement('img');
@@ -2632,6 +2639,30 @@
             return points;
         }
 
+        function compareStandingsParticipants(a, b, points, goalStats) {
+            const diff = (points[b] ?? 0) - (points[a] ?? 0);
+            if (diff !== 0) return diff;
+
+            const gsA = goalStats[a] || { scored: 0, conceded: 0 };
+            const gsB = goalStats[b] || { scored: 0, conceded: 0 };
+            const scoredDiff = gsB.scored - gsA.scored;
+            if (scoredDiff !== 0) return scoredDiff;
+
+            const concededDiff = gsA.conceded - gsB.conceded;
+            if (concededDiff !== 0) return concededDiff;
+
+            return a.localeCompare(b);
+        }
+
+        function getStandingsRankOneParticipants() {
+            const points = calculateStandingsPointsFromBracket();
+            const goalStats = calculateParticipantGoalStats();
+            const names = Object.keys(participantAvatars).slice().sort((a, b) =>
+                compareStandingsParticipants(a, b, points, goalStats)
+            );
+            return names.length ? [names[0]] : [];
+        }
+
         function updateStandingsPoints() {
             const points = calculateStandingsPointsFromBracket();
             const chart = document.querySelector('.standings-section > .standings-chart');
@@ -2661,22 +2692,10 @@
             });
 
             const goalStats = calculateParticipantGoalStats();
+            const pointsByName = Object.fromEntries(rows.map(r => [r._name, r._points]));
 
             // Sort: points desc → goals scored (FT+ET) desc → goals conceded (FT+ET) asc → name
-            rows.sort((a, b) => {
-                const diff = b._points - a._points;
-                if (diff !== 0) return diff;
-
-                const gsA = goalStats[a._name] || { scored: 0, conceded: 0 };
-                const gsB = goalStats[b._name] || { scored: 0, conceded: 0 };
-                const scoredDiff = gsB.scored - gsA.scored;
-                if (scoredDiff !== 0) return scoredDiff;
-
-                const concededDiff = gsA.conceded - gsB.conceded;
-                if (concededDiff !== 0) return concededDiff;
-
-                return a._name.localeCompare(b._name);
-            });
+            rows.sort((a, b) => compareStandingsParticipants(a._name, b._name, pointsByName, goalStats));
 
             rows.forEach((row, index) => {
                 chart.appendChild(row);

@@ -5,7 +5,7 @@
  * Set window.LEAGUE_CONTEXT = { communitySlug, leagueSlug, assetBase } sebelum fetch.
  * Biasanya lewat shared/js/league-context.js + URL
  *   /league/?community=…&league=…
- * assetBase: path ke communities/{slug}/assets/.
+ * assetBase: optional override; default = Supabase Storage communities/{slug}/assets/.
  */
 window.ARISAN_SUPABASE = {
     url: 'https://owexnrdvmragupmquwzr.supabase.co',
@@ -61,16 +61,22 @@ window.ArisanDB = (function () {
         return ctx;
     }
 
+    const STORAGE_BUCKET = 'arisan-config';
+
+    function communityAssetBase(communitySlug) {
+        const c = cfg();
+        const base = (c.url || '').replace(/\/$/, '');
+        if (!base || !communitySlug) return '';
+        return base + '/storage/v1/object/public/' + STORAGE_BUCKET + '/communities/'
+            + encodeURIComponent(communitySlug) + '/assets/';
+    }
+
     function resolveAssetBase(ctx) {
         const raw = (ctx && ctx.assetBase) || '';
         if (/^https?:\/\//i.test(raw)) return raw.replace(/\/?$/, '/');
-        // Prefer absolute /communities/{slug}/assets/ so ../../assets does not break
-        // when the league URL has no trailing slash (…/wc-2026 vs …/wc-2026/).
-        if (typeof location !== 'undefined' && ctx && ctx.communitySlug) {
-            const path = location.pathname || '';
-            const idx = path.indexOf('/communities/');
-            const root = idx >= 0 ? path.slice(0, idx) : '';
-            return root + '/communities/' + encodeURIComponent(ctx.communitySlug) + '/assets/';
+        if (ctx && ctx.communitySlug) {
+            const storage = communityAssetBase(ctx.communitySlug);
+            if (storage) return storage;
         }
         return String(raw).replace(/\/?$/, '/');
     }
@@ -892,6 +898,7 @@ window.ArisanDB = (function () {
         upsertCommunity,
         upsertLeague,
         resolveAsset,
+        communityAssetBase,
         bundleToAdminConfig,
         bundleToLeagueData,
         bundleToSetupForm,

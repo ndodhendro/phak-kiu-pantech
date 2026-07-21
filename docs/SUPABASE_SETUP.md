@@ -54,8 +54,15 @@ league/index.html          ← halaman liga (dinamis dari Supabase)
 league/admin/              ← Update Match (dinamis dari Supabase)
 shared/js/league-context.js
 shared/js/supabase-client.js
-communities/{slug}/assets/ ← avatar / asset komunitas (opsional)
 ```
+
+Avatar / musik / asset komunitas disimpan di **Supabase Storage** bucket `arisan-config`:
+
+```text
+communities/{slug}/assets/   ← QIU.png, musik, dll. (URL publik)
+```
+
+Atau isi `avatar_path` / URL musik dengan link `https://` penuh lewat Setup.
 
 URL liga: `/league/?community={slug}&league={liga}`  
 URL admin: `/league/admin/?community={slug}&league={liga}`
@@ -74,8 +81,6 @@ Path lama `/communities/.../leagues/.../` di-redirect ke URL di atas.
 1. Buka **[admin/setup.html](../admin/setup.html)** — konfigurasi peserta, negara, awards, side quest
 2. **Save Setup** → data masuk Supabase; liga langsung bisa dibuka lewat picker / URL query (tidak perlu duplikasi HTML)
 3. Skor pertandingan: **Update Match** di `league/admin/?community=…&league=…`
-
-Asset komunitas (avatar lokal, dll.) tetap di `communities/{slug}/assets/` bila dipakai.
 
 ## Catatan keamanan
 

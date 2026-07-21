@@ -366,12 +366,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 80px;
+            width: 60px;
+            height: 60px;
             margin-left: -4px;
         }
         .round-trophy img {
-            width: 80px;
+            max-width: 60px;
+            max-height: 60px;
+            width: auto;
             height: auto;
+            object-fit: contain;
+            object-position: center;
             display: block;
         }
         .round-matches {
@@ -985,8 +990,8 @@
         .podium-place-2 .podium-label { color: #c0c0c0; }
         .podium-place-3 .podium-label { color: #cd7f32; }
         .podium-champion-trophy {
-            width: 56px;
-            height: auto;
+            height: 20px;
+            width: auto;
             vertical-align: middle;
             margin-right: 4px;
         }

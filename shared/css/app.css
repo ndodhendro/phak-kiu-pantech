@@ -984,6 +984,12 @@
         .podium-place-1 .podium-label { color: #ffd700; }
         .podium-place-2 .podium-label { color: #c0c0c0; }
         .podium-place-3 .podium-label { color: #cd7f32; }
+        .podium-champion-trophy {
+            width: 56px;
+            height: auto;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
 
         /* Player Podium (Golden Boot / Golden Glove) */
         .player-podium-place {
@@ -1372,8 +1378,8 @@
             max-width: 220px;
         }
         #podium-goldenglove-container .player-podium-card {
-            border-color: rgba(0, 188, 212, 0.5);
-            box-shadow: 0 0 16px rgba(0, 188, 212, 0.7), 0 0 32px rgba(0, 188, 212, 0.2);
+            border-color: rgba(255, 215, 0, 0.7);
+            box-shadow: 0 0 18px rgba(255, 215, 0, 0.7), 0 0 36px rgba(255, 215, 0, 0.2);
             animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
             animation-delay: var(--glow-sync-delay);
             will-change: opacity;

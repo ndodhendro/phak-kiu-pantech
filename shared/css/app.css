@@ -2244,6 +2244,9 @@
         .splash-content {
             text-align: center;
             animation: fadeInUp 0.8s ease;
+            width: min(100%, calc(100vw - 32px));
+            padding: 0 16px;
+            box-sizing: border-box;
         }
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
@@ -2262,26 +2265,31 @@
         }
         .splash-title {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 8px;
             font-size: 1.8rem;
             color: #fff;
-            margin-bottom: 6px;
+            margin: 0 auto 6px;
+            width: 100%;
+            max-width: 100%;
         }
         .splash-title-trophy {
-            width: 1.15em;
-            height: 1.15em;
+            width: 40px;
+            height: auto;
+            max-height: 40px;
             object-fit: contain;
             flex-shrink: 0;
         }
         .splash-title-text {
             line-height: 1.2;
+            white-space: nowrap;
+            min-width: 0;
         }
         .splash-subtitle {
             font-size: 1rem;
-            color: #e94560;
+            color: #fff;
             margin-bottom: 30px;
             letter-spacing: 2px;
         }
@@ -2289,7 +2297,7 @@
             padding: 14px 40px;
             font-size: 1.1rem;
             font-weight: 700;
-            border: 2px solid #e94560;
+            border: 2px solid #27ae60;
             background: transparent;
             color: #fff;
             border-radius: 50px;
@@ -2298,10 +2306,10 @@
             animation: pulseBtn 2s ease-in-out infinite;
         }
         #enter-btn:hover:not(:disabled) {
-            background: #e94560;
+            background: #27ae60;
             color: #fff;
             transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(233, 69, 96, 0.5);
+            box-shadow: 0 0 30px rgba(39, 174, 96, 0.5);
         }
         #enter-btn:disabled {
             opacity: 0.55;
@@ -2309,8 +2317,8 @@
             animation: none;
         }
         @keyframes pulseBtn {
-            0%, 100% { box-shadow: 0 0 10px rgba(233, 69, 96, 0.3); }
-            50% { box-shadow: 0 0 25px rgba(233, 69, 96, 0.6); }
+            0%, 100% { box-shadow: 0 0 10px rgba(39, 174, 96, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(39, 174, 96, 0.6); }
         }
     
 

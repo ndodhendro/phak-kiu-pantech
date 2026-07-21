@@ -98,6 +98,7 @@ function revealSplashBranding() {
 async function prepareSplashBranding() {
     await preloadLeagueBrandingImages();
     applyBrandingFromLeagueData();
+    scheduleFitSplashTitle();
     revealSplashBranding();
 }
 
@@ -129,6 +130,52 @@ function getLeagueTitleLabel(d) {
     return year ? (d.title + ' ' + year) : d.title;
 }
 
+let splashTitleFitResizeBound = false;
+
+function fitSplashTitle() {
+    const title = document.querySelector('.splash-title');
+    const text = title && title.querySelector('.splash-title-text');
+    const content = document.querySelector('.splash-content');
+    if (!title || !content) return;
+
+    title.style.fontSize = '';
+    const maxWidth = content.clientWidth;
+    if (!maxWidth) return;
+
+    const measureEl = text || title;
+    const maxFont = 28.8;
+    const minFont = 9;
+    let size = maxFont;
+
+    title.style.fontSize = size + 'px';
+    while (measureEl.scrollWidth > maxWidth && size > minFont) {
+        size -= 0.5;
+        title.style.fontSize = size + 'px';
+    }
+}
+
+function scheduleFitSplashTitle() {
+    requestAnimationFrame(function () {
+        fitSplashTitle();
+        requestAnimationFrame(fitSplashTitle);
+    });
+}
+
+function bindSplashTitleFit() {
+    scheduleFitSplashTitle();
+    document.querySelectorAll('.splash-title-trophy').forEach(function (img) {
+        if (img.complete) return;
+        img.addEventListener('load', scheduleFitSplashTitle, { once: true });
+    });
+    if (splashTitleFitResizeBound) return;
+    splashTitleFitResizeBound = true;
+    let resizeTimer;
+    window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(scheduleFitSplashTitle, 100);
+    });
+}
+
 function applyBrandingFromLeagueData() {
     applyIconBranding();
     applyTrophyBranding();
@@ -157,8 +204,8 @@ function applyBrandingFromLeagueData() {
                 '" alt="" data-league-trophy decoding="async">';
             splashTitle.innerHTML =
                 trophyImg +
-                '<span class="splash-title-text">' + escHtml(label) + '</span>' +
-                trophyImg;
+                '<span class="splash-title-text">' + escHtml(label) + '</span>';
+            bindSplashTitleFit();
         }
         const splashSub = document.querySelector('.splash-subtitle');
         if (splashSub && d.communityName) splashSub.textContent = d.communityName;
@@ -327,6 +374,7 @@ function startApp() {
     } catch (e) {
         console.error('Splash branding failed:', e);
         applyBrandingFromLeagueData();
+        scheduleFitSplashTitle();
         revealSplashBranding();
     }
 

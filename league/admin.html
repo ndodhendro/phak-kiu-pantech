@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirecting…</title>
+    <script>
+        // Prefer /league/admin/?… — npx serve strips query from admin.html → /league/admin
+        location.replace('./admin/' + (location.search || '') + (location.hash || ''));
+    </script>
+</head>
+<body>
+    <p>Redirecting…</p>
+</body>
+</html>

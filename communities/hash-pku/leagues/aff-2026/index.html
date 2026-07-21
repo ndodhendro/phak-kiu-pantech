@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirecting…</title>
+    <script src="../../../../shared/js/league-context.js"></script>
+    <script>
+        (function () {
+            var m = location.pathname.match(/\/communities\/([^/]+)\/leagues\/([^/]+)/);
+            if (!m) {
+                location.replace('../../../../?picker=1');
+                return;
+            }
+            var community = decodeURIComponent(m[1]);
+            var league = decodeURIComponent(m[2]);
+            var isAdmin = /admin\.html$/i.test(location.pathname);
+            var url = isAdmin
+                ? window.ArisanLeagueContext.adminUrl(community, league)
+                : window.ArisanLeagueContext.leagueUrl(community, league);
+            location.replace(url);
+        })();
+    </script>
+</head>
+<body>
+    <p>Redirecting…</p>
+</body>
+</html>

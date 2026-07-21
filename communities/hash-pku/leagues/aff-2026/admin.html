@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirecting…</title>
+    <script src="../../../../shared/js/league-context.js"></script>
+    <script>
+        (function () {
+            var m = location.pathname.match(/\/communities\/([^/]+)\/leagues\/([^/]+)/);
+            if (!m) {
+                location.replace('../../../../?picker=1');
+                return;
+            }
+            location.replace(window.ArisanLeagueContext.adminUrl(
+                decodeURIComponent(m[1]),
+                decodeURIComponent(m[2])
+            ));
+        })();
+    </script>
+</head>
+<body>
+    <p>Redirecting…</p>
+</body>
+</html>

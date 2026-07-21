@@ -1,0 +1,596 @@
+{
+  "lastUpdated": "20 Juli 2026, 05:41 WIB",
+  "finishedMatches": [
+    {
+      "id": "final-0",
+      "label": "Final",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "0"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "third-0",
+      "label": "Perebutan Juara 3",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "4",
+          "6"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "sf-1",
+      "label": "Semifinal â Match 2",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "2"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "sf-0",
+      "label": "Semifinal â Match 1",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "0",
+          "2"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "qf-3",
+      "label": "Perempat Final â Match 4",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "1"
+        ],
+        "et": [
+          "0",
+          "2"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "qf-2",
+      "label": "Perempat Final â Match 3",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "1"
+        ],
+        "et": [
+          "0",
+          "1"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "qf-1",
+      "label": "Perempat Final â Match 2",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "2"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "qf-0",
+      "label": "Perempat Final â Match 1",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "0",
+          "2"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "r16-6",
+      "label": "16 Besar â Swiss vs Kolombia",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "0",
+          "0"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "r16-7",
+      "label": "16 Besar â Argentina vs Mesir",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "3",
+          "2"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "r16-2",
+      "label": "16 Besar â Amerika Serikat vs Belgia",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "4"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "r16-3",
+      "label": "16 Besar â Portugal vs Spanyol",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "0",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "r16-5",
+      "label": "16 Besar â Meksiko vs Inggris",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "2",
+          "3"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "r16-4",
+      "label": "16 Besar â Brasil vs Norwegia",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "2"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "r16-1",
+      "label": "16 Besar â Paraguay vs Prancis",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "0",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "r16-0",
+      "label": "16 Besar â Kanada vs Maroko",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "0",
+          "3"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "group-13",
+      "label": "Grup â Kolombia vs Ghana",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "0"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-15",
+      "label": "Grup â Argentina vs Tanjung Verde",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "1"
+        ],
+        "et": [
+          "2",
+          "1"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-14",
+      "label": "Grup â Australia vs Mesir",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "group-12",
+      "label": "Grup â Swiss vs Aljazair",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "2",
+          "0"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-7",
+      "label": "Grup â Portugal vs Kroasia",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "2",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-6",
+      "label": "Grup â Spanyol vs Austria",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "3",
+          "0"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-5",
+      "label": "Grup â Amerika Serikat vs Bosnia-Herzegovina",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "2",
+          "0"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-4",
+      "label": "Grup â Belgia vs Senegal",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "2",
+          "2"
+        ],
+        "et": [
+          "1",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-11",
+      "label": "Grup â Inggris vs RD Kongo",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "2",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-10",
+      "label": "Grup â Meksiko vs Ekuador",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "2",
+          "0"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-3",
+      "label": "Grup â Prancis vs Swedia",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "3",
+          "0"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-9",
+      "label": "Grup â Pantai Gading vs Norwegia",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "2"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "group-1",
+      "label": "Grup â Belanda vs Maroko",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "group-2",
+      "label": "Grup â Jerman vs Paraguay",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "1",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    },
+    {
+      "id": "group-8",
+      "label": "Grup â Brasil vs Jepang",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "2",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 0
+    },
+    {
+      "id": "group-0",
+      "label": "Grup â Afrika Selatan vs Kanada",
+      "status": "finished",
+      "scores": {
+        "ft": [
+          "0",
+          "1"
+        ],
+        "et": [
+          "0",
+          "0"
+        ]
+      },
+      "winner": 1
+    }
+  ],
+  "goldenBoot": [
+    {
+      "name": "Kylian Mbappe",
+      "img": "https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/kylian%20mbappe.png?raw=true",
+      "goals": 6,
+      "supporters": [
+        "Ndod",
+        "Khuang",
+        "Cham",
+        "Wesly"
+      ]
+    },
+    {
+      "name": "Lionel Messi",
+      "img": "https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/lionel_messi-removebg-preview.png?raw=true",
+      "goals": 1,
+      "supporters": [
+        "Davin",
+        "Willy"
+      ]
+    },
+    {
+      "name": "Lamine Yamal",
+      "img": "https://img.a.transfermarkt.technology/portrait/big/937958-1773173768.jpg?lm=1",
+      "goals": 0,
+      "supporters": [
+        "Marten"
+      ]
+    }
+  ],
+  "goldenGlove": [
+    {
+      "name": "Emiliano Martinez",
+      "img": "https://img.a.transfermarkt.technology/portrait/big/111873-1668180824.jpg?lm=1",
+      "supporters": [
+        "Ndod",
+        "Khuang",
+        "Willy"
+      ],
+      "eliminated": true,
+      "winner": false
+    },
+    {
+      "name": "Mike Maignan",
+      "img": "https://cdn.soccerwiki.org/images/player/68131.png",
+      "supporters": [
+        "Cham"
+      ],
+      "eliminated": true,
+      "winner": false
+    },
+    {
+      "name": "Vozinha",
+      "img": "https://img.a.transfermarkt.technology/portrait/big/242277-1713587632.png?lm=1",
+      "supporters": [
+        "Davin"
+      ],
+      "eliminated": true,
+      "winner": false
+    },
+    {
+      "name": "Unai Simon",
+      "img": "https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/194820-removebg-preview.png?raw=true",
+      "supporters": [
+        "Marten"
+      ],
+      "eliminated": false,
+      "winner": true
+    },
+    {
+      "name": "Alison Becker",
+      "img": "https://github.com/ndodhendro/arisan-wc-2026-knockout-hash-pku/blob/main/assets/images__2_-removebg-preview.png?raw=true",
+      "supporters": [
+        "Wesly"
+      ],
+      "eliminated": true,
+      "winner": false
+    }
+  ]
+}

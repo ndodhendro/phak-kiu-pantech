@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>League Setup — Football Arisan</title>
+    <script src="../shared/js/supabase-client.js"></script>
+    <script src="../shared/js/countries.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #0f0f23;
+            color: #e8e8f0;
+            min-height: 100vh;
+            padding: 24px 16px 100px;
+        }
+        .wrap { max-width: 960px; margin: 0 auto; }
+        h1 { font-size: 1.4rem; color: #ffd700; margin-bottom: 4px; }
+        .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5; }
+        .card {
+            background: #1a1a3e;
+            border: 1px solid #2a2a5a;
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+            padding: 16px 20px;
+            border: none;
+            border-bottom: 1px solid transparent;
+            background: transparent;
+            color: #00bcd4;
+            font: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+        }
+        .card-toggle:hover { background: rgba(0, 188, 212, 0.06); }
+        .card-toggle:focus-visible {
+            outline: 2px solid #00bcd4;
+            outline-offset: -2px;
+        }
+        .card-toggle-icon {
+            flex-shrink: 0;
+            font-size: 0.75rem;
+            color: #888;
+            transition: transform 0.2s ease;
+        }
+        .card.is-open .card-toggle {
+            border-bottom-color: #2a2a5a;
+        }
+        .card.is-open .card-toggle-icon {
+            transform: rotate(0deg);
+        }
+        .card:not(.is-open) .card-toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .card-body {
+            padding: 16px 20px 20px;
+        }
+        .card:not(.is-open) .card-body {
+            display: none;
+        }
+        .card h2 {
+            font-size: 1rem;
+            color: #00bcd4;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a2a5a;
+        }
+        .hint { font-size: 0.8rem; color: #888; margin-bottom: 12px; line-height: 1.5; }
+        label { display: block; font-size: 0.82rem; color: #aaa; margin-bottom: 6px; }
+        input[type="text"], input[type="password"], input[type="number"], input[type="url"], input[type="date"], input[type="time"], input[type="color"], select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #3a3a6a;
+            background: #12122a;
+            color: #fff;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            font-family: inherit;
+            color-scheme: dark;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.85);
+            cursor: pointer;
+            opacity: 0.9;
+        }
+        input[type="color"] { height: 42px; padding: 4px; cursor: pointer; }
+        input[type="number"].pt-input { width: 100%; margin-bottom: 0; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .slug-with-action {
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .slug-with-action input {
+            flex: 1;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+        .slug-with-action .btn {
+            margin: 0;
+            flex-shrink: 0;
+            white-space: nowrap;
+            height: auto;
+            align-self: stretch;
+        }
+        @media (max-width: 640px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            .slug-with-action { flex-wrap: wrap; }
+            .slug-with-action .btn { width: 100%; }
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-top: 4px;
+            font-family: inherit;
+        }
+        .btn-primary { background: #e94560; color: #fff; }
+        .btn-secondary { background: #2a2a5a; color: #fff; }
+        .btn-danger { background: transparent; color: #e94560; border: 1px solid #e94560; padding: 6px 12px; font-size: 0.8rem; }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        .hidden { display: none !important; }
+        .row-item {
+            border: 1px solid #2a2a5a;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: #12122a;
+            overflow: hidden;
+        }
+        .row-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 0;
+        }
+        .participant-row.participant-collapsible .row-head {
+            padding: 12px 14px;
+            border-bottom: 1px solid transparent;
+        }
+        .participant-row.participant-collapsible.is-open .row-head {
+            border-bottom-color: #2a2a5a;
+        }
+        .participant-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #ffd700;
+            font: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+        }
+        .participant-toggle:hover { opacity: 0.9; }
+        .participant-toggle:focus-visible {
+            outline: 2px solid #00bcd4;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+        .participant-toggle-icon {
+            flex-shrink: 0;
+            font-size: 0.7rem;
+            color: #888;
+            transition: transform 0.2s ease;
+        }
+        .participant-row.is-open .participant-toggle-icon {
+            transform: rotate(0deg);
+        }
+        .participant-row:not(.is-open) .participant-toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .participant-name-label {
+            color: #ccc;
+            font-weight: 500;
+        }
+        .participant-body {
+            padding: 14px;
+        }
+        .participant-row:not(.is-open) .participant-body {
+            display: none;
+        }
+        .row-item:not(.participant-collapsible) {
+            padding: 14px;
+        }
+        .row-item:not(.participant-collapsible) .row-head {
+            margin-bottom: 10px;
+        }
+        .row-head strong { color: #ffd700; font-size: 0.9rem; }
+        .badge {
+            display: inline-block;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #2a2a5a;
+            color: #aaa;
+            margin-left: 6px;
+        }
+        .sub-section { margin-top: 16px; padding-top: 14px; border-top: 1px dashed #2a2a5a; }
+        .sub-title { font-size: 0.88rem; color: #ffd700; margin-bottom: 10px; }
+        .sub-hint { margin-top: 12px; margin-bottom: 8px; color: #00bcd4; }
+        .sub-block {
+            border: 1px solid #2a2a5a;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #0f0f23;
+        }
+        .pt-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .pt-grid-6 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        @media (max-width: 640px) {
+            .pt-grid, .pt-grid-6 { grid-template-columns: 1fr 1fr; }
+        }
+        .pt-item label { font-size: 0.78rem; }
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .check-row input { width: auto; margin: 0; }
+        .check-row label { margin: 0; cursor: pointer; }
+        .floating-nav {
+            position: fixed;
+            bottom: max(16px, env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 12px 8px;
+            background: rgba(18, 18, 42, 0.94);
+            border: 1px solid rgba(42, 42, 90, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+        .floating-nav-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        .float-status { font-size: 0.78rem; color: #2ecc71; text-align: center; max-width: 320px; }
+        .float-status.error { color: #e94560; }
+        .float-btn {
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            color: #fff;
+            background: #2a2a5a;
+            font-family: inherit;
+        }
+        .float-btn-save { background: #2ecc71; color: #0f0f23; }
+        .schedule-preview-list {
+            list-style: none;
+            margin-top: 12px;
+            max-height: 420px;
+            overflow-y: auto;
+            border: 1px solid #2a2a5a;
+            border-radius: 8px;
+            background: #0f0f23;
+        }
+        .schedule-preview-list li {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px 12px;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid #2a2a5a;
+            font-size: 0.82rem;
+        }
+        .schedule-preview-list li:last-child { border-bottom: none; }
+        .schedule-preview-list li strong {
+            font-weight: 600;
+            color: #eaeaea;
+            line-height: 1.35;
+        }
+        .schedule-edit-inputs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .schedule-edit-inputs input[type="date"],
+        .schedule-edit-inputs input[type="time"] {
+            width: auto;
+            min-width: 0;
+            margin: 0;
+        }
+        @media (max-width: 640px) {
+            .schedule-preview-list li {
+                grid-template-columns: 1fr;
+            }
+            .schedule-edit-inputs { justify-content: flex-start; }
+        }
+        .team-pair-box { margin-bottom: 12px; }
+        .team-pair-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+        @media (max-width: 640px) {
+            .team-pair-grid { grid-template-columns: 1fr; }
+            .team-pair-vs { text-align: center; padding: 4px 0; }
+        }
+        .team-pair-slot {
+            border: 1px solid #2a2a5a;
+            border-radius: 8px;
+            padding: 12px;
+            background: #0f0f23;
+            min-height: 100%;
+        }
+        .team-pair-slot-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-style: dashed;
+            opacity: 0.85;
+        }
+        .team-pair-slot-label {
+            display: block;
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 0.82rem;
+            margin-bottom: 8px;
+        }
+        .team-pair-vs {
+            font-weight: 700;
+            color: #e94560;
+            font-size: 0.9rem;
+            padding: 0 4px;
+        }
+        .field-with-preview {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .field-with-preview .field-control {
+            flex: 1;
+            min-width: 0;
+        }
+        .field-with-preview .field-control select,
+        .field-with-preview .field-control input[type="text"],
+        .field-with-preview .field-control input[type="url"] {
+            margin-bottom: 0;
+            height: 42px;
+        }
+        .league-icon-field-wrap {
+            max-width: calc(50% - 6px);
+        }
+        .league-icon-field-wrap .field-preview {
+            width: 48px;
+        }
+        .league-icon-field-wrap .field-preview img.preview-trophy,
+        .league-icon-field-wrap .field-preview img.preview-icon,
+        .league-icon-field-wrap .field-preview img.preview-ball {
+            width: 100%;
+            height: auto;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        @media (max-width: 640px) {
+            .league-icon-field-wrap { max-width: 100%; }
+        }
+        .field-preview {
+            flex-shrink: 0;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            overflow: visible;
+        }
+        .field-preview img.preview-img {
+            height: 100%;
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .labeled-preview-field {
+            margin-bottom: 12px;
+        }
+        .labeled-preview-field > label {
+            margin-bottom: 6px;
+        }
+        .labeled-preview-field .field-with-preview {
+            margin-bottom: 0;
+        }
+        .player-name-lookup .player-lookup-status {
+            margin: -4px 0 8px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            min-height: 1.05rem;
+        }
+        .player-name-lookup .player-lookup-status.ok { color: #2ecc71; }
+        .player-name-lookup .player-lookup-status.warn { color: #f39c12; }
+        .player-name-lookup .player-lookup-status.loading { color: #888; }
+        .player-name-lookup { position: relative; }
+        .player-autocomplete-input-wrap { position: relative; }
+        .player-autocomplete-input-wrap input {
+            margin-bottom: 0;
+        }
+        .player-autocomplete-list {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 4px);
+            z-index: 30;
+            max-height: 240px;
+            overflow-y: auto;
+            background: #12122a;
+            border: 1px solid #3a3a6a;
+            border-radius: 8px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+        }
+        .player-autocomplete-list.hidden { display: none; }
+        .player-autocomplete-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 8px 10px;
+            border: none;
+            border-bottom: 1px solid #2a2a5a;
+            background: transparent;
+            color: #e8e8f0;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .player-autocomplete-option:last-child { border-bottom: none; }
+        .player-autocomplete-option:hover,
+        .player-autocomplete-option.active {
+            background: #2a2a5a;
+        }
+        .player-autocomplete-thumb {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .player-autocomplete-text strong {
+            display: block;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+        .player-autocomplete-text small {
+            display: block;
+            font-size: 0.72rem;
+            color: #888;
+            margin-top: 2px;
+        }
+        .field-preview img.player-img-opaque-bg,
+        .player-autocomplete-thumb.player-img-opaque-bg {
+            mix-blend-mode: multiply;
+            filter: brightness(1.12) contrast(1.05);
+        }
+        .league-title-lookup { position: relative; }
+        .league-title-lookup .player-lookup-status {
+            margin: -4px 0 8px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            min-height: 1.05rem;
+        }
+        .league-title-lookup .player-autocomplete-input-wrap input {
+            margin-bottom: 0;
+        }
+        .club-name-lookup { position: relative; }
+        .club-name-lookup .player-lookup-status {
+            margin: -4px 0 8px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            min-height: 1.05rem;
+        }
+        .club-name-lookup .player-autocomplete-input-wrap input {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="setup-panel" class="wrap">
+        <h1>🏗️ League Setup</h1>
+
+        <div class="card card-collapsible is-open" data-section="community-league">
+            <button type="button" class="card-toggle" aria-expanded="true" aria-controls="section-community-league">
+                <span>1. Community &amp; League</span>
+                <span class="card-toggle-icon" aria-hidden="true">▼</span>
+            </button>
+            <div class="card-body" id="section-community-league">
+            <div class="grid-2">
+                <div>
+                    <label for="community-slug">Community</label>
+                    <select id="community-slug">
+                        <option value="">— Select community —</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="league-slug">League (slug)</label>
+                    <div class="slug-with-action">
+                        <input type="text" id="league-slug" placeholder="wc-2026" list="league-list">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="loadExisting()">Load league data</button>
+                    </div>
+                    <datalist id="league-list"></datalist>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="league-title-lookup">
+                    <label for="league-title">League title</label>
+                    <div class="player-autocomplete-input-wrap">
+                        <input type="text" id="league-title" placeholder="Start typing e.g. FIFA World Cup…" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list">
+                        <div class="player-autocomplete-list hidden" id="league-title-autocomplete" role="listbox"></div>
+                    </div>
+                    <p class="player-lookup-status hint" id="league-title-lookup-status" aria-live="polite"></p>
+                </div>
+                <div>
+                    <label>Year</label>
+                    <input type="number" id="league-year" placeholder="2026" min="2000" max="2100">
+                </div>
+            </div>
+            <div class="league-icon-field-wrap">
+                <div id="league-icon-url-wrap"></div>
+            </div>
+            <div class="league-icon-field-wrap">
+                <div id="league-trophy-url-wrap"></div>
+            </div>
+            <div class="league-icon-field-wrap">
+                <div id="league-ball-url-wrap"></div>
+            </div>
+            <div>
+                <label for="league-bg-music-url">Background music URL</label>
+                <input type="text" id="league-bg-music-url" placeholder="https://example.com/track.mp3" autocomplete="off">
+                <p class="player-lookup-status hint" id="league-bg-music-status" aria-live="polite"></p>
+                <audio id="league-bg-music-preview" preload="none" loop></audio>
+            </div>
+            <p class="hint">Type a league title to search TheSportsDB. Selecting a match fills the title and league icon (badge → logo). Trophy and ball URLs can be set separately.</p>
+            <div class="grid-2">
+                <div>
+                    <label for="competition-type">Competition type</label>
+                    <select id="competition-type">
+                        <option value="country">Country (national teams)</option>
+                        <option value="club">Club</option>
+                    </select>
+                    <p class="hint" id="competition-type-hint"></p>
+                </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <div class="check-row">
+                        <input type="checkbox" id="include-third-place" checked>
+                        <label for="include-third-place">Include third place match in bracket</label>
+                    </div>
+                    <div class="check-row">
+                        <input type="checkbox" id="two-leg-knockout">
+                        <label for="two-leg-knockout">Two-leg (home-away) knockout</label>
+                    </div>
+                    <p class="hint">When enabled, each knockout tie has Leg 1 and Leg 2. Winner is decided by aggregate score.</p>
+                </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="newBlankLeague()">Blank form</button>
+            </div>
+        </div>
+
+        <div class="card card-collapsible is-open" data-section="point-config">
+            <button type="button" class="card-toggle" aria-expanded="true" aria-controls="section-point-config">
+                <span>2. Point Configurations</span>
+                <span class="card-toggle-icon" aria-hidden="true">▼</span>
+            </button>
+            <div class="card-body" id="section-point-config">
+            <h3 class="sub-title">Main Quest</h3>
+            <p class="hint">Main Quest points apply to Full Time (90 min) scores only — not Extra Time.</p>
+            <div class="pt-grid">
+                <div class="pt-item"><label for="pt-win">WIN</label><input type="number" class="pt-input" id="pt-win" min="0" step="1" value="3"></div>
+                <div class="pt-item"><label for="pt-draw">DRAW</label><input type="number" class="pt-input" id="pt-draw" min="0" step="1" value="1"></div>
+                <div class="pt-item"><label for="pt-loss">LOSS</label><input type="number" class="pt-input" id="pt-loss" min="0" step="1" value="0"></div>
+            </div>
+            <h3 class="sub-title" style="margin-top:16px">Side Quest</h3>
+            <p class="hint">Side Quests points apply to Full Time (90 min) and Extra Time scores.</p>
+            <div class="pt-grid-6">
+                <div class="pt-item"><label for="pt-champion">Champion</label><input type="number" class="pt-input" id="pt-champion" min="0" step="1" value="10"></div>
+                <div class="pt-item"><label for="pt-runnerup">Runner-Up</label><input type="number" class="pt-input" id="pt-runnerup" min="0" step="1" value="5"></div>
+                <div class="pt-item" id="pt-third-wrap"><label for="pt-third">Third Place</label><input type="number" class="pt-input" id="pt-third" min="0" step="1" value="3"></div>
+                <div class="pt-item"><label for="pt-boot">Golden Boot</label><input type="number" class="pt-input" id="pt-boot" min="0" step="1" value="5"></div>
+                <div class="pt-item"><label for="pt-glove">Golden Glove</label><input type="number" class="pt-input" id="pt-glove" min="0" step="1" value="5"></div>
+                <div class="pt-item"><label for="pt-totalgoal">Total Goal</label><input type="number" class="pt-input" id="pt-totalgoal" min="0" step="1" value="5"></div>
+            </div>
+            </div>
+        </div>
+
+        <div class="card card-collapsible is-open" data-section="teams">
+            <button type="button" class="card-toggle" aria-expanded="true" aria-controls="section-teams">
+                <span id="teams-section-title">3. Countries</span>
+                <span class="card-toggle-icon" aria-hidden="true">▼</span>
+            </button>
+            <div class="card-body" id="section-teams">
+            <div id="teams-list"></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-team" onclick="addTeam()">+ Match (2 teams)</button>
+
+            <div id="schedule-section" class="sub-section hidden">
+                <h3 class="sub-title">Playoff Schedule</h3>
+                <p class="hint">Set kickoff date and time (WIB) for each knockout match. Leave blank if not scheduled yet.</p>
+                <div id="schedule-preview"></div>
+            </div>
+            </div>
+        </div>
+
+        <div class="card card-collapsible is-open" data-section="participants">
+            <button type="button" class="card-toggle" aria-expanded="true" aria-controls="section-participants">
+                <span>4. Arisan Participants <span class="badge" id="count-participants">0</span></span>
+                <span class="card-toggle-icon" aria-hidden="true">▼</span>
+            </button>
+            <div class="card-body" id="section-participants">
+            <div id="participants-list"></div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addParticipant()">+ Participant</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="floating-nav" id="floating-nav">
+        <p id="action-status" class="float-status"></p>
+        <div class="floating-nav-buttons">
+            <a href="../index.html" class="float-btn">🏠 Home</a>
+            <button type="button" class="float-btn float-btn-save" onclick="saveSetup()">💾 Save Setup</button>
+        </div>
+    </nav>
+
+    <script src="../shared/js/bracket-builder.js"></script>
+    <script src="../shared/js/thesportsdb.js"></script>
+    <script src="../shared/js/setup-form.js"></script>
+    <script>
+        (function initCollapsibleSections() {
+            const STORAGE_KEY = 'arisan_setup_sections';
+            let saved = {};
+            try {
+                saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
+            } catch (e) {}
+
+            document.querySelectorAll('.card-collapsible').forEach(card => {
+                const key = card.dataset.section;
+                const btn = card.querySelector('.card-toggle');
+                if (!btn || !key) return;
+
+                if (saved[key] === false) {
+                    card.classList.remove('is-open');
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+
+                btn.addEventListener('click', () => {
+                    const open = card.classList.toggle('is-open');
+                    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    saved[key] = open;
+                    try {
+                        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+                    } catch (e) {}
+                });
+            });
+        })();
+
+        const ROOT_AUTH_KEY = 'arisan_root_auth';
+
+        function requireRootAuth() {
+            if (sessionStorage.getItem(ROOT_AUTH_KEY) !== '1') {
+                location.href = '../index.html';
+                return false;
+            }
+            return true;
+        }
+
+        let communitiesCache = [];
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        }
+
+        function applyNewModeFromUrl() {
+            const params = new URLSearchParams(location.search);
+            if (params.get('new') !== 'league') return;
+            const community = params.get('community');
+            if (community) {
+                document.getElementById('community-slug').value = community;
+                loadLeagueList(community);
+            }
+            document.getElementById('league-slug').value = '';
+            document.getElementById('league-title').value = '';
+            document.getElementById('league-year').value = '';
+            newBlankLeague();
+            document.getElementById('league-slug').focus();
+        }
+
+        async function loadCommunityList() {
+            communitiesCache = await ArisanDB.listCommunities();
+            const sel = document.getElementById('community-slug');
+            const current = sel.value;
+            sel.innerHTML = '<option value="">— Select community —</option>' +
+                communitiesCache.map(c =>
+                    '<option value="' + esc(c.slug) + '">' + esc(c.name) + ' (' + esc(c.slug) + ')</option>'
+                ).join('');
+            if (current) sel.value = current;
+        }
+
+        async function loadLeagueList(communitySlug) {
+            const dl = document.getElementById('league-list');
+            if (!communitySlug) { dl.innerHTML = ''; return; }
+            try {
+                const leagues = await ArisanDB.listLeagues(communitySlug);
+                dl.innerHTML = leagues.map(l => `<option value="${esc(l.slug)}">${esc(l.title)}</option>`).join('');
+            } catch (e) { dl.innerHTML = ''; }
+        }
+
+        async function loadExisting() {
+            const communitySlug = document.getElementById('community-slug').value.trim();
+            const leagueSlug = document.getElementById('league-slug').value.trim();
+            if (!communitySlug || !leagueSlug) {
+                setStatus('Enter community and league slugs first.', true);
+                return;
+            }
+            setStatus('Loading…');
+            try {
+                window.LEAGUE_CONTEXT = {
+                    communitySlug, leagueSlug,
+                    assetBase: '../communities/' + communitySlug + '/assets/',
+                };
+                const bundle = await ArisanDB.fetchLeagueBundle(communitySlug, leagueSlug);
+                const data = ArisanDB.bundleToSetupForm(bundle);
+                document.getElementById('league-title').value = data.league.title || '';
+                document.getElementById('league-year').value = data.league.year || '';
+                ArisanSetupForm.loadFromSetupData(data);
+                setStatus('Loaded: ' + communitySlug + '/' + leagueSlug);
+            } catch (e) {
+                setStatus('Load failed: ' + e.message, true);
+            }
+        }
+
+        async function saveSetup() {
+            if (!ArisanDB.isConfigured()) {
+                setStatus('Supabase is not configured.', true);
+                return;
+            }
+            const communitySlug = document.getElementById('community-slug').value.trim();
+            const leagueSlug = document.getElementById('league-slug').value.trim();
+            const leagueTitle = document.getElementById('league-title').value.trim();
+            const leagueYear = parseInt(document.getElementById('league-year').value, 10);
+            const payload = ArisanSetupForm.getPayload();
+
+            if (!communitySlug || !leagueSlug || !leagueTitle) {
+                setStatus('Community, league slug, and league title are required.', true);
+                return;
+            }
+            if (!payload.participants.length) {
+                setStatus('At least 1 participant is required.', true);
+                return;
+            }
+            if (payload.participants.some(p => !p.name.trim())) {
+                setStatus('Every participant must have a name.', true);
+                return;
+            }
+            const teamCount = payload.teams.length;
+            const validCounts = [2, 4, 8, 16, 32];
+            if (!validCounts.includes(teamCount)) {
+                setStatus('Team count must be 2, 4, 8, 16, or 32 (currently ' + teamCount + ').', true);
+                return;
+            }
+
+            setStatus('Saving…');
+            try {
+                const community = await ArisanDB.resolveCommunityId(communitySlug);
+                if (!community) {
+                    setStatus('Community not found. Create it first.', true);
+                    return;
+                }
+                await ArisanDB.saveLeagueSetup(communitySlug, leagueSlug, {
+                    league: {
+                        title: leagueTitle,
+                        year: isNaN(leagueYear) ? null : leagueYear,
+                        timezone: 'Asia/Jakarta',
+                    },
+                    competitionType: payload.competitionType,
+                    includeThirdPlace: payload.includeThirdPlace,
+                    twoLegKnockout: payload.twoLegKnockout,
+                    pointConfig: payload.pointConfig,
+                    matchSchedule: payload.matchSchedule,
+                    scheduleStartDate: payload.scheduleStartDate,
+                    scheduleKickoff: payload.scheduleKickoff,
+                    trophyImageUrl: payload.trophyImageUrl,
+                    iconImageUrl: payload.iconImageUrl,
+                    ballImageUrl: payload.ballImageUrl,
+                    backgroundMusicUrl: payload.backgroundMusicUrl,
+                    participants: payload.participants,
+                    teams: payload.teams,
+                });
+                const openUrl = '../league/?community=' + encodeURIComponent(communitySlug) +
+                    '&league=' + encodeURIComponent(leagueSlug);
+                setStatus('Setup saved. Open league: ' + openUrl);
+            } catch (e) {
+                setStatus('Save failed: ' + e.message, true);
+            }
+        }
+
+        let statusTimer = null;
+        function setStatus(msg, isError) {
+            const el = document.getElementById('action-status');
+            if (statusTimer) clearTimeout(statusTimer);
+            el.textContent = msg || '';
+            el.classList.toggle('error', !!isError);
+            if (msg && msg !== 'Saving…' && msg !== 'Loading…') {
+                statusTimer = setTimeout(() => { el.textContent = ''; }, msg.length > 80 ? 12000 : 5000);
+            }
+        }
+
+        async function showPanel() {
+            ArisanSetupForm.init();
+            await loadCommunityList();
+            document.getElementById('community-slug').addEventListener('change', async function () {
+                await loadLeagueList(this.value.trim());
+            });
+            document.getElementById('league-title').addEventListener('input', function () {
+                const slugEl = document.getElementById('league-slug');
+                if (!slugEl.value.trim()) slugEl.value = slugify(this.value);
+            });
+            if (!ArisanSetupForm.form.participants.length) addParticipant();
+            applyNewModeFromUrl();
+        }
+
+        function slugify(s) {
+            return String(s || '').toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        }
+
+        (async function init() {
+            if (!requireRootAuth()) return;
+            await showPanel();
+        })();
+    </script>
+</body>
+</html>

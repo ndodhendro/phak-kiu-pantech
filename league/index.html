@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Arisan</title>
+    <link rel="stylesheet" href="../shared/css/app.css">
+    <style>.hidden { display: none !important; }</style>
+    <script src="../shared/js/league-context.js"></script>
+    <script>
+        window.ArisanLeagueContext.apply();
+    </script>
+</head>
+<body>
+    <div id="league-missing" class="hidden" style="max-width:480px;margin:80px auto;padding:24px;text-align:center;color:#e8e8f0;font-family:Segoe UI,sans-serif;">
+        <h1 style="color:#ffd700;font-size:1.2rem;">League not specified</h1>
+        <p style="color:#888;margin:12px 0 20px;">Open a league from the home picker, or use<br><code>?community=…&amp;league=…</code></p>
+        <a href="../?picker=1" style="color:#00bcd4;">← Back to home</a>
+    </div>
+
+    <div id="league-app">
+    <div id="splash-overlay">
+        <div class="splash-content">
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT41kl1nnX-tqBQiGHVikOIDViXDZXRRulNdKFAK6c1eQ&s=10" alt="League icon" class="splash-logo" data-league-icon>
+            <h2 class="splash-title">Football Arisan</h2>
+            <p class="splash-subtitle"></p>
+            <button id="enter-btn" onclick="enterSite()"><img src="https://png.pngtree.com/png-vector/20260610/ourmid/pngtree-vibrant-trionda-soccer-football-official-fifa-world-cup-2026-design-png-image_19512258.webp" alt="ball" data-league-ball style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">Enter</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT41kl1nnX-tqBQiGHVikOIDViXDZXRRulNdKFAK6c1eQ&s=10" alt="League icon" class="logo" data-league-icon>
+        <div>
+            <h1>Football Arisan</h1>
+            <p class="subtitle header-community"></p>
+            <p class="last-updated"></p>
+        </div>
+        <img src="https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp" alt="League trophy" class="logo" data-league-trophy>
+    </div>
+
+    <div class="bracket-wrapper">
+        <div class="bracket" id="bracket-root"></div>
+    </div>
+
+    <div class="standings-section">
+        <h2 class="table-section-title">📊 Arisan Standings Points</h2>
+        <div class="standings-chart"></div>
+
+        <h3 class="table-section-title">🎯 Main Quest</h3>
+        <div class="standings-table-wrapper" id="main-quest-table-root"></div>
+
+        <h3 class="table-section-title">⭐ Side Quest</h3>
+        <div class="podium-section">
+            <div class="podium-container">
+                <div class="podium-place podium-place-2">
+                    <div class="podium-label"><img src="https://png.pngtree.com/png-clipart/20250717/original/pngtree-silver-second-place-trophy-with-number-two-png-image_21318342.png" alt="Runner-Up" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"> Runner-Up</div>
+                    <div class="podium-teams" id="podium-runnerup"></div>
+                    <div class="podium-block">2nd</div>
+                </div>
+                <div class="podium-place podium-place-1">
+                    <div class="podium-label"><img id="podium-champion-trophy" data-league-trophy src="https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp" alt="Champion" style="width:56px;height:36px;vertical-align:middle;margin-right:0px;">Champion</div>
+                    <div class="podium-teams" id="podium-champion"></div>
+                    <div class="podium-block">1st</div>
+                </div>
+                <div class="podium-place podium-place-3" id="podium-third-wrap">
+                    <div class="podium-label"><img src="https://static.vecteezy.com/system/resources/previews/063/104/243/non_2x/bronze-medal-with-number-three-and-laurel-wreath-isolated-on-transparent-background-png.png" alt="Third Place" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"> Third Place</div>
+                    <div class="podium-teams" id="podium-3rd"></div>
+                    <div class="podium-block">3rd</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="podium-section">
+            <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://png.pngtree.com/png-clipart/20241006/original/pngtree-golden-boot-award-isolated-on-a-white-background-png-image_16219554.png" alt="Golden Boot" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Golden Boot</h4>
+            <div class="standings-chart" id="goldenboot-chart"></div>
+        </div>
+
+        <div class="podium-section">
+            <h4 style="text-align:center; color:#00bcd4; font-size:0.9rem; margin-bottom:10px;"><img src="https://owexnrdvmragupmquwzr.supabase.co/storage/v1/object/public/arisan-config/assets/images/golden%20glove.png" alt="Golden Glove" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;"> Golden Glove</h4>
+            <div class="podium-container goldenglove-podium" id="podium-goldenglove-container"></div>
+        </div>
+
+        <div class="podium-section">
+            <h4 style="text-align:center; color:#e94560; font-size:0.9rem; margin-bottom:15px;"><img src="https://png.pngtree.com/png-vector/20260610/ourmid/pngtree-vibrant-trionda-soccer-football-official-fifa-world-cup-2026-design-png-image_19512258.webp" alt="Total Goal" data-league-ball style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Total Goal</h4>
+            <div class="total-goal-bar-container" id="total-goal-bar"></div>
+        </div>
+    </div>
+
+    <audio id="bg-music" loop preload="auto"></audio>
+
+    <button id="music-toggle" onclick="toggleMusic()" title="Click to play/mute" aria-label="Toggle background music">
+        🔊
+    </button>
+
+    <nav class="floating-nav" aria-label="Main navigation">
+        <a href="#" class="float-btn" id="home-link">🏠 Home</a>
+        <a href="#" class="float-btn" id="match-admin-link">⚽ Update Match</a>
+    </nav>
+    <footer class="floating-credit" aria-label="Credits">Made by <strong>Ndod Pantech</strong></footer>
+    </div>
+
+    <script>
+        (function () {
+            var ctx = window.LEAGUE_CONTEXT;
+            if (!ctx || !ctx.communitySlug || !ctx.leagueSlug) {
+                document.getElementById('league-app').classList.add('hidden');
+                document.getElementById('league-missing').classList.remove('hidden');
+                return;
+            }
+
+            var homeUrl = window.ArisanLeagueContext.homeUrl(ctx.communitySlug);
+            var matchAdminUrl = window.ArisanLeagueContext.adminUrl(ctx.communitySlug, ctx.leagueSlug);
+
+            sessionStorage.setItem('arisan_picker_community', ctx.communitySlug);
+            sessionStorage.setItem('arisan_picker_pending', '1');
+            sessionStorage.removeItem('arisan_picker_active');
+            if (window.ArisanLeagueContext && window.ArisanLeagueContext.persistContext) {
+                window.ArisanLeagueContext.persistContext(ctx);
+            }
+
+            var homeLink = document.getElementById('home-link');
+            homeLink.href = homeUrl;
+            homeLink.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.location.assign(homeUrl);
+            });
+
+            var adminLink = document.getElementById('match-admin-link');
+            adminLink.href = matchAdminUrl;
+            adminLink.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.location.assign(matchAdminUrl);
+            });
+        })();
+    </script>
+
+    <script src="../shared/js/supabase-client.js"></script>
+    <script src="../shared/js/countries.js"></script>
+    <script src="../shared/js/bracket-builder.js"></script>
+    <script src="../shared/js/bracket-app.js"></script>
+    <script src="../shared/js/bootstrap.js"></script>
+</body>
+</html>

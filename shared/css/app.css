@@ -2093,6 +2093,36 @@
         .winner-announcement-name {
             line-height: 1.2;
         }
+        .winner-announcement-supporters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px 14px;
+            margin-top: 6px;
+        }
+        .winner-announcement-supporter {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .winner-announcement-supporter-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid rgba(255, 215, 0, 0.45);
+            background: #2a2a5a;
+            flex-shrink: 0;
+        }
+        .winner-announcement-supporter-name {
+            color: #ffd700;
+            font-size: clamp(1rem, 3.5vw, 1.5rem);
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            line-height: 1.2;
+        }
         .winner-announcement-subtitle {
             display: flex;
             align-items: center;
@@ -2111,6 +2141,7 @@
         }
         .winner-announcement-league-text {
             line-height: 1.2;
+            font-weight: 700;
         }
         .winner-balloon {
             --balloon-size: 64px;
@@ -2289,6 +2320,7 @@
         }
         .splash-subtitle {
             font-size: 1rem;
+            font-weight: 700;
             color: #fff;
             margin-bottom: 30px;
             letter-spacing: 2px;

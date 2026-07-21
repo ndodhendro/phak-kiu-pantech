@@ -1071,6 +1071,41 @@
             }
         }
 
+        function getWinnerCelebrationSupporters(teamName) {
+            const championEntry = sideQuestPodium.champion && sideQuestPodium.champion[teamName];
+            if (championEntry && championEntry.supporters && championEntry.supporters.length) {
+                return championEntry.supporters.slice();
+            }
+            return (teamSupporters[teamName] || []).slice();
+        }
+
+        function buildWinnerAnnouncementSupporters(teamName) {
+            const supporters = getWinnerCelebrationSupporters(teamName);
+            if (!supporters.length) return null;
+
+            const wrap = document.createElement('div');
+            wrap.className = 'winner-announcement-supporters';
+
+            supporters.forEach(function (participantName) {
+                const item = document.createElement('div');
+                item.className = 'winner-announcement-supporter';
+
+                const avatar = document.createElement('img');
+                avatar.className = 'winner-announcement-supporter-avatar';
+                applyParticipantAvatar(avatar, participantName);
+
+                const label = document.createElement('span');
+                label.className = 'winner-announcement-supporter-name';
+                label.textContent = participantName;
+
+                item.appendChild(avatar);
+                item.appendChild(label);
+                wrap.appendChild(item);
+            });
+
+            return wrap;
+        }
+
         function playFinalWinnerCelebration() {
             if (finalCelebrationActive || !pendingFinalCelebrationWinner || document.hidden) return;
             finalCelebrationActive = true;
@@ -1116,6 +1151,8 @@
             name.textContent = winner.name;
             title.appendChild(name);
 
+            const supportersEl = buildWinnerAnnouncementSupporters(winner.name);
+
             const subtitle = document.createElement('span');
             subtitle.className = 'winner-announcement-subtitle';
 
@@ -1130,7 +1167,11 @@
             leagueText.textContent = getLeagueChampionSubtitle();
 
             subtitle.append(leagueIcon, leagueText);
-            announcement.append(title, subtitle);
+            if (supportersEl) {
+                announcement.append(title, supportersEl, subtitle);
+            } else {
+                announcement.append(title, subtitle);
+            }
             overlay.appendChild(announcement);
 
             if (!reducedMotion) {

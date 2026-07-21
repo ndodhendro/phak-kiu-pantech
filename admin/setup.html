@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>League Setup — Football Arisan</title>
+    <script src="../shared/js/league-context.js"></script>
     <script src="../shared/js/supabase-client.js"></script>
     <script src="../shared/js/countries.js"></script>
     <style>
@@ -656,7 +657,7 @@
     <nav class="floating-nav" id="floating-nav">
         <p id="action-status" class="float-status"></p>
         <div class="floating-nav-buttons">
-            <a href="../index.html" class="float-btn">🏠 Home</a>
+            <a href="#" id="setup-home-link" class="float-btn">🏠 Home</a>
             <button type="button" class="float-btn float-btn-save" onclick="saveSetup()">💾 Save Setup</button>
         </div>
     </nav>
@@ -697,11 +698,16 @@
 
         function requireRootAuth() {
             if (sessionStorage.getItem(ROOT_AUTH_KEY) !== '1') {
-                location.href = '../index.html';
+                location.href = ArisanLeagueContext.siteIndexUrl();
                 return false;
             }
             return true;
         }
+
+        (function wireSetupNav() {
+            const home = document.getElementById('setup-home-link');
+            if (home) home.href = ArisanLeagueContext.siteIndexUrl();
+        })();
 
         let communitiesCache = [];
 
@@ -826,8 +832,7 @@
                     participants: payload.participants,
                     teams: payload.teams,
                 });
-                const openUrl = '../league/?community=' + encodeURIComponent(communitySlug) +
-                    '&league=' + encodeURIComponent(leagueSlug);
+                const openUrl = ArisanLeagueContext.leagueUrl(communitySlug, leagueSlug);
                 setStatus('Setup saved. Open league: ' + openUrl);
             } catch (e) {
                 setStatus('Save failed: ' + e.message, true);

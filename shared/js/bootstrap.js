@@ -61,6 +61,46 @@ function applyBallBranding() {
     });
 }
 
+function preloadImage(url) {
+    return new Promise(resolve => {
+        const raw = String(url || '').trim();
+        if (!raw) {
+            resolve();
+            return;
+        }
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = raw;
+    });
+}
+
+async function preloadLeagueBrandingImages() {
+    const seen = new Set();
+    const urls = [getLeagueIconUrl(), getLeagueTrophyUrl(), getLeagueBallUrl()].filter(url => {
+        if (!url || seen.has(url)) return false;
+        seen.add(url);
+        return true;
+    });
+    await Promise.all(urls.map(preloadImage));
+}
+
+function revealSplashBranding() {
+    const overlay = document.getElementById('splash-overlay');
+    if (overlay) {
+        overlay.classList.remove('splash-pending');
+        overlay.classList.add('splash-ready');
+    }
+    const enterBtn = document.getElementById('enter-btn');
+    if (enterBtn) enterBtn.disabled = false;
+}
+
+async function prepareSplashBranding() {
+    await preloadLeagueBrandingImages();
+    applyBrandingFromLeagueData();
+    revealSplashBranding();
+}
+
 function applyBackgroundMusicFromLeagueData() {
     const audio = document.getElementById('bg-music');
     if (!audio) return;
@@ -90,8 +130,13 @@ function getLeagueTitleLabel(d) {
 }
 
 function applyBrandingFromLeagueData() {
+    applyIconBranding();
+    applyTrophyBranding();
+    applyBallBranding();
+
     const d = window.LEAGUE_DATA;
     if (!d) return;
+
     const pageTitle = [getLeagueTitleLabel(d) || d.title, d.communityName].filter(Boolean).join(' ');
     if (pageTitle) {
         document.title = pageTitle;
@@ -118,9 +163,6 @@ function applyBrandingFromLeagueData() {
         const splashSub = document.querySelector('.splash-subtitle');
         if (splashSub && d.communityName) splashSub.textContent = d.communityName;
     }
-    applyIconBranding();
-    applyTrophyBranding();
-    applyBallBranding();
     applyBackgroundMusicFromLeagueData();
 }
 
@@ -278,6 +320,14 @@ function startApp() {
             goldenBoot: [],
             goldenGlove: [],
         };
+    }
+
+    try {
+        await prepareSplashBranding();
+    } catch (e) {
+        console.error('Splash branding failed:', e);
+        applyBrandingFromLeagueData();
+        revealSplashBranding();
     }
 
     if (document.readyState === 'loading') {

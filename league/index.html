@@ -15,27 +15,27 @@
     <div id="league-missing" class="hidden" style="max-width:480px;margin:80px auto;padding:24px;text-align:center;color:#e8e8f0;font-family:Segoe UI,sans-serif;">
         <h1 style="color:#ffd700;font-size:1.2rem;">League not specified</h1>
         <p style="color:#888;margin:12px 0 20px;">Open a league from the home picker, or use<br><code>?community=…&amp;league=…</code></p>
-        <a href="../?picker=1" style="color:#00bcd4;">← Back to home</a>
+        <a href="#" id="league-missing-home" style="color:#00bcd4;">← Back to home</a>
     </div>
 
     <div id="league-app">
-    <div id="splash-overlay">
+    <div id="splash-overlay" class="splash-pending">
         <div class="splash-content">
-            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT41kl1nnX-tqBQiGHVikOIDViXDZXRRulNdKFAK6c1eQ&s=10" alt="League icon" class="splash-logo" data-league-icon>
+            <img alt="League icon" class="splash-logo" data-league-icon decoding="async">
             <h2 class="splash-title">Football Arisan</h2>
             <p class="splash-subtitle"></p>
-            <button id="enter-btn" onclick="enterSite()"><img src="https://png.pngtree.com/png-vector/20260610/ourmid/pngtree-vibrant-trionda-soccer-football-official-fifa-world-cup-2026-design-png-image_19512258.webp" alt="ball" data-league-ball style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">Enter</button>
+            <button id="enter-btn" type="button" disabled onclick="enterSite()"><img alt="" data-league-ball decoding="async" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">Enter</button>
         </div>
     </div>
 
     <div class="header">
-        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT41kl1nnX-tqBQiGHVikOIDViXDZXRRulNdKFAK6c1eQ&s=10" alt="League icon" class="logo" data-league-icon>
+        <img alt="League icon" class="logo" data-league-icon decoding="async">
         <div>
             <h1>Football Arisan</h1>
             <p class="subtitle header-community"></p>
             <p class="last-updated"></p>
         </div>
-        <img src="https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp" alt="League trophy" class="logo" data-league-trophy>
+        <img alt="League trophy" class="logo" data-league-trophy decoding="async">
     </div>
 
     <div class="bracket-wrapper">
@@ -58,7 +58,7 @@
                     <div class="podium-block">2nd</div>
                 </div>
                 <div class="podium-place podium-place-1">
-                    <div class="podium-label"><img id="podium-champion-trophy" data-league-trophy src="https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp" alt="Champion" style="width:56px;height:36px;vertical-align:middle;margin-right:0px;">Champion</div>
+                    <div class="podium-label"><img id="podium-champion-trophy" data-league-trophy alt="Champion" decoding="async" style="width:56px;height:36px;vertical-align:middle;margin-right:0px;">Champion</div>
                     <div class="podium-teams" id="podium-champion"></div>
                     <div class="podium-block">1st</div>
                 </div>
@@ -81,7 +81,7 @@
         </div>
 
         <div class="podium-section">
-            <h4 style="text-align:center; color:#e94560; font-size:0.9rem; margin-bottom:15px;"><img src="https://png.pngtree.com/png-vector/20260610/ourmid/pngtree-vibrant-trionda-soccer-football-official-fifa-world-cup-2026-design-png-image_19512258.webp" alt="Total Goal" data-league-ball style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Total Goal</h4>
+            <h4 style="text-align:center; color:#e94560; font-size:0.9rem; margin-bottom:15px;"><img alt="Total Goal" data-league-ball decoding="async" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Total Goal</h4>
             <div class="total-goal-bar-container" id="total-goal-bar"></div>
         </div>
     </div>
@@ -102,6 +102,10 @@
     <script>
         (function () {
             var ctx = window.LEAGUE_CONTEXT;
+            var missingHome = document.getElementById('league-missing-home');
+            if (missingHome && window.ArisanLeagueContext) {
+                missingHome.href = ArisanLeagueContext.homeUrl();
+            }
             if (!ctx || !ctx.communitySlug || !ctx.leagueSlug) {
                 document.getElementById('league-app').classList.add('hidden');
                 document.getElementById('league-missing').classList.remove('hidden');

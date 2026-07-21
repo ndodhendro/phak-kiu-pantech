@@ -2,11 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=../../?picker=1&community=hash-pku">
     <title>HASH PKU</title>
-    <link rel="canonical" href="../../?picker=1&community=hash-pku">
+    <script src="../../shared/js/league-context.js"></script>
+    <script>
+        location.replace(ArisanLeagueContext.homeUrl('hash-pku'));
+    </script>
 </head>
 <body>
-    <p><a href="../../?picker=1&community=hash-pku">HASH PKU leagues</a></p>
+    <p><a href="#" id="community-home-link">HASH PKU leagues</a></p>
+    <script>
+        var link = document.getElementById('community-home-link');
+        if (link && window.ArisanLeagueContext) {
+            link.href = ArisanLeagueContext.homeUrl('hash-pku');
+        }
+    </script>
 </body>
 </html>

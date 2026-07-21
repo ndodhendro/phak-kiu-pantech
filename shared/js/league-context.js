@@ -19,7 +19,30 @@ window.ArisanLeagueContext = (function () {
         if (/\/league$/i.test(path)) return path.replace(/\/league$/i, '');
         idx = path.indexOf('/communities/');
         if (idx >= 0) return path.slice(0, idx);
+        idx = path.indexOf('/admin/');
+        if (idx >= 0) return path.slice(0, idx);
+        if (/\/admin\.html$/i.test(path)) return path.replace(/\/admin\.html$/i, '');
+        // GitHub Pages project site: /repo-name/ or /repo-name/index.html (localhost: / or /index.html)
+        if (/\/index\.html$/i.test(path)) {
+            const base = path.replace(/\/index\.html$/i, '');
+            return base === '/' ? '' : base;
+        }
+        if (path.endsWith('/') && path.length > 1) return path.slice(0, -1);
         return '';
+    }
+
+    /** Site index URL — respects GitHub Pages subpath (e.g. /phak-kiu-pantech/). */
+    function siteIndexUrl(query) {
+        const q = query ? (query.startsWith('?') ? query : '?' + query) : '';
+        return (appRoot() || '') + '/' + q;
+    }
+
+    /** Any path under the app root — e.g. appUrl('admin/setup.html?new=league'). */
+    function appUrl(relativePath) {
+        const raw = String(relativePath || '').trim();
+        if (!raw) return siteIndexUrl();
+        if (raw.startsWith('?')) return siteIndexUrl(raw.slice(1));
+        return (appRoot() || '') + '/' + raw.replace(/^\//, '');
     }
 
     function fromQuery() {
@@ -91,24 +114,26 @@ window.ArisanLeagueContext = (function () {
     }
 
     function leagueUrl(communitySlug, leagueSlug) {
-        return appRoot() + '/league/?community=' + encodeURIComponent(communitySlug) +
-            '&league=' + encodeURIComponent(leagueSlug);
+        return appUrl('league/?community=' + encodeURIComponent(communitySlug) +
+            '&league=' + encodeURIComponent(leagueSlug));
     }
 
     function adminUrl(communitySlug, leagueSlug) {
-        return appRoot() + '/league/admin/?community=' + encodeURIComponent(communitySlug) +
-            '&league=' + encodeURIComponent(leagueSlug);
+        return appUrl('league/admin/?community=' + encodeURIComponent(communitySlug) +
+            '&league=' + encodeURIComponent(leagueSlug));
     }
 
     function homeUrl(communitySlug) {
         const q = communitySlug
-            ? '?picker=1&community=' + encodeURIComponent(communitySlug)
-            : '?picker=1';
-        return appRoot() + '/' + q;
+            ? 'picker=1&community=' + encodeURIComponent(communitySlug)
+            : 'picker=1';
+        return siteIndexUrl(q);
     }
 
     return {
         appRoot,
+        siteIndexUrl,
+        appUrl,
         resolve,
         apply,
         leagueUrl,

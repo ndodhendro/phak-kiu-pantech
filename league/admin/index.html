@@ -296,9 +296,9 @@
         <p class="subtitle">Open Update Match from a league page, or use <code>?community=…&amp;league=…</code></p>
         <p class="subtitle" style="margin-top:-12px;">
             Example:
-            <a class="link" id="admin-missing-example" href="./?community=hash-pku&league=wc-2026">hash-pku / wc-2026</a>
+            <a class="link" id="admin-missing-example" href="#">hash-pku / wc-2026</a>
         </p>
-        <p><a class="link" href="../../?picker=1">← Back to home</a></p>
+        <p><a class="link" id="admin-missing-home" href="#">← Back to home</a></p>
     </div>
 
     <div id="admin-panel" class="wrap">
@@ -388,6 +388,14 @@
         })();
 
         (function wireLeagueNav() {
+            const missingHome = document.getElementById('admin-missing-home');
+            const missingExample = document.getElementById('admin-missing-example');
+            if (window.ArisanLeagueContext) {
+                if (missingHome) missingHome.href = ArisanLeagueContext.homeUrl();
+                if (missingExample) {
+                    missingExample.href = ArisanLeagueContext.adminUrl('hash-pku', 'wc-2026');
+                }
+            }
             const ctx = window.LEAGUE_CONTEXT || {};
             if (!ctx.communitySlug || !ctx.leagueSlug) {
                 const panel = document.getElementById('admin-panel');

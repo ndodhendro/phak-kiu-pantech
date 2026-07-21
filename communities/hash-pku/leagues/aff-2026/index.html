@@ -8,7 +8,7 @@
         (function () {
             var m = location.pathname.match(/\/communities\/([^/]+)\/leagues\/([^/]+)/);
             if (!m) {
-                location.replace('../../../../?picker=1');
+                location.replace(ArisanLeagueContext.siteIndexUrl('picker=1'));
                 return;
             }
             var community = decodeURIComponent(m[1]);

@@ -112,6 +112,10 @@ window.ArisanSetupForm = (function () {
             form.teams.every(t => (t.name || '').trim());
     }
 
+    function getDefaultScheduleKickoff() {
+        return (form.scheduleKickoff || '19:00').trim() || '19:00';
+    }
+
     function getLeagueYearFromDom() {
         const el = document.getElementById('league-year');
         const y = el ? parseInt(el.value, 10) : NaN;
@@ -242,19 +246,22 @@ window.ArisanSetupForm = (function () {
         if (!id) return;
         const dateEl = row.querySelector('[data-schedule-date]');
         const timeEl = row.querySelector('[data-schedule-time]');
-        const text = partsToScheduleText(dateEl && dateEl.value, timeEl && timeEl.value);
+        const dateVal = dateEl && dateEl.value ? dateEl.value.trim() : '';
+        const timeVal = (timeEl && timeEl.value ? timeEl.value.trim() : '') || getDefaultScheduleKickoff();
+        const text = dateVal ? partsToScheduleText(dateVal, timeVal) : '';
         if (!form.matchSchedule) form.matchSchedule = {};
         if (text) form.matchSchedule[id] = text;
         else delete form.matchSchedule[id];
     }
 
-    function renderScheduleSection() {
+    function renderScheduleSection(opts) {
+        const skipCollect = !!(opts && opts.skipCollect);
         const section = document.getElementById('schedule-section');
         const preview = document.getElementById('schedule-preview');
         const complete = isTeamsSectionComplete();
 
         // Persist any in-progress date/time edits before rebuilding the list
-        collectScheduleFromDom();
+        if (!skipCollect) collectScheduleFromDom();
 
         if (section) section.classList.toggle('hidden', !complete);
         if (!preview) return;
@@ -274,11 +281,12 @@ window.ArisanSetupForm = (function () {
         preview.innerHTML = '<ul class="schedule-preview-list">' +
             catalog.map(entry => {
                 const parts = scheduleTextToParts(form.matchSchedule[entry.id] || '');
+                const timeValue = parts.time || getDefaultScheduleKickoff();
                 return '<li class="schedule-edit-row" data-match-id="' + esc(entry.id) + '">' +
                     '<strong>' + esc(entry.label) + '</strong>' +
                     '<div class="schedule-edit-inputs">' +
                     '<input type="date" data-schedule-date value="' + esc(parts.date) + '" aria-label="Date">' +
-                    '<input type="time" data-schedule-time value="' + esc(parts.time) + '" aria-label="Kickoff WIB">' +
+                    '<input type="time" data-schedule-time value="' + esc(timeValue) + '" aria-label="Kickoff WIB">' +
                     '</div></li>';
             }).join('') +
             '</ul>';
@@ -1090,7 +1098,6 @@ window.ArisanSetupForm = (function () {
         });
         bindPreviewControls(el);
         updateCounts();
-        renderScheduleSection();
     }
 
     function setClubLookupStatus(nameInp, state, message) {
@@ -1940,11 +1947,11 @@ window.ArisanSetupForm = (function () {
         updateCounts();
     }
 
-    function renderAll() {
+    function renderAll(opts) {
         renderLeagueMeta();
         renderTeams();
         renderParticipants();
-        renderScheduleSection();
+        renderScheduleSection(opts);
     }
 
     function addParticipant() {
@@ -2072,7 +2079,7 @@ window.ArisanSetupForm = (function () {
             color: p.color || DEFAULT_PARTICIPANT_COLORS[i % DEFAULT_PARTICIPANT_COLORS.length],
             picks: p.picks || defaultPicks(form.includeThirdPlace),
         }));
-        renderAll();
+        renderAll({ skipCollect: true });
         // Load league data is a user gesture — fill URL and autoplay preview.
         syncBackgroundMusicFieldFromForm();
     }

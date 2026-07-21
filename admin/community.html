@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Community — Football Arisan</title>
+    <script src="../shared/js/league-context.js"></script>
     <script src="../shared/js/supabase-client.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -94,8 +95,8 @@
         </div>
 
         <div class="nav-links">
-            <a href="../index.html" class="btn btn-secondary">🏠 Home</a>
-            <a href="setup.html?new=league" class="btn btn-secondary" id="link-new-league">Create/Edit League</a>
+            <a href="#" id="community-home-link" class="btn btn-secondary">🏠 Home</a>
+            <a href="#" id="link-new-league" class="btn btn-secondary">Create/Edit League</a>
         </div>
     </div>
 
@@ -104,11 +105,18 @@
 
         function requireRootAuth() {
             if (sessionStorage.getItem(ROOT_AUTH_KEY) !== '1') {
-                location.href = '../index.html';
+                location.href = ArisanLeagueContext.siteIndexUrl();
                 return false;
             }
             return true;
         }
+
+        (function wireCommunityNav() {
+            const home = document.getElementById('community-home-link');
+            const setup = document.getElementById('link-new-league');
+            if (home) home.href = ArisanLeagueContext.siteIndexUrl();
+            if (setup) setup.href = ArisanLeagueContext.appUrl('admin/setup.html?new=league');
+        })();
 
         function slugify(s) {
             return String(s || '').toLowerCase()
@@ -136,8 +144,9 @@
                 }
                 ul.innerHTML = rows.map(c =>
                     '<li><strong>' + esc(c.name) + '</strong><br><span>' + esc(c.slug) +
-                    ' · <a href="setup.html?new=league&amp;community=' + encodeURIComponent(c.slug) +
-                    '" style="color:#00bcd4;">Create league</a></span></li>'
+                    ' · <a href="' + esc(ArisanLeagueContext.appUrl(
+                        'admin/setup.html?new=league&community=' + encodeURIComponent(c.slug)
+                    )) + '" style="color:#00bcd4;">Create league</a></span></li>'
                 ).join('');
             } catch (e) {
                 ul.innerHTML = '<li><span class="status error">' + esc(e.message) + '</span></li>';
@@ -164,7 +173,7 @@
                 await ArisanDB.upsertCommunity(slug, name, {});
                 setStatus('Community saved: ' + slug);
                 document.getElementById('link-new-league').href =
-                    'setup.html?new=league&community=' + encodeURIComponent(slug);
+                    ArisanLeagueContext.appUrl('admin/setup.html?new=league&community=' + encodeURIComponent(slug));
                 await renderExisting();
             } catch (e) {
                 setStatus('Save failed: ' + e.message, true);

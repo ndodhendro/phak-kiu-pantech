@@ -42,15 +42,29 @@
         .home { text-align: center; margin-top: 16px; font-size: 0.85rem; }
         .home a { display: inline; background: none; padding: 0; color: #00bcd4; }
     </style>
+    <script src="shared/js/league-context.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.ArisanLeagueContext) return;
+            var matchLink = document.getElementById('admin-match-example');
+            var homeLink = document.getElementById('admin-home-link');
+            var setupLink = document.getElementById('admin-setup-link');
+            var communityLink = document.getElementById('admin-community-link');
+            if (matchLink) matchLink.href = ArisanLeagueContext.adminUrl('hash-pku', 'wc-2026');
+            if (homeLink) homeLink.href = ArisanLeagueContext.siteIndexUrl();
+            if (setupLink) setupLink.href = ArisanLeagueContext.appUrl('admin/setup.html');
+            if (communityLink) communityLink.href = ArisanLeagueContext.appUrl('admin/community.html');
+        });
+    </script>
 </head>
 <body>
     <div class="box">
         <h1>Arisan Admin</h1>
         <p>Choose admin type:</p>
-        <a href="admin/community.html">🏘️ Create community — register in database only</a>
-        <a href="admin/setup.html" class="primary">🏗️ New league setup — participants, countries, awards</a>
-        <a href="league/admin/?community=hash-pku&league=wc-2026">⚽ Update Match — skor per liga (contoh HASH PKU / wc-2026)</a>
-        <p class="home"><a href="index.html">← Home</a></p>
+        <a href="#" id="admin-community-link">🏘️ Create community — register in database only</a>
+        <a href="#" id="admin-setup-link" class="primary">🏗️ New league setup — participants, countries, awards</a>
+        <a href="#" id="admin-match-example">⚽ Update Match — skor per liga (contoh HASH PKU / wc-2026)</a>
+        <p class="home"><a href="#" id="admin-home-link">← Home</a></p>
     </div>
 </body>
 </html>

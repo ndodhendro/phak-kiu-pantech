@@ -252,6 +252,7 @@
         <p class="status" id="status">Loading…</p>
     </div>
 
+    <script src="shared/js/league-context.js"></script>
     <script src="shared/js/supabase-client.js"></script>
     <script>
         const ROOT_PASSWORD = '696969';
@@ -296,7 +297,7 @@
                 isPickerView = true;
                 sessionStorage.removeItem(PICKER_PENDING_KEY);
                 if (!params.toString()) {
-                    history.replaceState(null, '', '/?picker=1&community=' + encodeURIComponent(fromStore));
+                    history.replaceState(null, '', ArisanLeagueContext.homeUrl(fromStore));
                 }
             }
 
@@ -362,7 +363,7 @@
             sessionStorage.removeItem(PICKER_COMMUNITY_KEY);
             sessionStorage.removeItem(PICKER_PENDING_KEY);
             sessionStorage.removeItem('arisan_picker_active');
-            window.location.assign('/');
+            window.location.assign(ArisanLeagueContext.siteIndexUrl());
         }
 
         function goBackFromGate() {
@@ -371,7 +372,7 @@
                 sessionStorage.removeItem(PICKER_RETURN_KEY);
                 sessionStorage.setItem(PICKER_COMMUNITY_KEY, returnCommunity);
                 sessionStorage.setItem(PICKER_PENDING_KEY, '1');
-                window.location.assign('/?picker=1&community=' + encodeURIComponent(returnCommunity));
+                window.location.assign(ArisanLeagueContext.homeUrl(returnCommunity));
                 return;
             }
             if (window.history.length > 1) {
@@ -431,6 +432,15 @@
             goToAdminPanel();
         });
 
+        (function wireCreateActions() {
+            if (!window.ArisanLeagueContext) return;
+            const actions = document.getElementById('create-actions');
+            if (!actions) return;
+            const links = actions.querySelectorAll('a');
+            if (links[0]) links[0].href = ArisanLeagueContext.appUrl('admin/community.html');
+            if (links[1]) links[1].href = ArisanLeagueContext.appUrl('admin/setup.html?new=league');
+        })();
+
         function renderCommunities(rows) {
             const picker = getPickerState();
             communitiesCache = rows;
@@ -483,8 +493,7 @@
                 leagues.forEach(l => {
                     const a = document.createElement('a');
                     a.className = 'card';
-                    a.href = 'league/?community=' + encodeURIComponent(slug) +
-                        '&league=' + encodeURIComponent(l.slug);
+                    a.href = ArisanLeagueContext.leagueUrl(slug, l.slug);
                     a.innerHTML = '<strong>' + l.title + '</strong><span>' + (l.year || '') + ' · ' + l.slug + '</span>';
                     leagueList.appendChild(a);
                 });

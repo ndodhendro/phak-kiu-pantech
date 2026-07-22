@@ -246,6 +246,159 @@
             .pt-grid, .pt-grid-6 { grid-template-columns: 1fr 1fr; }
         }
         .pt-item label { font-size: 0.78rem; }
+        .mq-mode-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .mq-mode-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            cursor: pointer;
+            font-size: 0.88rem;
+            color: #ccc;
+            font-weight: 400;
+        }
+        .mq-mode-option input {
+            width: auto;
+            margin: 0;
+            flex-shrink: 0;
+        }
+        .mq-team-points-wrap {
+            overflow-x: auto;
+            border: 1px solid #2a2a5a;
+            border-radius: 8px;
+            background: #0f0f23;
+        }
+        .mq-team-points-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            min-width: 520px;
+        }
+        .mq-team-points-table th,
+        .mq-team-points-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #2a2a5a;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .mq-team-points-table th {
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: #12122a;
+        }
+        .mq-team-points-table tr:last-child td { border-bottom: none; }
+        .mq-team-points-table .mq-team-name { color: #eaeaea; font-weight: 600; }
+        .mq-team-points-table input[type="number"] {
+            width: 72px;
+            margin: 0;
+            padding: 6px 8px;
+            font-size: 0.82rem;
+        }
+        .score-predict-wrap {
+            overflow-x: auto;
+            border: 1px solid #2a2a5a;
+            border-radius: 8px;
+            background: #0f0f23;
+        }
+        .score-predict-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            min-width: 640px;
+        }
+        .score-predict-table th,
+        .score-predict-table td {
+            padding: 8px 8px;
+            border-bottom: 1px solid #2a2a5a;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .score-predict-table th {
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: #12122a;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .score-predict-table th.sp-participant {
+            text-align: center;
+            min-width: 88px;
+        }
+        .score-predict-table .sp-match-label {
+            color: #eaeaea;
+            font-weight: 600;
+            white-space: nowrap;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .score-predict-inputs {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            justify-content: center;
+        }
+        .score-predict-inputs input[type="number"] {
+            width: 48px;
+            margin: 0;
+            padding: 5px 4px;
+            font-size: 0.78rem;
+            text-align: center;
+        }
+        .score-predict-inputs .sp-sep {
+            color: #666;
+            font-weight: 600;
+        }
+        .score-predict-inputs .sp-clear {
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            padding: 0;
+            border: 1px solid #3a3a6a;
+            border-radius: 4px;
+            background: #1a1a3e;
+            color: #aaa;
+            font-size: 0.75rem;
+            line-height: 1;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .score-predict-inputs .sp-clear:hover {
+            background: #2a1a2e;
+            border-color: #e74c3c;
+            color: #ec7063;
+        }
+        .score-predict-inputs.is-empty .sp-clear {
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .pt-share-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            font-size: 0.72rem;
+            color: #aaa;
+            cursor: pointer;
+            font-weight: 400;
+        }
+        .pt-share-row input {
+            width: auto;
+            margin: 0;
+            flex-shrink: 0;
+        }
         .check-row {
             display: flex;
             align-items: center;
@@ -316,12 +469,28 @@
             flex-wrap: wrap;
             gap: 8px;
             justify-content: flex-end;
+            align-items: center;
         }
-        .schedule-edit-inputs input[type="date"],
-        .schedule-edit-inputs input[type="time"] {
+        .schedule-edit-inputs input[type="date"] {
             width: auto;
             min-width: 0;
             margin: 0;
+        }
+        .schedule-time-24h {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .schedule-time-24h select {
+            width: auto;
+            min-width: 3.6rem;
+            margin: 0;
+            padding: 8px 6px;
+        }
+        .schedule-time-sep {
+            color: #aaa;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
         }
         @media (max-width: 640px) {
             .schedule-preview-list li {
@@ -359,13 +528,97 @@
             color: #ffd700;
             font-weight: 600;
             font-size: 0.82rem;
+            margin: 0;
+        }
+        .team-pair-slot-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
             margin-bottom: 8px;
+        }
+        .group-remove-team {
+            flex-shrink: 0;
+            margin: 0;
+        }
+        .club-tbd-toggle {
+            margin-bottom: 8px;
+        }
+        .stage-panel {
+            border: 1px solid #2a2a5a;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            background: #12122b;
+        }
+        .stage-panel-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 14px;
+            border: none;
+            border-bottom: 1px solid transparent;
+            background: transparent;
+            color: #ffd700;
+            font: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-align: left;
+            cursor: pointer;
+        }
+        .stage-panel-toggle:hover { background: rgba(255, 215, 0, 0.06); }
+        .stage-panel-icon {
+            flex-shrink: 0;
+            font-size: 0.75rem;
+            color: #888;
+            transition: transform 0.2s ease;
+        }
+        .stage-panel.is-open .stage-panel-toggle {
+            border-bottom-color: #2a2a5a;
+        }
+        .stage-panel.is-open .stage-panel-icon {
+            transform: rotate(0deg);
+        }
+        .stage-panel:not(.is-open) .stage-panel-icon {
+            transform: rotate(-90deg);
+        }
+        .stage-panel:not(.is-open) .stage-panel-body {
+            display: none;
+        }
+        .stage-panel-body {
+            padding: 12px 14px 14px;
+        }
+        .stage-panel-body > .btn {
+            margin-top: 8px;
         }
         .team-pair-vs {
             font-weight: 700;
             color: #e94560;
             font-size: 0.9rem;
             padding: 0 4px;
+        }
+        .group-def-box { margin-bottom: 14px; }
+        .group-def-label-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .group-label-input {
+            width: 3.2rem;
+            min-width: 2.5rem;
+            text-align: center;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .group-match-hint { margin: 0; }
+        .group-teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+            margin: 10px 0 12px;
         }
         .field-with-preview {
             display: flex;
@@ -382,8 +635,16 @@
             margin-bottom: 0;
             height: 42px;
         }
+        .league-assets-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: start;
+        }
         .league-icon-field-wrap {
-            max-width: calc(50% - 6px);
+            max-width: none;
+            min-width: 0;
         }
         .league-icon-field-wrap .field-preview {
             width: 48px;
@@ -396,8 +657,11 @@
             max-height: 100%;
             object-fit: contain;
         }
+        .league-assets-grid .league-bg-music-field input {
+            margin-bottom: 0;
+        }
         @media (max-width: 640px) {
-            .league-icon-field-wrap { max-width: 100%; }
+            .league-assets-grid { grid-template-columns: 1fr; }
         }
         .field-preview {
             flex-shrink: 0;
@@ -557,20 +821,22 @@
                     <input type="number" id="league-year" placeholder="2026" min="2000" max="2100">
                 </div>
             </div>
-            <div class="league-icon-field-wrap">
-                <div id="league-icon-url-wrap"></div>
-            </div>
-            <div class="league-icon-field-wrap">
-                <div id="league-trophy-url-wrap"></div>
-            </div>
-            <div class="league-icon-field-wrap">
-                <div id="league-ball-url-wrap"></div>
-            </div>
-            <div>
-                <label for="league-bg-music-url">Background music URL</label>
-                <input type="text" id="league-bg-music-url" placeholder="https://example.com/track.mp3" autocomplete="off">
-                <p class="player-lookup-status hint" id="league-bg-music-status" aria-live="polite"></p>
-                <audio id="league-bg-music-preview" preload="none" loop></audio>
+            <div class="league-assets-grid">
+                <div class="league-icon-field-wrap">
+                    <div id="league-icon-url-wrap"></div>
+                </div>
+                <div class="league-icon-field-wrap">
+                    <div id="league-trophy-url-wrap"></div>
+                </div>
+                <div class="league-icon-field-wrap">
+                    <div id="league-ball-url-wrap"></div>
+                </div>
+                <div class="league-bg-music-field">
+                    <label for="league-bg-music-url">Background music URL</label>
+                    <input type="text" id="league-bg-music-url" placeholder="https://example.com/track.mp3" autocomplete="off">
+                    <p class="player-lookup-status hint" id="league-bg-music-status" aria-live="polite"></p>
+                    <audio id="league-bg-music-preview" preload="none" loop></audio>
+                </div>
             </div>
             <p class="hint">Type a league title to search TheSportsDB. Selecting a match fills the title and league icon (badge → logo). Trophy and ball URLs can be set separately.</p>
             <div class="grid-2">
@@ -583,6 +849,18 @@
                     <p class="hint" id="competition-type-hint"></p>
                 </div>
                 <div>
+                    <label>Arisan stages (Main Quest W/D/L)</label>
+                    <div class="check-row">
+                        <input type="checkbox" id="include-group-stage">
+                        <label for="include-group-stage">Group Stage</label>
+                    </div>
+                    <div class="check-row">
+                        <input type="checkbox" id="include-knockout-stage" checked>
+                        <label for="include-knockout-stage">Knockout Stage</label>
+                    </div>
+                    <p class="hint">Select at least one stage. Main Quest Win/Draw/Loss applies to the selected stage(s).</p>
+                </div>
+                <div id="knockout-stage-options">
                     <label>&nbsp;</label>
                     <div class="check-row">
                         <input type="checkbox" id="include-third-place" checked>
@@ -592,7 +870,7 @@
                         <input type="checkbox" id="two-leg-knockout">
                         <label for="two-leg-knockout">Two-leg (home-away) knockout</label>
                     </div>
-                    <p class="hint">When enabled, each knockout tie has Leg 1 and Leg 2. Winner is decided by aggregate score.</p>
+                    <p class="hint">When enabled, each knockout tie has Leg 1 and Leg 2. Winner is decided by the combined score of both legs.</p>
                 </div>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" onclick="newBlankLeague()">Blank form</button>
@@ -606,21 +884,66 @@
             </button>
             <div class="card-body" id="section-point-config">
             <h3 class="sub-title">Main Quest</h3>
-            <p class="hint">Main Quest points apply to Full Time (90 min) scores only — not Extra Time.</p>
-            <div class="pt-grid">
-                <div class="pt-item"><label for="pt-win">WIN</label><input type="number" class="pt-input" id="pt-win" min="0" step="1" value="3"></div>
-                <div class="pt-item"><label for="pt-draw">DRAW</label><input type="number" class="pt-input" id="pt-draw" min="0" step="1" value="1"></div>
-                <div class="pt-item"><label for="pt-loss">LOSS</label><input type="number" class="pt-input" id="pt-loss" min="0" step="1" value="0"></div>
+            <p class="hint" id="main-quest-hint">Main Quest points apply to Full Time (90 min) scores only — not Extra Time. Applies to the selected Group and/or Knockout stage(s).</p>
+            <div class="mq-mode-row">
+                <label class="mq-mode-option">
+                    <input type="radio" name="main-quest-mode" id="mq-mode-fixed" value="fixed" checked>
+                    Fixed points (same W/D/L for all teams)
+                </label>
+                <label class="mq-mode-option">
+                    <input type="radio" name="main-quest-mode" id="mq-mode-fifa" value="fifa">
+                    Points based on FIFA ranking (per team)
+                </label>
+            </div>
+            <div id="main-quest-fixed-points">
+                <div class="pt-grid">
+                    <div class="pt-item"><label for="pt-win">WIN</label><input type="number" class="pt-input" id="pt-win" min="0" step="1" value="3"></div>
+                    <div class="pt-item"><label for="pt-draw">DRAW</label><input type="number" class="pt-input" id="pt-draw" min="0" step="1" value="1"></div>
+                    <div class="pt-item"><label for="pt-loss">LOSS</label><input type="number" class="pt-input" id="pt-loss" min="0" step="1" value="0"></div>
+                </div>
+            </div>
+            <div id="main-quest-fifa-points" class="hidden">
+                <p class="hint">Set W/D/L per team (based on FIFA ranking strength). Weaker teams can carry higher rewards so supporting underdogs stays fair. Add teams in Section 3 first.</p>
+                <div id="main-quest-team-points"></div>
             </div>
             <h3 class="sub-title" style="margin-top:16px">Side Quest</h3>
-            <p class="hint">Side Quests points apply to Full Time (90 min) and Extra Time scores.</p>
+            <p class="hint">Side Quest points apply after awards are resolved. Enable “Share points equally” to split that category’s points among all correct guessers (e.g. 20 pts ÷ 5 people = 4 each). Total Goal awards the closest prediction(s). Score Predict awards exact full-time score hits per match.</p>
             <div class="pt-grid-6">
-                <div class="pt-item"><label for="pt-champion">Champion</label><input type="number" class="pt-input" id="pt-champion" min="0" step="1" value="10"></div>
-                <div class="pt-item"><label for="pt-runnerup">Runner-Up</label><input type="number" class="pt-input" id="pt-runnerup" min="0" step="1" value="5"></div>
-                <div class="pt-item" id="pt-third-wrap"><label for="pt-third">Third Place</label><input type="number" class="pt-input" id="pt-third" min="0" step="1" value="3"></div>
-                <div class="pt-item"><label for="pt-boot">Golden Boot</label><input type="number" class="pt-input" id="pt-boot" min="0" step="1" value="5"></div>
-                <div class="pt-item"><label for="pt-glove">Golden Glove</label><input type="number" class="pt-input" id="pt-glove" min="0" step="1" value="5"></div>
-                <div class="pt-item"><label for="pt-totalgoal">Total Goal</label><input type="number" class="pt-input" id="pt-totalgoal" min="0" step="1" value="5"></div>
+                <div class="pt-item">
+                    <label for="pt-champion">Champion</label>
+                    <input type="number" class="pt-input" id="pt-champion" min="0" step="1" value="10">
+                    <label class="pt-share-row"><input type="checkbox" id="pt-share-champion" checked> Share points equally</label>
+                </div>
+                <div class="pt-item">
+                    <label for="pt-runnerup">Runner-Up</label>
+                    <input type="number" class="pt-input" id="pt-runnerup" min="0" step="1" value="5">
+                    <label class="pt-share-row"><input type="checkbox" id="pt-share-runnerup" checked> Share points equally</label>
+                </div>
+                <div class="pt-item" id="pt-third-wrap">
+                    <label for="pt-third">Third Place</label>
+                    <input type="number" class="pt-input" id="pt-third" min="0" step="1" value="3">
+                    <label class="pt-share-row"><input type="checkbox" id="pt-share-third" checked> Share points equally</label>
+                </div>
+                <div class="pt-item">
+                    <label for="pt-boot">Golden Boot</label>
+                    <input type="number" class="pt-input" id="pt-boot" min="0" step="1" value="5">
+                    <label class="pt-share-row"><input type="checkbox" id="pt-share-boot" checked> Share points equally</label>
+                </div>
+                <div class="pt-item">
+                    <label for="pt-glove">Golden Glove</label>
+                    <input type="number" class="pt-input" id="pt-glove" min="0" step="1" value="5">
+                    <label class="pt-share-row"><input type="checkbox" id="pt-share-glove" checked> Share points equally</label>
+                </div>
+                <div class="pt-item">
+                    <label for="pt-totalgoal">Total Goal</label>
+                    <input type="number" class="pt-input" id="pt-totalgoal" min="0" step="1" value="5">
+                    <label class="pt-share-row"><input type="checkbox" id="pt-share-totalgoal" checked> Share points equally</label>
+                </div>
+                <div class="pt-item">
+                    <label for="pt-scorepredict">Score Predict</label>
+                    <input type="number" class="pt-input" id="pt-scorepredict" min="0" step="1" value="5">
+                    <label class="pt-share-row"><input type="checkbox" id="pt-share-scorepredict" checked> Share points equally</label>
+                </div>
             </div>
             </div>
         </div>
@@ -632,11 +955,10 @@
             </button>
             <div class="card-body" id="section-teams">
             <div id="teams-list"></div>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-team" onclick="addTeam()">+ Match (2 teams)</button>
 
             <div id="schedule-section" class="sub-section hidden">
-                <h3 class="sub-title">Playoff Schedule</h3>
-                <p class="hint">Set kickoff date and time (WIB) for each knockout match. Leave blank if not scheduled yet.</p>
+                <h3 class="sub-title" id="schedule-section-title">Match Schedule</h3>
+                <p class="hint" id="schedule-section-hint">Set kickoff date and time in 24-hour format (WIB) for each match. Leave date blank if not scheduled yet.</p>
                 <div id="schedule-preview"></div>
             </div>
             </div>
@@ -650,6 +972,17 @@
             <div class="card-body" id="section-participants">
             <div id="participants-list"></div>
             <button type="button" class="btn btn-secondary btn-sm" onclick="addParticipant()">+ Participant</button>
+            </div>
+        </div>
+
+        <div class="card card-collapsible is-open" data-section="score-predictions">
+            <button type="button" class="card-toggle" aria-expanded="true" aria-controls="section-score-predictions">
+                <span>5. Score Predictions</span>
+                <span class="card-toggle-icon" aria-hidden="true">▼</span>
+            </button>
+            <div class="card-body" id="section-score-predictions">
+                <p class="hint">Exact FT score predictions per match. Participants earn Score Predict points only when both sides match the final full-time score. Leave blank if not predicted yet. Use ✕ to clear an accidental prediction.</p>
+                <div id="score-predictions-root"></div>
             </div>
         </div>
     </div>
@@ -798,10 +1131,22 @@
                 setStatus('Every participant must have a name.', true);
                 return;
             }
-            const teamCount = payload.teams.length;
-            const validCounts = [2, 4, 8, 16, 32];
-            if (!validCounts.includes(teamCount)) {
-                setStatus('Team count must be 2, 4, 8, 16, or 32 (currently ' + teamCount + ').', true);
+            if (!payload.includeGroupStage && !payload.includeKnockoutStage) {
+                setStatus('Select at least one stage: Group Stage or Knockout Stage.', true);
+                return;
+            }
+            const teamError = ArisanSetupForm.validateTeamsForSave(
+                payload.includeKnockoutStage
+                    ? (payload.knockoutSeeds || payload.teams)
+                    : payload.teams,
+                {
+                    includeGroupStage: payload.includeGroupStage,
+                    includeKnockoutStage: payload.includeKnockoutStage,
+                    groupDefinitions: payload.groupDefinitions,
+                }
+            );
+            if (teamError) {
+                setStatus(teamError, true);
                 return;
             }
 
@@ -819,6 +1164,8 @@
                         timezone: 'Asia/Jakarta',
                     },
                     competitionType: payload.competitionType,
+                    includeGroupStage: payload.includeGroupStage,
+                    includeKnockoutStage: payload.includeKnockoutStage,
                     includeThirdPlace: payload.includeThirdPlace,
                     twoLegKnockout: payload.twoLegKnockout,
                     pointConfig: payload.pointConfig,
@@ -831,6 +1178,9 @@
                     backgroundMusicUrl: payload.backgroundMusicUrl,
                     participants: payload.participants,
                     teams: payload.teams,
+                    knockoutSeeds: payload.knockoutSeeds || [],
+                    groupDefinitions: payload.groupDefinitions || [],
+                    groupFixtures: payload.groupFixtures || [],
                 });
                 const openUrl = ArisanLeagueContext.leagueUrl(communitySlug, leagueSlug);
                 setStatus('Setup saved. Open league: ' + openUrl);

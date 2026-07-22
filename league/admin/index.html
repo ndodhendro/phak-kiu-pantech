@@ -531,7 +531,11 @@
             if (typeof ArisanBracket === 'undefined' || teams.length < 2) return;
             const catalog = ArisanBracket.buildMatchCatalog({
                 teams,
+                groupFixtures: settings.groupFixtures || [],
+                groupDefinitions: settings.groupDefinitions || [],
                 competitionType: settings.competitionType || 'country',
+                includeGroupStage: !!settings.includeGroupStage,
+                includeKnockoutStage: settings.includeKnockoutStage !== false,
                 includeThirdPlace: settings.includeThirdPlace !== false,
                 twoLegKnockout: !!settings.twoLegKnockout,
                 finishedMatches: (config && config.finishedMatches) || [],
@@ -813,7 +817,7 @@
                 const inp = document.createElement('input');
                 inp.type = 'number';
                 inp.min = 0;
-                inp.value = p.goals;
+                inp.value = p.goals != null ? p.goals : '';
                 inp.dataset.idx = idx;
                 inp.className = 'gb-goals';
                 row.appendChild(inp);
@@ -918,16 +922,23 @@
         }
 
         function collectConfig() {
-            const goldenBoot = (config.goldenBoot || []).map((p, idx) => ({
-                ...p,
-                goals: parseInt(document.querySelectorAll('.gb-goals')[idx]?.value || '0', 10) || 0,
-            }));
+            const goldenBoot = (config.goldenBoot || []).map((p, idx) => {
+                const raw = document.querySelectorAll('.gb-goals')[idx]?.value;
+                const goals = raw === '' || raw == null
+                    ? (p.goals != null ? p.goals : 0)
+                    : (parseInt(raw, 10) || 0);
+                return { ...p, goals };
+            });
 
-            const goldenGlove = (config.goldenGlove || []).map((p, idx) => ({
-                ...p,
-                eliminated: document.querySelectorAll('.gg-elim')[idx]?.checked || false,
-                winner: document.querySelectorAll('.gg-winner')[idx]?.checked || false,
-            }));
+            const goldenGlove = (config.goldenGlove || []).map((p, idx) => {
+                const elimEl = document.querySelectorAll('.gg-elim')[idx];
+                const winEl = document.querySelectorAll('.gg-winner')[idx];
+                return {
+                    ...p,
+                    eliminated: elimEl ? elimEl.checked : !!p.eliminated,
+                    winner: winEl ? winEl.checked : !!p.winner,
+                };
+            });
 
             return {
                 lastUpdated: formatLastUpdatedNow(),

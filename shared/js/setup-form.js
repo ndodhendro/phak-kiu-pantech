@@ -3,7 +3,9 @@
  */
 window.ArisanSetupForm = (function () {
     const DEFAULT_POINT_CONFIG = {
+        mainQuestMode: 'fixed',
         mainQuest: { win: 3, draw: 1, loss: 0 },
+        teamPoints: {},
         sideQuest: {
             champion: 10,
             runnerup: 5,
@@ -11,8 +13,59 @@ window.ArisanSetupForm = (function () {
             goldenBoot: 5,
             goldenGlove: 5,
             totalGoal: 5,
+            scorePredict: 5,
+        },
+        sideQuestShare: {
+            champion: true,
+            runnerup: true,
+            third: true,
+            goldenBoot: true,
+            goldenGlove: true,
+            totalGoal: true,
+            scorePredict: true,
         },
     };
+
+    function normalizeTeamPointRow(raw, mainQuestDefaults) {
+        const r = raw && typeof raw === 'object' ? raw : {};
+        const mq = mainQuestDefaults || DEFAULT_POINT_CONFIG.mainQuest;
+        const num = (v, fallback) => {
+            const n = parseInt(v, 10);
+            return Number.isNaN(n) ? fallback : Math.max(0, n);
+        };
+        return {
+            win: num(r.win, mq.win),
+            draw: num(r.draw, mq.draw),
+            loss: num(r.loss, mq.loss),
+        };
+    }
+
+    function normalizeTeamPointsMap(raw, mainQuestDefaults) {
+        const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+        const out = {};
+        Object.keys(src).forEach(name => {
+            const key = String(name || '').trim();
+            if (!key) return;
+            out[key] = normalizeTeamPointRow(src[name], mainQuestDefaults);
+        });
+        return out;
+    }
+
+    function normalizePointConfig(raw) {
+        const pc = raw && typeof raw === 'object' ? raw : {};
+        const mainQuest = Object.assign({}, DEFAULT_POINT_CONFIG.mainQuest, pc.mainQuest || {});
+        return {
+            mainQuestMode: pc.mainQuestMode === 'fifa' ? 'fifa' : 'fixed',
+            mainQuest,
+            teamPoints: normalizeTeamPointsMap(pc.teamPoints, mainQuest),
+            sideQuest: Object.assign({}, DEFAULT_POINT_CONFIG.sideQuest, pc.sideQuest || {}),
+            sideQuestShare: Object.assign(
+                {},
+                DEFAULT_POINT_CONFIG.sideQuestShare,
+                pc.sideQuestShare || {}
+            ),
+        };
+    }
 
     const DEFAULT_PARTICIPANT_COLORS = [
         '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c',
@@ -29,8 +82,31 @@ window.ArisanSetupForm = (function () {
                 goldenBoot: { player_name: '', img: '', team: '' },
                 goldenGlove: { player_name: '', img: '', team: '' },
                 totalGoal: null,
+                scorePredict: {},
             },
         };
+    }
+
+    function ensureScorePredictPicks(p) {
+        if (!p.picks) p.picks = defaultPicks(form.includeThirdPlace);
+        if (!p.picks.sideQuest) p.picks.sideQuest = defaultPicks(form.includeThirdPlace).sideQuest;
+        if (!p.picks.sideQuest.scorePredict || typeof p.picks.sideQuest.scorePredict !== 'object') {
+            p.picks.sideQuest.scorePredict = {};
+        }
+        return p.picks.sideQuest.scorePredict;
+    }
+
+    function normalizeScorePredictEntry(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const parse = (v) => {
+            if (v === '' || v == null) return null;
+            const n = parseInt(v, 10);
+            return Number.isNaN(n) ? null : Math.max(0, n);
+        };
+        const a = parse(raw.a);
+        const b = parse(raw.b);
+        if (a == null || b == null) return null;
+        return { a, b };
     }
 
     function emptyParticipant(index) {
@@ -44,10 +120,14 @@ window.ArisanSetupForm = (function () {
 
     let form = {
         competitionType: 'country',
+        includeGroupStage: false,
+        includeKnockoutStage: true,
         includeThirdPlace: true,
         twoLegKnockout: false,
-        pointConfig: JSON.parse(JSON.stringify(DEFAULT_POINT_CONFIG)),
+        pointConfig: normalizePointConfig(null),
         teams: [],
+        groupDefinitions: [],
+        groupFixtures: [],
         participants: [],
         matchSchedule: {},
         scheduleStartDate: '',
@@ -58,6 +138,11 @@ window.ArisanSetupForm = (function () {
         backgroundMusicUrl: '',
     };
     const participantOpenState = {};
+    const stageOpenState = { group: true, knockout: true };
+
+    function isStageOpen(key) {
+        return stageOpenState[key] !== false;
+    }
 
     function captureParticipantOpenState() {
         document.querySelectorAll('.participant-row').forEach(row => {
@@ -98,18 +183,193 @@ window.ArisanSetupForm = (function () {
         });
     }
 
-    const VALID_TEAM_COUNTS = [2, 4, 8, 16, 32];
     const DEFAULT_CLUB_FLAG = 'https://img.icons8.com/ios-filled/50/6b7280/shield.png';
     const DEFAULT_PLAYER_SILHOUETTE = 'https://img.icons8.com/ios-filled/50/6b7280/user-male-circle.png';
     const DEFAULT_LEAGUE_ICON = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT41kl1nnX-tqBQiGHVikOIDViXDZXRRulNdKFAK6c1eQ&s=10';
     const DEFAULT_TROPHY_IMG = 'https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp';
     const DEFAULT_BALL_IMG = 'https://png.pngtree.com/png-vector/20260610/ourmid/pngtree-vibrant-trionda-soccer-football-official-fifa-world-cup-2026-design-png-image_19512258.webp';
 
+    function isValidTeamCount(count) {
+        return Number.isInteger(count) && count >= 2 && count % 2 === 0;
+    }
+
+    function getTeamCountHint() {
+        if (form.includeGroupStage) {
+            const defs = form.groupDefinitions || [];
+            const unique = uniqueTeamsFromGroups(defs).length;
+            const fixtures = (typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions)
+                ? ArisanBracket.fixturesFromGroupDefinitions(defs.map(g => ({
+                    label: g.label,
+                    teams: (g.teams || []).map(t => t.name).filter(Boolean),
+                })))
+                : [];
+            return 'Add groups and member countries/clubs. Matches auto-generate as round-robin '
+                + '(every team plays every other team in its group). Currently '
+                + defs.length + ' group(s), ' + unique + ' teams, ' + fixtures.length + ' matches.';
+        }
+        const filled = form.teams.filter(t => normalizeSeedName(t.name)).length;
+        const slots = form.teams.length;
+        return 'Add knockout bracket pairs (+ Match). TBD allowed. Currently '
+            + slots + ' slot(s), ' + filled + ' named.';
+    }
+
     function isTeamsSectionComplete() {
-        const filled = form.teams.filter(t => (t.name || '').trim());
-        return VALID_TEAM_COUNTS.includes(filled.length) &&
-            filled.length === form.teams.length &&
-            form.teams.every(t => (t.name || '').trim());
+        if (form.includeGroupStage) {
+            if (validateGroupDefinitionsForSave(form.groupDefinitions)) return false;
+            if (!form.includeKnockoutStage) return true;
+        }
+        if (!form.includeKnockoutStage) return false;
+        if (!isValidTeamCount(form.teams.length)) return false;
+        // Knockout slots may be TBD (empty) — structure only needs an even slot count.
+        return true;
+    }
+
+    function normalizeSeedName(name) {
+        const n = String(name || '').trim();
+        if (!n || n.toUpperCase() === 'TBD') return '';
+        return n;
+    }
+
+    function validateGroupDefinitionsForSave(defs) {
+        const list = defs || [];
+        if (!list.length) return 'Add at least 1 group.';
+        const globalSeen = new Set();
+        for (let gi = 0; gi < list.length; gi++) {
+            const g = list[gi];
+            const label = (g.label || String.fromCharCode(65 + gi)).trim();
+            const names = (g.teams || []).map(t => {
+                if (typeof t === 'string') return t.trim();
+                return String((t && t.name) || '').trim();
+            }).filter(Boolean);
+            if (names.length < 2) {
+                return 'Group ' + label + ' needs at least 2 teams.';
+            }
+            const local = new Set();
+            for (let i = 0; i < names.length; i++) {
+                const key = names[i].toLowerCase();
+                if (local.has(key)) return 'Duplicate team in Group ' + label + ': ' + names[i];
+                if (globalSeen.has(key)) return 'Team appears in more than one group: ' + names[i];
+                local.add(key);
+                globalSeen.add(key);
+            }
+        }
+        return null;
+    }
+
+    function collectTakenGroupCountries(exceptGidx, exceptTidx) {
+        const taken = new Set();
+        (form.groupDefinitions || []).forEach((g, gi) => {
+            (g.teams || []).forEach((t, ti) => {
+                if (gi === exceptGidx && ti === exceptTidx) return;
+                const name = typeof t === 'string' ? t.trim() : String((t && t.name) || '').trim();
+                if (name) taken.add(name.toLowerCase());
+            });
+        });
+        return taken;
+    }
+
+    function validateTeamsForSave(teams, opts) {
+        const options = opts || {};
+        if (options.includeGroupStage) {
+            const gErr = validateGroupDefinitionsForSave(options.groupDefinitions || form.groupDefinitions);
+            if (gErr) return gErr;
+            if (!options.includeKnockoutStage) return null;
+        }
+
+        if (!options.includeKnockoutStage) return null;
+
+        const list = (teams || []).map(t => ({
+            name: normalizeSeedName(t.name),
+            flag: t.flag || '',
+        }));
+        if (!list.length) return 'At least 1 knockout match (2 slots) is required.';
+        if (list.length % 2 !== 0) return 'Knockout team count must be even (add teams in pairs).';
+        if (list.length < 2) return 'At least 1 knockout match (2 slots) is required.';
+
+        const named = list.filter(t => t.name);
+        const seen = new Set();
+        const dupes = [];
+        named.forEach(t => {
+            const key = t.name.toLowerCase();
+            if (seen.has(key)) {
+                if (!dupes.includes(t.name)) dupes.push(t.name);
+            } else {
+                seen.add(key);
+            }
+        });
+        if (dupes.length) {
+            return 'Duplicate team names are not allowed in knockout: ' + dupes.join(', ') + '.';
+        }
+        return null;
+    }
+
+    function uniqueTeamsFromGroups(defs) {
+        const out = [];
+        const seen = new Set();
+        (defs || []).forEach(g => {
+            (g.teams || []).forEach(t => {
+                const name = (t.name || '').trim();
+                if (!name) return;
+                const key = name.toLowerCase();
+                if (seen.has(key)) return;
+                seen.add(key);
+                out.push({ name, flag: t.flag || '' });
+            });
+        });
+        return out;
+    }
+
+    function emptyGroup(index) {
+        return {
+            label: String.fromCharCode(65 + (index || 0)),
+            teams: [emptyTeam(), emptyTeam(), emptyTeam(), emptyTeam()],
+        };
+    }
+
+    function ensureInitialGroups() {
+        if (!form.groupDefinitions.length) {
+            form.groupDefinitions.push(emptyGroup(0), emptyGroup(1));
+        }
+    }
+
+    function fixturesFromTeamPairs(teams) {
+        const fixtures = [];
+        const list = teams || [];
+        for (let i = 0; i < list.length; i += 2) {
+            const a = ((list[i] && list[i].name) || '').trim();
+            const b = ((list[i + 1] && list[i + 1].name) || '').trim();
+            if (!a && !b) continue;
+            fixtures.push({ a, b });
+        }
+        return fixtures;
+    }
+
+    function teamPairsFromFixtures(fixtures, flagByName) {
+        const flags = flagByName || {};
+        const pairs = [];
+        (fixtures || []).forEach(f => {
+            const a = String((f && f.a) || '').trim();
+            const b = String((f && f.b) || '').trim();
+            pairs.push(
+                { name: a, flag: flags[a] || '' },
+                { name: b, flag: flags[b] || '' }
+            );
+        });
+        return pairs;
+    }
+
+    function uniqueTeamsFromPairs(teams) {
+        const out = [];
+        const seen = new Set();
+        (teams || []).forEach(t => {
+            const name = (t.name || '').trim();
+            if (!name) return;
+            const key = name.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            out.push({ name, flag: t.flag || '' });
+        });
+        return out;
     }
 
     function getDefaultScheduleKickoff() {
@@ -132,14 +392,41 @@ window.ArisanSetupForm = (function () {
         juli: 6, agustus: 7, oktober: 9, desember: 11,
     };
 
+    function definitionsForCatalog() {
+        return (form.groupDefinitions || []).map((g, i) => ({
+            label: (g.label || String.fromCharCode(65 + i)).trim(),
+            teams: (g.teams || []).map(t => (t.name || '').trim()).filter(Boolean),
+        }));
+    }
+
     function getScheduleCatalog() {
         if (typeof ArisanBracket === 'undefined' || !isTeamsSectionComplete()) return [];
+        const fromGroups = form.includeGroupStage ? uniqueTeamsFromGroups(form.groupDefinitions) : [];
+        const knockoutTeams = form.includeKnockoutStage
+            ? form.teams.map(t => ({
+                name: normalizeSeedName(t.name),
+                flag: normalizeSeedName(t.name) ? (t.flag || '') : '',
+            }))
+            : [];
+        const byKey = new Map();
+        [...fromGroups, ...knockoutTeams.filter(t => t.name)].forEach(t => {
+            const key = t.name.toLowerCase();
+            if (!byKey.has(key)) byKey.set(key, t);
+        });
+        const catalogTeams = form.includeKnockoutStage && knockoutTeams.length
+            ? knockoutTeams
+            : Array.from(byKey.values());
+        const defs = form.includeGroupStage ? definitionsForCatalog() : [];
+        const groupFixtures = (defs.length && ArisanBracket.fixturesFromGroupDefinitions)
+            ? ArisanBracket.fixturesFromGroupDefinitions(defs)
+            : (form.groupFixtures || []);
         const catalog = ArisanBracket.buildMatchCatalog({
-            teams: form.teams.filter(t => t.name && t.name.trim()).map(t => ({
-                name: t.name.trim(),
-                flag: t.flag || '',
-            })),
+            teams: catalogTeams,
+            groupDefinitions: defs,
+            groupFixtures,
             competitionType: form.competitionType,
+            includeGroupStage: form.includeGroupStage,
+            includeKnockoutStage: form.includeKnockoutStage,
             includeThirdPlace: form.includeThirdPlace,
             twoLegKnockout: form.twoLegKnockout,
         });
@@ -148,12 +435,21 @@ window.ArisanSetupForm = (function () {
 
     /** Match 1, Match 2, … by round then index (ascending). */
     function sortScheduleCatalogAscending(catalog) {
-        const roundOrder = { r32: 1, r16: 2, qf: 3, sf: 4, third: 5, final: 6 };
+        const roundOrder = { group: 0, r32: 1, r16: 2, qf: 3, sf: 4, third: 5, final: 6 };
         function parts(id) {
             const raw = String(id || '');
             const legM = raw.match(/^(.*)-leg([12])$/);
             const base = legM ? legM[1] : raw;
             const leg = legM ? parseInt(legM[2], 10) : 0;
+            const koM = base.match(/^(ko-\d+)-(\d+)$/);
+            if (koM) {
+                return {
+                    prefix: koM[1].toLowerCase(),
+                    num: parseInt(koM[2], 10),
+                    leg,
+                    koRound: parseInt(koM[1].slice(3), 10),
+                };
+            }
             // Prefixes may include digits (r32, r16) — do not stop at first letter run.
             const m = base.match(/^([a-z]+\d*)-(\d+)$/i);
             return {
@@ -165,8 +461,11 @@ window.ArisanSetupForm = (function () {
         return (catalog || []).slice().sort((a, b) => {
             const pa = parts(a.id);
             const pb = parts(b.id);
-            const ra = roundOrder[pa.prefix] || 99;
-            const rb = roundOrder[pb.prefix] || 99;
+            if (pa.koRound != null && pb.koRound != null && pa.koRound !== pb.koRound) {
+                return pa.koRound - pb.koRound;
+            }
+            const ra = roundOrder[pa.prefix] != null ? roundOrder[pa.prefix] : (pa.prefix.startsWith('ko-') ? 50 + (pa.koRound || 0) : 99);
+            const rb = roundOrder[pb.prefix] != null ? roundOrder[pb.prefix] : (pb.prefix.startsWith('ko-') ? 50 + (pb.koRound || 0) : 99);
             if (ra !== rb) return ra - rb;
             if (pa.num !== pb.num) return pa.num - pb.num;
             return pa.leg - pb.leg;
@@ -241,13 +540,53 @@ window.ArisanSetupForm = (function () {
             String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0') + ' WIB';
     }
 
+    function parseHhMm(timeStr) {
+        const m = String(timeStr || '').match(/^(\d{1,2}):(\d{2})/);
+        if (!m) return { hour: '19', minute: '00' };
+        return {
+            hour: String(Math.min(23, Math.max(0, parseInt(m[1], 10)))).padStart(2, '0'),
+            minute: String(Math.min(59, Math.max(0, parseInt(m[2], 10)))).padStart(2, '0'),
+        };
+    }
+
+    function buildTimeSelectOptions(max, selected) {
+        let html = '';
+        for (let i = 0; i <= max; i++) {
+            const v = String(i).padStart(2, '0');
+            html += '<option value="' + v + '"' + (v === selected ? ' selected' : '') + '>' + v + '</option>';
+        }
+        return html;
+    }
+
+    function scheduleTimeInputsHtml(timeValue) {
+        const parts = parseHhMm(timeValue || getDefaultScheduleKickoff());
+        return '<div class="schedule-time-24h" title="Kickoff WIB (24-hour)">' +
+            '<select data-schedule-hour aria-label="Hour (24h)">' +
+            buildTimeSelectOptions(23, parts.hour) +
+            '</select>' +
+            '<span class="schedule-time-sep" aria-hidden="true">:</span>' +
+            '<select data-schedule-minute aria-label="Minute">' +
+            buildTimeSelectOptions(59, parts.minute) +
+            '</select>' +
+            '</div>';
+    }
+
+    function getScheduleTimeFromRow(row) {
+        const hourEl = row.querySelector('[data-schedule-hour]');
+        const minuteEl = row.querySelector('[data-schedule-minute]');
+        if (hourEl && minuteEl) {
+            return hourEl.value + ':' + minuteEl.value;
+        }
+        const timeEl = row.querySelector('[data-schedule-time]');
+        return (timeEl && timeEl.value ? timeEl.value.trim() : '') || getDefaultScheduleKickoff();
+    }
+
     function syncScheduleFromRow(row) {
         const id = row && row.dataset.matchId;
         if (!id) return;
         const dateEl = row.querySelector('[data-schedule-date]');
-        const timeEl = row.querySelector('[data-schedule-time]');
         const dateVal = dateEl && dateEl.value ? dateEl.value.trim() : '';
-        const timeVal = (timeEl && timeEl.value ? timeEl.value.trim() : '') || getDefaultScheduleKickoff();
+        const timeVal = getScheduleTimeFromRow(row);
         const text = dateVal ? partsToScheduleText(dateVal, timeVal) : '';
         if (!form.matchSchedule) form.matchSchedule = {};
         if (text) form.matchSchedule[id] = text;
@@ -274,8 +613,23 @@ window.ArisanSetupForm = (function () {
         pruneMatchSchedule();
         const catalog = getScheduleCatalog();
         if (!catalog.length) {
-            preview.innerHTML = '<p class="hint">Add teams to see playoff matches.</p>';
+            preview.innerHTML = '<p class="hint">Add teams to see match schedule.</p>';
             return;
+        }
+
+        const scheduleTitle = document.getElementById('schedule-section-title');
+        const scheduleHint = document.getElementById('schedule-section-hint');
+        if (scheduleTitle) {
+            const parts = [];
+            if (form.includeGroupStage) parts.push('Group Stage');
+            if (form.includeKnockoutStage) parts.push('Knockout');
+            scheduleTitle.textContent = parts.join(' & ') + ' Schedule';
+        }
+        if (scheduleHint) {
+            const stageLabel = form.includeGroupStage && form.includeKnockoutStage
+                ? 'group and knockout matches'
+                : form.includeGroupStage ? 'group stage matches' : 'knockout matches';
+            scheduleHint.textContent = 'Set kickoff date and time in 24-hour format (WIB) for each ' + stageLabel + '. Leave date blank if not scheduled yet.';
         }
 
         preview.innerHTML = '<ul class="schedule-preview-list">' +
@@ -286,14 +640,14 @@ window.ArisanSetupForm = (function () {
                     '<strong>' + esc(entry.label) + '</strong>' +
                     '<div class="schedule-edit-inputs">' +
                     '<input type="date" data-schedule-date value="' + esc(parts.date) + '" aria-label="Date">' +
-                    '<input type="time" data-schedule-time value="' + esc(timeValue) + '" aria-label="Kickoff WIB">' +
+                    scheduleTimeInputsHtml(timeValue) +
                     '</div></li>';
             }).join('') +
             '</ul>';
 
         preview.querySelectorAll('.schedule-edit-row').forEach(row => {
             const onChange = () => syncScheduleFromRow(row);
-            row.querySelectorAll('input').forEach(inp => {
+            row.querySelectorAll('input, select').forEach(inp => {
                 inp.addEventListener('change', onChange);
                 inp.addEventListener('input', onChange);
             });
@@ -448,7 +802,26 @@ window.ArisanSetupForm = (function () {
     }
 
     function teamNames() {
-        return form.teams.map(t => t.name).filter(Boolean);
+        const names = [];
+        const seen = new Set();
+        function push(n) {
+            const name = (n || '').trim();
+            if (!name) return;
+            const key = name.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            names.push(name);
+        }
+        if (form.includeGroupStage) {
+            uniqueTeamsFromGroups(form.groupDefinitions).forEach(t => push(t.name));
+        }
+        if (form.includeKnockoutStage) {
+            form.teams.forEach(t => push(t.name));
+        }
+        if (!form.includeGroupStage && !form.includeKnockoutStage) {
+            form.teams.forEach(t => push(t.name));
+        }
+        return names;
     }
 
     function collectSelectedPotTeams(participantIndex) {
@@ -486,13 +859,41 @@ window.ArisanSetupForm = (function () {
         return html;
     }
 
-    function countryOptions(selected) {
+    function countryOptions(selected, takenSet, opts) {
+        const options = opts || {};
         const list = window.ArisanCountries || [];
-        let html = '<option value="">— select country —</option>';
+        const taken = takenSet || new Set();
+        const current = normalizeSeedName(selected);
+        const currentKey = current.toLowerCase();
+        let html = options.allowTbd
+            ? '<option value=""' + (!current ? ' selected' : '') + '>TBD</option>'
+            : '<option value="">— select country —</option>';
         list.forEach(c => {
+            const key = String(c.name || '').toLowerCase();
+            if (key && key !== currentKey && taken.has(key)) return;
             html += '<option value="' + esc(c.name) + '"' + (c.name === selected ? ' selected' : '') + '>' + esc(c.name) + '</option>';
         });
         return html;
+    }
+
+    /** Update group country <select> options in place (no DOM rebuild → keep focus). */
+    function refreshGroupCountrySelectOptions(activeSelect) {
+        document.querySelectorAll('.team-pair-slot[data-gidx] select[data-f="name"]').forEach(sel => {
+            const slot = sel.closest('.team-pair-slot');
+            if (!slot) return;
+            const gidx = +slot.dataset.gidx;
+            const tidx = +slot.dataset.tidx;
+            const team = getTeamRefFromSlot(slot);
+            const selected = (team && team.name) || sel.value || '';
+            const taken = collectTakenGroupCountries(gidx, tidx);
+            const html = countryOptions(selected, taken);
+            if (sel === activeSelect) {
+                // Keep the open/focused select intact; only sync value if needed.
+                if (sel.value !== selected) sel.value = selected;
+                return;
+            }
+            sel.innerHTML = html;
+        });
     }
 
     function syncTeamFlagFromCountry(team) {
@@ -500,13 +901,28 @@ window.ArisanSetupForm = (function () {
         team.flag = window.ArisanCountries ? ArisanCountries.getFlagCode(team.name) : '';
     }
 
+    function syncStageOptionVisibility() {
+        const knockoutOpts = document.getElementById('knockout-stage-options');
+        if (knockoutOpts) knockoutOpts.classList.toggle('hidden', !form.includeKnockoutStage);
+    }
+
+    function syncTeamsSectionUi() {
+        // Per-stage hints are rendered inside Group / Knockout panels.
+    }
+
     function updateSectionLabels() {
         const isCountry = form.competitionType === 'country';
         const title = document.getElementById('teams-section-title');
-        const addBtn = document.getElementById('btn-add-team');
         const typeHint = document.getElementById('competition-type-hint');
-        if (title) title.textContent = isCountry ? '3. Countries' : '3. Clubs';
-        if (addBtn) addBtn.textContent = isCountry ? '+ Match (2 countries)' : '+ Match (2 clubs)';
+        if (title) {
+            if (form.includeGroupStage && !form.includeKnockoutStage) {
+                title.textContent = isCountry ? '3. Groups (countries)' : '3. Groups (clubs)';
+            } else if (form.includeGroupStage && form.includeKnockoutStage) {
+                title.textContent = isCountry ? '3. Groups & Knockout' : '3. Groups & Knockout (Clubs)';
+            } else {
+                title.textContent = isCountry ? '3. Countries' : '3. Clubs';
+            }
+        }
         if (typeHint) {
             typeHint.textContent = isCountry
                 ? 'This league uses national teams. Country flags are mapped automatically.'
@@ -518,7 +934,17 @@ window.ArisanSetupForm = (function () {
         const pc = document.getElementById('count-participants');
         const tc = document.getElementById('count-teams');
         if (pc) pc.textContent = form.participants.length;
-        if (tc) tc.textContent = form.teams.length;
+        let teamCount = 0;
+        if (form.includeGroupStage) teamCount += uniqueTeamsFromGroups(form.groupDefinitions).length;
+        if (form.includeKnockoutStage) {
+            teamCount = form.includeGroupStage
+                ? teamNames().length
+                : form.teams.filter(t => (t.name || '').trim()).length;
+        } else if (!form.includeGroupStage) {
+            teamCount = form.teams.length;
+        }
+        if (tc) tc.textContent = teamCount;
+        syncTeamsSectionUi();
     }
 
     function syncThirdPlacePointConfig() {
@@ -532,12 +958,99 @@ window.ArisanSetupForm = (function () {
         if (wrap) wrap.classList.toggle('hidden', !form.includeThirdPlace);
     }
 
+    function syncMainQuestModeUi() {
+        const mode = form.pointConfig.mainQuestMode === 'fifa' ? 'fifa' : 'fixed';
+        form.pointConfig.mainQuestMode = mode;
+        const fixedEl = document.getElementById('main-quest-fixed-points');
+        const fifaEl = document.getElementById('main-quest-fifa-points');
+        const fixedRadio = document.getElementById('mq-mode-fixed');
+        const fifaRadio = document.getElementById('mq-mode-fifa');
+        if (fixedRadio) fixedRadio.checked = mode === 'fixed';
+        if (fifaRadio) fifaRadio.checked = mode === 'fifa';
+        if (fixedEl) fixedEl.classList.toggle('hidden', mode !== 'fixed');
+        if (fifaEl) fifaEl.classList.toggle('hidden', mode !== 'fifa');
+    }
+
+    function collectTeamPointsFromDom() {
+        const root = document.getElementById('main-quest-team-points');
+        if (!root) return;
+        if (!form.pointConfig.teamPoints) form.pointConfig.teamPoints = {};
+        root.querySelectorAll('tr[data-team]').forEach(row => {
+            const name = row.dataset.team;
+            if (!name) return;
+            const num = (sel) => {
+                const el = row.querySelector(sel);
+                const v = el ? parseInt(el.value, 10) : NaN;
+                return Number.isNaN(v) ? 0 : Math.max(0, v);
+            };
+            form.pointConfig.teamPoints[name] = {
+                win: num('[data-tp="win"]'),
+                draw: num('[data-tp="draw"]'),
+                loss: num('[data-tp="loss"]'),
+            };
+        });
+    }
+
+    function syncTeamPointsWithTeamList() {
+        const mq = form.pointConfig.mainQuest || DEFAULT_POINT_CONFIG.mainQuest;
+        const prev = form.pointConfig.teamPoints || {};
+        const next = {};
+        teamNames().forEach(name => {
+            next[name] = normalizeTeamPointRow(prev[name], mq);
+        });
+        form.pointConfig.teamPoints = next;
+    }
+
+    function renderMainQuestTeamPoints() {
+        const root = document.getElementById('main-quest-team-points');
+        if (!root) return;
+
+        collectTeamPointsFromDom();
+        syncTeamPointsWithTeamList();
+
+        const names = teamNames();
+        if (!names.length) {
+            root.innerHTML = '<p class="hint">Add teams in Section 3 to configure per-team points.</p>';
+            return;
+        }
+
+        const rows = names.map(name => ({
+            name,
+            ...(form.pointConfig.teamPoints[name] || normalizeTeamPointRow(null, form.pointConfig.mainQuest)),
+        }));
+        rows.sort((a, b) => a.name.localeCompare(b.name));
+
+        root.innerHTML =
+            '<div class="mq-team-points-wrap"><table class="mq-team-points-table">' +
+            '<thead><tr>' +
+            '<th>Team</th><th>W</th><th>D</th><th>L</th>' +
+            '</tr></thead><tbody>' +
+            rows.map(row =>
+                '<tr data-team="' + esc(row.name) + '">' +
+                '<td class="mq-team-name">' + esc(row.name) + '</td>' +
+                '<td><input type="number" min="0" step="1" data-tp="win" value="' + esc(String(row.win)) + '" aria-label="Win points for ' + esc(row.name) + '"></td>' +
+                '<td><input type="number" min="0" step="1" data-tp="draw" value="' + esc(String(row.draw)) + '" aria-label="Draw points for ' + esc(row.name) + '"></td>' +
+                '<td><input type="number" min="0" step="1" data-tp="loss" value="' + esc(String(row.loss)) + '" aria-label="Loss points for ' + esc(row.name) + '"></td>' +
+                '</tr>'
+            ).join('') +
+            '</tbody></table></div>';
+
+        root.querySelectorAll('input[data-tp]').forEach(inp => {
+            inp.addEventListener('change', () => collectTeamPointsFromDom());
+            inp.addEventListener('input', () => collectTeamPointsFromDom());
+        });
+    }
+
     function renderPointConfig() {
         syncThirdPlacePointConfig();
-        const pc = form.pointConfig;
+        const pc = form.pointConfig = normalizePointConfig(form.pointConfig);
         const set = (id, val) => {
             const el = document.getElementById(id);
             if (el) el.value = val;
+        };
+        const setShare = (id, checked) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = !!checked;
         };
         set('pt-win', pc.mainQuest.win);
         set('pt-draw', pc.mainQuest.draw);
@@ -548,6 +1061,16 @@ window.ArisanSetupForm = (function () {
         set('pt-boot', pc.sideQuest.goldenBoot);
         set('pt-glove', pc.sideQuest.goldenGlove);
         set('pt-totalgoal', pc.sideQuest.totalGoal);
+        set('pt-scorepredict', pc.sideQuest.scorePredict);
+        setShare('pt-share-champion', pc.sideQuestShare.champion);
+        setShare('pt-share-runnerup', pc.sideQuestShare.runnerup);
+        setShare('pt-share-third', pc.sideQuestShare.third);
+        setShare('pt-share-boot', pc.sideQuestShare.goldenBoot);
+        setShare('pt-share-glove', pc.sideQuestShare.goldenGlove);
+        setShare('pt-share-totalgoal', pc.sideQuestShare.totalGoal);
+        setShare('pt-share-scorepredict', pc.sideQuestShare.scorePredict);
+        syncMainQuestModeUi();
+        renderMainQuestTeamPoints();
     }
 
     function bindPointConfig() {
@@ -559,6 +1082,29 @@ window.ArisanSetupForm = (function () {
                 form.pointConfig[section][key] = Number.isNaN(v) ? 0 : v;
             });
         };
+        const bindShare = (id, key) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', () => {
+                if (!form.pointConfig.sideQuestShare) {
+                    form.pointConfig.sideQuestShare = Object.assign(
+                        {},
+                        DEFAULT_POINT_CONFIG.sideQuestShare
+                    );
+                }
+                form.pointConfig.sideQuestShare[key] = !!el.checked;
+            });
+        };
+        const bindMode = (id, mode) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', () => {
+                if (!el.checked) return;
+                form.pointConfig.mainQuestMode = mode;
+                syncMainQuestModeUi();
+                if (mode === 'fifa') renderMainQuestTeamPoints();
+            });
+        };
         bind('pt-win', 'mainQuest', 'win');
         bind('pt-draw', 'mainQuest', 'draw');
         bind('pt-loss', 'mainQuest', 'loss');
@@ -568,6 +1114,16 @@ window.ArisanSetupForm = (function () {
         bind('pt-boot', 'sideQuest', 'goldenBoot');
         bind('pt-glove', 'sideQuest', 'goldenGlove');
         bind('pt-totalgoal', 'sideQuest', 'totalGoal');
+        bind('pt-scorepredict', 'sideQuest', 'scorePredict');
+        bindShare('pt-share-champion', 'champion');
+        bindShare('pt-share-runnerup', 'runnerup');
+        bindShare('pt-share-third', 'third');
+        bindShare('pt-share-boot', 'goldenBoot');
+        bindShare('pt-share-glove', 'goldenGlove');
+        bindShare('pt-share-totalgoal', 'totalGoal');
+        bindShare('pt-share-scorepredict', 'scorePredict');
+        bindMode('mq-mode-fixed', 'fixed');
+        bindMode('mq-mode-fifa', 'fifa');
     }
 
     function setLeagueTitleLookupStatus(state, message) {
@@ -969,6 +1525,8 @@ window.ArisanSetupForm = (function () {
         ensureBgMusicUrlField();
         bindLeagueTitleLookup();
         const typeEl = document.getElementById('competition-type');
+        const groupEl = document.getElementById('include-group-stage');
+        const knockoutEl = document.getElementById('include-knockout-stage');
         const thirdEl = document.getElementById('include-third-place');
         const twoLegEl = document.getElementById('two-leg-knockout');
         const iconInp = document.getElementById('league-icon-url');
@@ -976,6 +1534,8 @@ window.ArisanSetupForm = (function () {
         const ballInp = document.getElementById('league-ball-url');
         const musicInp = document.getElementById('league-bg-music-url');
         if (typeEl) typeEl.value = form.competitionType;
+        if (groupEl) groupEl.checked = form.includeGroupStage;
+        if (knockoutEl) knockoutEl.checked = form.includeKnockoutStage;
         if (thirdEl) thirdEl.checked = form.includeThirdPlace;
         if (twoLegEl) twoLegEl.checked = form.twoLegKnockout;
         if (iconInp && iconInp.value !== (form.iconImageUrl || '')) {
@@ -994,20 +1554,45 @@ window.ArisanSetupForm = (function () {
             musicInp.value = form.backgroundMusicUrl || '';
         }
         updateSectionLabels();
+        syncStageOptionVisibility();
         renderPointConfig();
     }
 
-    function renderTeamSlotHtml(t, i, isCountry, slotLabel) {
+    function renderTeamSlotHtml(t, slotKey, isCountry, slotLabel, opts) {
+        const options = opts || {};
+        const allowTbd = !!options.allowTbd;
         let nameField;
         if (isCountry) {
+            const taken = slotKey.kind === 'group'
+                ? collectTakenGroupCountries(slotKey.gidx, slotKey.tidx)
+                : new Set();
             nameField = labeledPreviewField(
-                'Country name',
-                '<select data-f="name" data-preview="country-flag">' + countryOptions(t.name) + '</select>',
+                allowTbd ? 'Country name (or TBD)' : 'Country name',
+                '<select data-f="name" data-preview="country-flag">' +
+                    countryOptions(t.name, taken, { allowTbd }) +
+                '</select>',
                 'country-flag',
                 t.name,
                 t.name,
                 'flag'
             );
+        } else if (allowTbd) {
+            const isTbd = !normalizeSeedName(t.name);
+            nameField =
+                '<div class="club-name-lookup">' +
+                '<label>Club name (or TBD)</label>' +
+                '<select data-f="tbd-toggle" class="club-tbd-toggle">' +
+                '<option value="tbd"' + (isTbd ? ' selected' : '') + '>TBD</option>' +
+                '<option value="club"' + (!isTbd ? ' selected' : '') + '>Choose club…</option>' +
+                '</select>' +
+                '<div class="club-tbd-fields' + (isTbd ? ' hidden' : '') + '">' +
+                '<div class="player-autocomplete-input-wrap">' +
+                '<input type="text" data-f="name" data-club-lookup="1" value="' + esc(isTbd ? '' : t.name) +
+                '" placeholder="Start typing club name…" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list">' +
+                '<div class="player-autocomplete-list hidden" role="listbox"></div>' +
+                '</div>' +
+                '<p class="player-lookup-status hint" aria-live="polite"></p>' +
+                '</div></div>';
         } else {
             nameField =
                 '<div class="club-name-lookup">' +
@@ -1020,7 +1605,7 @@ window.ArisanSetupForm = (function () {
                 '</div>';
         }
 
-        const flagField = isCountry ? '' :
+        const flagField = isCountry || (allowTbd && !normalizeSeedName(t.name)) ? '' :
             labeledPreviewField(
                 'Club\'s flag (image URL)',
                 '<input type="text" data-f="flag" data-preview="flag-url" value="' + esc(t.flag) + '" placeholder="https://...">',
@@ -1030,10 +1615,226 @@ window.ArisanSetupForm = (function () {
                 'flag'
             );
 
-        return '<div class="team-pair-slot" data-idx="' + i + '">' +
+        const dataAttrs = slotKey.kind === 'group'
+            ? ' data-gidx="' + slotKey.gidx + '" data-tidx="' + slotKey.tidx + '"'
+            : ' data-idx="' + slotKey.idx + '"';
+
+        const removeBtn = options.showRemove
+            ? '<button type="button" class="btn btn-danger btn-sm group-remove-team" data-action="remove-group-team">Remove</button>'
+            : '';
+
+        return '<div class="team-pair-slot"' + dataAttrs + '>' +
+            '<div class="team-pair-slot-head">' +
             '<label class="team-pair-slot-label">' + esc(slotLabel) + '</label>' +
+            removeBtn +
+            '</div>' +
             nameField + flagField +
             '</div>';
+    }
+
+    function getTeamRefFromSlot(slot) {
+        if (!slot) return null;
+        if (slot.dataset.gidx != null) {
+            const g = form.groupDefinitions[+slot.dataset.gidx];
+            return g && g.teams ? g.teams[+slot.dataset.tidx] : null;
+        }
+        if (slot.dataset.idx != null) {
+            return form.teams[+slot.dataset.idx] || null;
+        }
+        return null;
+    }
+
+    function stagePanelShell(key, title, bodyHtml) {
+        const open = isStageOpen(key);
+        return '<div class="stage-panel' + (open ? ' is-open' : '') + '" data-stage="' + key + '">' +
+            '<button type="button" class="stage-panel-toggle" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+            '<span class="stage-panel-title">' + esc(title) + '</span>' +
+            '<span class="stage-panel-icon" aria-hidden="true">▼</span>' +
+            '</button>' +
+            '<div class="stage-panel-body">' + bodyHtml + '</div>' +
+            '</div>';
+    }
+
+    function getGroupStageHint() {
+        const defs = form.groupDefinitions || [];
+        const unique = uniqueTeamsFromGroups(defs).length;
+        const fixtures = (typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions)
+            ? ArisanBracket.fixturesFromGroupDefinitions(defs.map(g => ({
+                label: g.label,
+                teams: (g.teams || []).map(t => t.name).filter(Boolean),
+            })))
+            : [];
+        return 'List members of each group. Matches auto-generate as round-robin. Currently '
+            + defs.length + ' group(s), ' + unique + ' teams, ' + fixtures.length + ' matches.';
+    }
+
+    function getKnockoutStageHint(isCountry) {
+        const filled = form.teams.filter(t => normalizeSeedName(t.name)).length;
+        const slots = form.teams.length;
+        return 'Opening knockout matchups (pairing order). Use TBD until group winners are known. Currently '
+            + slots + ' slot(s), ' + filled + ' named '
+            + (isCountry ? 'countries' : 'clubs') + '.';
+    }
+
+    function renderGroupsHtml(isCountry, entity) {
+        ensureInitialGroups();
+        let body = '<p class="hint">' + esc(getGroupStageHint()) + '</p>';
+        form.groupDefinitions.forEach((g, gi) => {
+            const label = (g.label || String.fromCharCode(65 + gi)).trim();
+            const matchCount = (() => {
+                const n = (g.teams || []).filter(t => (t.name || '').trim()).length;
+                return n >= 2 ? (n * (n - 1)) / 2 : 0;
+            })();
+            body += '<div class="group-def-box row-item" data-group="' + gi + '">' +
+                '<div class="row-head">' +
+                '<div class="group-def-label-wrap">' +
+                '<strong>Group</strong> ' +
+                '<input type="text" class="group-label-input" data-g="label" maxlength="8" value="' + esc(label) + '" aria-label="Group label">' +
+                '<span class="hint group-match-hint">' + matchCount + ' match(es)</span>' +
+                '</div>' +
+                (form.groupDefinitions.length > 1
+                    ? '<button type="button" class="btn btn-danger btn-sm" data-action="remove-group">Remove group</button>'
+                    : '') +
+                '</div>' +
+                '<div class="group-teams-grid">';
+            (g.teams || []).forEach((t, ti) => {
+                body += renderTeamSlotHtml(
+                    t,
+                    { kind: 'group', gidx: gi, tidx: ti },
+                    isCountry,
+                    entity + ' ' + (ti + 1),
+                    { showRemove: (g.teams || []).length > 2 }
+                );
+            });
+            body += '</div>' +
+                '<button type="button" class="btn btn-secondary btn-sm" data-action="add-group-team">+ ' + esc(entity) + '</button>' +
+                '</div>';
+        });
+        body += '<button type="button" class="btn btn-secondary btn-sm" id="btn-add-group" data-action="add-group">+ Group</button>';
+        return stagePanelShell('group', 'Group Stage', body);
+    }
+
+    function renderKnockoutPairsHtml(isCountry, entity) {
+        if (form.teams.length % 2 === 1) {
+            form.teams.push(emptyTeam());
+        }
+        if (!form.teams.length) {
+            form.teams.push(emptyTeam(), emptyTeam());
+        }
+
+        let body = '<p class="hint">' + esc(getKnockoutStageHint(isCountry)) + '</p>';
+        for (let p = 0; p < form.teams.length; p += 2) {
+            const matchNum = Math.floor(p / 2) + 1;
+            const t0 = form.teams[p];
+            const t1 = form.teams[p + 1];
+
+            body += '<div class="team-pair-box row-item" data-pair="' + matchNum + '">' +
+                '<div class="row-head"><strong>Match ' + matchNum + '</strong>' +
+                (form.teams.length > 2
+                    ? '<button type="button" class="btn btn-danger btn-sm" data-action="remove-match">Remove match</button>'
+                    : '') +
+                '</div>' +
+                '<div class="team-pair-grid">' +
+                renderTeamSlotHtml(t0, { kind: 'pair', idx: p }, isCountry, entity + ' ' + (p + 1), { allowTbd: true });
+
+            body += '<div class="team-pair-vs" aria-hidden="true">vs</div>';
+            body += renderTeamSlotHtml(t1, { kind: 'pair', idx: p + 1 }, isCountry, entity + ' ' + (p + 2), { allowTbd: true });
+            body += '</div></div>';
+        }
+        body += '<button type="button" class="btn btn-secondary btn-sm" id="btn-add-team" data-action="add-knockout-match">'
+            + (isCountry ? '+ Match (2 countries)' : '+ Match (2 clubs)')
+            + '</button>';
+        return stagePanelShell('knockout', 'Knockout bracket pairs', body);
+    }
+
+    function bindTeamSlotControls(el, isCountry) {
+        el.querySelectorAll('.team-pair-slot').forEach(slot => {
+            slot.querySelectorAll('[data-f]').forEach(inp => {
+                if (inp.dataset.clubLookup === '1') return;
+                const handler = (e) => {
+                    const team = getTeamRefFromSlot(slot);
+                    if (!team) return;
+                    if (inp.dataset.f === 'tbd-toggle') {
+                        if (inp.value === 'tbd') {
+                            team.name = '';
+                            team.flag = '';
+                        }
+                        renderTeams();
+                        renderParticipants();
+                        renderScheduleSection();
+                        return;
+                    }
+                    team[inp.dataset.f] = inp.value;
+                    if (inp.dataset.f === 'name') {
+                        if (!normalizeSeedName(inp.value)) {
+                            team.name = '';
+                            team.flag = '';
+                        } else {
+                            syncTeamFlagFromCountry(team);
+                        }
+                    }
+                    updatePreviewForControl(inp);
+
+                    const isGroupCountrySelect = isCountry
+                        && inp.dataset.f === 'name'
+                        && slot.dataset.gidx != null
+                        && inp.tagName === 'SELECT';
+
+                    // While typing/jumping in <select>, only sync local state — avoid heavy re-renders.
+                    if (isGroupCountrySelect && e.type === 'input') {
+                        const box = slot.closest('.group-def-box');
+                        const hint = box && box.querySelector('.group-match-hint');
+                        if (hint) {
+                            const g = form.groupDefinitions[+slot.dataset.gidx];
+                            const n = (g && g.teams || []).filter(t => (t.name || '').trim()).length;
+                            hint.textContent = (n >= 2 ? (n * (n - 1)) / 2 : 0) + ' match(es)';
+                        }
+                        syncTeamsSectionUi();
+                        return;
+                    }
+
+                    if (isGroupCountrySelect && (e.type === 'change' || e.type === 'blur')) {
+                        refreshGroupCountrySelectOptions(inp);
+                    }
+
+                    // Knockout country TBD/pick: refresh schedule labels.
+                    if (
+                        isCountry
+                        && inp.dataset.f === 'name'
+                        && slot.dataset.idx != null
+                        && e.type === 'change'
+                    ) {
+                        renderScheduleSection();
+                        syncTeamsSectionUi();
+                        renderParticipants();
+                        if (form.pointConfig.mainQuestMode === 'fifa') renderMainQuestTeamPoints();
+                        return;
+                    }
+
+                    renderParticipants();
+                    renderScheduleSection();
+                    syncTeamsSectionUi();
+                    if (inp.dataset.f === 'name' && form.pointConfig.mainQuestMode === 'fifa') {
+                        renderMainQuestTeamPoints();
+                    }
+                    if (slot.dataset.gidx != null) {
+                        const box = slot.closest('.group-def-box');
+                        const hint = box && box.querySelector('.group-match-hint');
+                        if (hint) {
+                            const g = form.groupDefinitions[+slot.dataset.gidx];
+                            const n = (g && g.teams || []).filter(t => (t.name || '').trim()).length;
+                            hint.textContent = (n >= 2 ? (n * (n - 1)) / 2 : 0) + ' match(es)';
+                        }
+                    }
+                };
+                inp.addEventListener('input', handler);
+                inp.addEventListener('change', handler);
+                if (isCountry && inp.dataset.f === 'name' && slot.dataset.gidx != null) {
+                    inp.addEventListener('blur', handler);
+                }
+            });
+            if (!isCountry) bindClubNameLookup(slot);
+        });
     }
 
     function renderTeams() {
@@ -1042,62 +1843,57 @@ window.ArisanSetupForm = (function () {
         const isCountry = form.competitionType === 'country';
         const entity = isCountry ? 'Country' : 'Club';
 
-        if (form.teams.length % 2 === 1) {
-            form.teams.push(emptyTeam());
-        }
-
-        if (!form.teams.length) {
-            el.innerHTML = '<p class="hint">No teams yet.</p>';
+        if (!form.includeGroupStage && !form.includeKnockoutStage) {
+            el.innerHTML = '<p class="hint">Enable Group Stage and/or Knockout Stage above.</p>';
             updateCounts();
             renderScheduleSection();
             return;
         }
 
         let html = '';
-        for (let p = 0; p < form.teams.length; p += 2) {
-            const matchNum = Math.floor(p / 2) + 1;
-            const t0 = form.teams[p];
-            const t1 = form.teams[p + 1];
+        if (form.includeGroupStage) html += renderGroupsHtml(isCountry, entity);
+        if (form.includeKnockoutStage) html += renderKnockoutPairsHtml(isCountry, entity);
+        el.innerHTML = html || '<p class="hint">No teams yet.</p>';
 
-            html += '<div class="team-pair-box row-item" data-pair="' + matchNum + '">' +
-                '<div class="row-head"><strong>Match ' + matchNum + '</strong>' +
-                (form.teams.length > 2
-                    ? '<button type="button" class="btn btn-danger btn-sm" data-action="remove-match">Remove match</button>'
-                    : '') +
-                '</div>' +
-                '<div class="team-pair-grid">' +
-                renderTeamSlotHtml(t0, p, isCountry, entity + ' ' + (p + 1));
-
-            html += '<div class="team-pair-vs" aria-hidden="true">vs</div>';
-            html += renderTeamSlotHtml(t1, p + 1, isCountry, entity + ' ' + (p + 2));
-            html += '</div></div>';
-        }
-
-        el.innerHTML = html;
+        el.querySelectorAll('.group-def-box[data-group]').forEach(box => {
+            const gi = +box.dataset.group;
+            box.querySelector('[data-g="label"]')?.addEventListener('input', e => {
+                if (!form.groupDefinitions[gi]) return;
+                form.groupDefinitions[gi].label = e.target.value;
+                renderScheduleSection();
+            });
+            box.querySelector('[data-action="remove-group"]')?.addEventListener('click', () => removeGroup(gi));
+            box.querySelector('[data-action="add-group-team"]')?.addEventListener('click', () => addTeamToGroup(gi));
+            box.querySelectorAll('[data-action="remove-group-team"]').forEach(btn => {
+                const slot = btn.closest('.team-pair-slot[data-tidx]');
+                if (!slot) return;
+                btn.addEventListener('click', () => removeTeamFromGroup(gi, +slot.dataset.tidx));
+            });
+        });
 
         el.querySelectorAll('.team-pair-box[data-pair]').forEach(box => {
             const pairIdx = +box.dataset.pair - 1;
             box.querySelector('[data-action="remove-match"]')?.addEventListener('click', () => removeTeamPair(pairIdx));
         });
 
-        el.querySelectorAll('.team-pair-slot[data-idx]').forEach(slot => {
-            const i = +slot.dataset.idx;
-            slot.querySelectorAll('[data-f]').forEach(inp => {
-                if (inp.dataset.clubLookup === '1') return;
-                const handler = () => {
-                    form.teams[i][inp.dataset.f] = inp.value;
-                    if (inp.dataset.f === 'name') syncTeamFlagFromCountry(form.teams[i]);
-                    updatePreviewForControl(inp);
-                    renderParticipants();
-                    renderScheduleSection();
-                };
-                inp.addEventListener('input', handler);
-                inp.addEventListener('change', handler);
+        el.querySelectorAll('.stage-panel[data-stage]').forEach(panel => {
+            const key = panel.dataset.stage;
+            panel.querySelector('.stage-panel-toggle')?.addEventListener('click', () => {
+                const open = panel.classList.toggle('is-open');
+                stageOpenState[key] = open;
+                const btn = panel.querySelector('.stage-panel-toggle');
+                if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
             });
-            if (!isCountry) bindClubNameLookup(slot, i);
         });
+
+        el.querySelector('[data-action="add-group"]')?.addEventListener('click', () => addGroup());
+        el.querySelector('[data-action="add-knockout-match"]')?.addEventListener('click', () => addTeamPair());
+
+        bindTeamSlotControls(el, isCountry);
         bindPreviewControls(el);
         updateCounts();
+        if (form.pointConfig.mainQuestMode === 'fifa') renderMainQuestTeamPoints();
+        renderScorePredictionsSection();
     }
 
     function setClubLookupStatus(nameInp, state, message) {
@@ -1116,10 +1912,11 @@ window.ArisanSetupForm = (function () {
         nameInp.setAttribute('aria-expanded', 'false');
     }
 
-    async function applyClubSelection(slot, teamIndex, club) {
+    async function applyClubSelection(slot, club) {
         const nameInp = slot.querySelector('[data-f="name"]');
         const flagInp = slot.querySelector('[data-f="flag"]');
-        if (!club || !nameInp || !form.teams[teamIndex]) return;
+        const team = getTeamRefFromSlot(slot);
+        if (!club || !nameInp || !team) return;
 
         let selected = club;
         if ((!selected.badge || String(selected.id || '').startsWith('curated:'))
@@ -1131,11 +1928,11 @@ window.ArisanSetupForm = (function () {
             } catch (e) {}
         }
 
-        form.teams[teamIndex].name = selected.name;
+        team.name = selected.name;
         nameInp.value = selected.name;
 
         if (selected.badge) {
-            form.teams[teamIndex].flag = selected.badge;
+            team.flag = selected.badge;
             if (flagInp) {
                 flagInp.value = selected.badge;
                 updatePreviewForControl(flagInp);
@@ -1148,6 +1945,8 @@ window.ArisanSetupForm = (function () {
         hideClubAutocomplete(nameInp);
         renderParticipants();
         renderScheduleSection();
+        syncTeamsSectionUi();
+        if (form.pointConfig.mainQuestMode === 'fifa') renderMainQuestTeamPoints();
     }
 
     function renderClubAutocompleteOptions(nameInp, clubs, onSelect) {
@@ -1184,7 +1983,7 @@ window.ArisanSetupForm = (function () {
         });
     }
 
-    function bindClubNameLookup(slot, teamIndex) {
+    function bindClubNameLookup(slot) {
         const nameInp = slot.querySelector('[data-f="name"][data-club-lookup]');
         if (!nameInp || nameInp.dataset.lookupBound) return;
         nameInp.dataset.lookupBound = '1';
@@ -1196,12 +1995,13 @@ window.ArisanSetupForm = (function () {
 
         const onSelect = club => {
             pickedFromList = true;
-            applyClubSelection(slot, teamIndex, club);
+            applyClubSelection(slot, club);
         };
 
         const fetchSuggestions = async () => {
             const name = nameInp.value.trim();
-            if (form.teams[teamIndex]) form.teams[teamIndex].name = name;
+            const team = getTeamRefFromSlot(slot);
+            if (team) team.name = name;
 
             if (name.length < 2) {
                 hideClubAutocomplete(nameInp);
@@ -1243,16 +2043,17 @@ window.ArisanSetupForm = (function () {
             }
 
             const name = nameInp.value.trim();
-            if (form.teams[teamIndex]) form.teams[teamIndex].name = name;
+            const team = getTeamRefFromSlot(slot);
+            if (team) team.name = name;
             hideClubAutocomplete(nameInp);
 
-            if (name.length < 2 || typeof ArisanTheSportsDB === 'undefined') return;
+            if (name.length < 2 || typeof ArisanTheSportsDB === 'undefined' || !team) return;
 
             try {
                 const result = await ArisanTheSportsDB.searchTeam(name);
                 const flagInp = slot.querySelector('[data-f="flag"]');
                 if (result && result.badge) {
-                    form.teams[teamIndex].flag = result.badge;
+                    team.flag = result.badge;
                     if (flagInp) {
                         flagInp.value = result.badge;
                         updatePreviewForControl(flagInp);
@@ -1260,7 +2061,7 @@ window.ArisanSetupForm = (function () {
                     setClubLookupStatus(nameInp, 'ok', 'Club badge loaded from TheSportsDB.');
                     renderParticipants();
                     renderScheduleSection();
-                } else if (!form.teams[teamIndex].flag) {
+                } else if (!team.flag) {
                     setClubLookupStatus(nameInp, 'warn', 'Not found — enter flag/logo URL manually.');
                 }
             } catch (e) {
@@ -1270,7 +2071,8 @@ window.ArisanSetupForm = (function () {
 
         nameInp.addEventListener('input', () => {
             pickedFromList = false;
-            if (form.teams[teamIndex]) form.teams[teamIndex].name = nameInp.value;
+            const team = getTeamRefFromSlot(slot);
+            if (team) team.name = nameInp.value;
             clearTimeout(suggestTimer);
             clearTimeout(lookupTimer);
             suggestTimer = setTimeout(fetchSuggestions, 320);
@@ -1309,9 +2111,11 @@ window.ArisanSetupForm = (function () {
         });
 
         nameInp.addEventListener('change', () => {
-            if (form.teams[teamIndex]) form.teams[teamIndex].name = nameInp.value.trim();
+            const team = getTeamRefFromSlot(slot);
+            if (team) team.name = nameInp.value.trim();
             renderParticipants();
             renderScheduleSection();
+            if (form.pointConfig.mainQuestMode === 'fifa') renderMainQuestTeamPoints();
         });
     }
 
@@ -1837,9 +2641,11 @@ window.ArisanSetupForm = (function () {
         if (!el) return;
         ensureCountrySuggestionsList();
         captureParticipantOpenState();
+        collectScorePredictionsFromDom();
 
         el.innerHTML = form.participants.map((p, i) => {
             if (!p.picks) p.picks = defaultPicks(form.includeThirdPlace);
+            ensureScorePredictPicks(p);
             const open = isParticipantOpenByDefault(i);
             return '<div class="row-item participant-row participant-collapsible' + (open ? ' is-open' : '') + '" data-idx="' + i + '">' +
                 '<div class="row-head participant-toggle-wrap">' +
@@ -1945,6 +2751,125 @@ window.ArisanSetupForm = (function () {
         });
         bindPreviewControls(el);
         updateCounts();
+        renderScorePredictionsSection();
+    }
+
+    function collectScorePredictionsFromDom() {
+        const root = document.getElementById('score-predictions-root');
+        if (!root) return;
+        form.participants.forEach(p => ensureScorePredictPicks(p));
+        root.querySelectorAll('[data-sp-match][data-sp-participant]').forEach(wrap => {
+            const matchId = wrap.dataset.spMatch;
+            const pi = parseInt(wrap.dataset.spParticipant, 10);
+            const p = form.participants[pi];
+            if (!p || !matchId) return;
+            const map = ensureScorePredictPicks(p);
+            const aEl = wrap.querySelector('[data-sp="a"]');
+            const bEl = wrap.querySelector('[data-sp="b"]');
+            const entry = normalizeScorePredictEntry({
+                a: aEl ? aEl.value : '',
+                b: bEl ? bEl.value : '',
+            });
+            if (entry) map[matchId] = entry;
+            else delete map[matchId];
+        });
+    }
+
+    function pruneScorePredictionsToCatalog(catalogIds) {
+        const valid = new Set(catalogIds || []);
+        form.participants.forEach(p => {
+            const map = ensureScorePredictPicks(p);
+            Object.keys(map).forEach(id => {
+                if (!valid.has(id)) delete map[id];
+            });
+        });
+    }
+
+    function renderScorePredictionsSection() {
+        const root = document.getElementById('score-predictions-root');
+        if (!root) return;
+
+        collectScorePredictionsFromDom();
+
+        const catalog = getScheduleCatalog();
+        const participants = form.participants.filter(p => (p.name || '').trim());
+        if (!catalog.length) {
+            root.innerHTML = '<p class="hint">Add teams / matches in Section 3 to configure score predictions.</p>';
+            return;
+        }
+        if (!participants.length) {
+            root.innerHTML = '<p class="hint">Add named participants in Section 4 to enter score predictions.</p>';
+            return;
+        }
+
+        pruneScorePredictionsToCatalog(catalog.map(e => e.id));
+
+        let html = '<div class="score-predict-wrap"><table class="score-predict-table"><thead><tr>' +
+            '<th>Match</th>' +
+            participants.map(p => '<th class="sp-participant">' + esc(p.name) + '</th>').join('') +
+            '</tr></thead><tbody>';
+
+        catalog.forEach(entry => {
+            html += '<tr><td class="sp-match-label" title="' + esc(entry.label) + '">' + esc(entry.label) + '</td>';
+            form.participants.forEach((p, pi) => {
+                if (!(p.name || '').trim()) return;
+                const map = ensureScorePredictPicks(p);
+                const pred = map[entry.id] || {};
+                const aVal = pred.a != null ? String(pred.a) : '';
+                const bVal = pred.b != null ? String(pred.b) : '';
+                const hasPred = aVal !== '' || bVal !== '';
+                html += '<td><div class="score-predict-inputs' + (hasPred ? '' : ' is-empty') +
+                    '" data-sp-match="' + esc(entry.id) +
+                    '" data-sp-participant="' + pi + '">' +
+                    '<input type="number" min="0" step="1" data-sp="a" value="' + esc(aVal) +
+                    '" aria-label="' + esc(p.name) + ' home score for ' + esc(entry.label) + '">' +
+                    '<span class="sp-sep">-</span>' +
+                    '<input type="number" min="0" step="1" data-sp="b" value="' + esc(bVal) +
+                    '" aria-label="' + esc(p.name) + ' away score for ' + esc(entry.label) + '">' +
+                    '<button type="button" class="sp-clear" title="Clear prediction" aria-label="Clear prediction for ' +
+                    esc(p.name) + ' on ' + esc(entry.label) + '">✕</button>' +
+                    '</div></td>';
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        root.innerHTML = html;
+
+        function syncClearVisibility(wrap) {
+            if (!wrap) return;
+            const aEl = wrap.querySelector('[data-sp="a"]');
+            const bEl = wrap.querySelector('[data-sp="b"]');
+            const filled = !!(aEl && aEl.value !== '') || !!(bEl && bEl.value !== '');
+            wrap.classList.toggle('is-empty', !filled);
+        }
+
+        root.querySelectorAll('.score-predict-inputs').forEach(wrap => {
+            wrap.querySelectorAll('input').forEach(inp => {
+                inp.addEventListener('change', () => {
+                    collectScorePredictionsFromDom();
+                    syncClearVisibility(wrap);
+                });
+                inp.addEventListener('input', () => {
+                    collectScorePredictionsFromDom();
+                    syncClearVisibility(wrap);
+                });
+            });
+            wrap.querySelector('.sp-clear')?.addEventListener('click', () => {
+                const aEl = wrap.querySelector('[data-sp="a"]');
+                const bEl = wrap.querySelector('[data-sp="b"]');
+                if (aEl) aEl.value = '';
+                if (bEl) bEl.value = '';
+                const matchId = wrap.dataset.spMatch;
+                const pi = parseInt(wrap.dataset.spParticipant, 10);
+                const p = form.participants[pi];
+                if (p && matchId) {
+                    const map = ensureScorePredictPicks(p);
+                    delete map[matchId];
+                }
+                collectScorePredictionsFromDom();
+                syncClearVisibility(wrap);
+            });
+        });
     }
 
     function renderAll(opts) {
@@ -1952,6 +2877,7 @@ window.ArisanSetupForm = (function () {
         renderTeams();
         renderParticipants();
         renderScheduleSection(opts);
+        renderScorePredictionsSection();
     }
 
     function addParticipant() {
@@ -1982,8 +2908,51 @@ window.ArisanSetupForm = (function () {
         }
     }
 
+    function addGroup() {
+        form.groupDefinitions.push(emptyGroup(form.groupDefinitions.length));
+        renderTeams();
+        renderParticipants();
+        const list = document.getElementById('teams-list');
+        const boxes = list && list.querySelectorAll('.group-def-box');
+        const last = boxes && boxes[boxes.length - 1];
+        last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        last?.querySelector('[data-f="name"]')?.focus();
+    }
+
+    function removeGroup(gi) {
+        if (form.groupDefinitions.length <= 1) return;
+        form.groupDefinitions.splice(gi, 1);
+        form.groupDefinitions.forEach((g, i) => {
+            if (!(g.label || '').trim()) g.label = String.fromCharCode(65 + i);
+        });
+        renderTeams();
+        renderParticipants();
+    }
+
+    function addTeamToGroup(gi) {
+        const g = form.groupDefinitions[gi];
+        if (!g) return;
+        if (!g.teams) g.teams = [];
+        g.teams.push(emptyTeam());
+        const focusTidx = g.teams.length - 1;
+        renderTeams();
+        renderParticipants();
+        const slot = document.querySelector(
+            '.team-pair-slot[data-gidx="' + gi + '"][data-tidx="' + focusTidx + '"]'
+        );
+        slot?.querySelector('[data-f="name"]')?.focus();
+        slot?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function removeTeamFromGroup(gi, ti) {
+        const g = form.groupDefinitions[gi];
+        if (!g || !g.teams || g.teams.length <= 2) return;
+        g.teams.splice(ti, 1);
+        renderTeams();
+        renderParticipants();
+    }
+
     function addTeamPair() {
-        if (form.teams.length >= 32) return;
         if (form.teams.length % 2 === 1) {
             form.teams.push(emptyTeam());
         } else {
@@ -2020,10 +2989,14 @@ window.ArisanSetupForm = (function () {
     function newBlankLeague() {
         form = {
             competitionType: 'country',
+            includeGroupStage: false,
+            includeKnockoutStage: true,
             includeThirdPlace: true,
             twoLegKnockout: false,
-            pointConfig: JSON.parse(JSON.stringify(DEFAULT_POINT_CONFIG)),
+            pointConfig: normalizePointConfig(null),
             teams: [],
+            groupDefinitions: [],
+            groupFixtures: [],
             participants: [],
             matchSchedule: {},
             scheduleStartDate: '',
@@ -2058,11 +3031,32 @@ window.ArisanSetupForm = (function () {
         return form;
     }
 
+    function hydrateGroupDefinitions(data, flagByName) {
+        const flags = flagByName || {};
+        let defs = Array.isArray(data.groupDefinitions) ? data.groupDefinitions : [];
+        if ((!defs || !defs.length) && Array.isArray(data.groupFixtures) && data.groupFixtures.length
+            && typeof ArisanBracket !== 'undefined' && ArisanBracket.inferGroupDefinitionsFromFixtures) {
+            defs = ArisanBracket.inferGroupDefinitionsFromFixtures(data.groupFixtures);
+        }
+        return (defs || []).map((g, i) => ({
+            label: String((g && g.label) || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
+            teams: (Array.isArray(g && g.teams) ? g.teams : []).map(t => {
+                const name = typeof t === 'string' ? t.trim() : String((t && t.name) || '').trim();
+                const flag = typeof t === 'object' && t
+                    ? (t.flag || flags[name] || '')
+                    : (flags[name] || '');
+                return { name, flag };
+            }),
+        }));
+    }
+
     function loadFromSetupData(data) {
         form.competitionType = data.competitionType || 'country';
+        form.includeGroupStage = !!data.includeGroupStage;
+        form.includeKnockoutStage = data.includeKnockoutStage !== false;
         form.includeThirdPlace = data.includeThirdPlace !== false;
         form.twoLegKnockout = !!data.twoLegKnockout;
-        form.pointConfig = data.pointConfig || JSON.parse(JSON.stringify(DEFAULT_POINT_CONFIG));
+        form.pointConfig = normalizePointConfig(data.pointConfig);
         form.matchSchedule = data.matchSchedule || {};
         form.scheduleStartDate = data.scheduleStartDate || '';
         form.scheduleKickoff = data.scheduleKickoff || '19:00';
@@ -2071,14 +3065,59 @@ window.ArisanSetupForm = (function () {
         form.ballImageUrl = data.ballImageUrl || '';
         form.backgroundMusicUrl = data.backgroundMusicUrl || '';
         if (!form.includeThirdPlace) form.pointConfig.sideQuest.third = 0;
-        form.teams = (data.teams || []).map(t => ({ name: t.name || '', flag: t.flag || '' }));
-        if (!form.teams.length) ensureInitialTeamPair();
-        form.participants = (data.participants || []).map((p, i) => ({
-            name: p.name || '',
-            avatar_path: p.avatar_path || '',
-            color: p.color || DEFAULT_PARTICIPANT_COLORS[i % DEFAULT_PARTICIPANT_COLORS.length],
-            picks: p.picks || defaultPicks(form.includeThirdPlace),
+
+        const fixtures = Array.isArray(data.groupFixtures) ? data.groupFixtures : [];
+        form.groupFixtures = fixtures.map(f => ({
+            a: String((f && f.a) || '').trim(),
+            b: String((f && f.b) || '').trim(),
+            group: String((f && (f.group || f.groupLabel)) || '').trim(),
         }));
+
+        const uniqueTeams = (data.teams || []).map(t => ({ name: t.name || '', flag: t.flag || '' }));
+        const flagByName = {};
+        uniqueTeams.forEach(t => {
+            if (t.name) flagByName[t.name] = t.flag || '';
+        });
+
+        form.groupDefinitions = form.includeGroupStage
+            ? hydrateGroupDefinitions(data, flagByName)
+            : [];
+        if (form.includeGroupStage && !form.groupDefinitions.length) ensureInitialGroups();
+
+        if (form.includeKnockoutStage) {
+            const seeds = Array.isArray(data.knockoutSeeds) ? data.knockoutSeeds : null;
+            if (seeds && seeds.length) {
+                form.teams = seeds.map(t => ({
+                    name: normalizeSeedName(typeof t === 'string' ? t : (t && t.name)),
+                    flag: typeof t === 'object' && t ? (t.flag || flagByName[normalizeSeedName(t.name)] || '') : '',
+                }));
+            } else if (form.includeGroupStage) {
+                // Group + knockout without saved seeds → default TBD pairs (not all group teams).
+                form.teams = [];
+            } else {
+                form.teams = uniqueTeams.length ? uniqueTeams.slice() : [];
+            }
+            if (!form.teams.length) ensureInitialTeamPair();
+            if (form.teams.length % 2 === 1) form.teams.push(emptyTeam());
+        } else {
+            form.teams = [];
+        }
+
+        form.participants = (data.participants || []).map((p, i) => {
+            const row = {
+                name: p.name || '',
+                avatar_path: p.avatar_path || '',
+                color: p.color || DEFAULT_PARTICIPANT_COLORS[i % DEFAULT_PARTICIPANT_COLORS.length],
+                picks: p.picks || defaultPicks(form.includeThirdPlace),
+            };
+            if (!row.picks.sideQuest) {
+                row.picks.sideQuest = defaultPicks(form.includeThirdPlace).sideQuest;
+            }
+            if (!row.picks.sideQuest.scorePredict || typeof row.picks.sideQuest.scorePredict !== 'object') {
+                row.picks.sideQuest.scorePredict = {};
+            }
+            return row;
+        });
         renderAll({ skipCollect: true });
         // Load league data is a user gesture — fill URL and autoplay preview.
         syncBackgroundMusicFieldFromForm();
@@ -2087,12 +3126,48 @@ window.ArisanSetupForm = (function () {
     function getPayload() {
         collectScheduleFromDom();
         pruneMatchSchedule();
+        collectTeamPointsFromDom();
+        syncTeamPointsWithTeamList();
+        collectScorePredictionsFromDom();
+        pruneScorePredictionsToCatalog(getScheduleCatalog().map(e => e.id));
 
-        const pointConfig = JSON.parse(JSON.stringify(form.pointConfig));
+        const pointConfig = normalizePointConfig(form.pointConfig);
         if (!form.includeThirdPlace) pointConfig.sideQuest.third = 0;
+
+        let groupDefinitions = [];
+        let groupFixtures = [];
+        if (form.includeGroupStage) {
+            groupDefinitions = (form.groupDefinitions || []).map((g, i) => ({
+                label: (g.label || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
+                teams: (g.teams || []).map(t => (t.name || '').trim()).filter(Boolean),
+            })).filter(g => g.teams.length);
+            groupFixtures = (typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions)
+                ? ArisanBracket.fixturesFromGroupDefinitions(groupDefinitions)
+                : [];
+        }
+
+        const byKey = new Map();
+        function pushTeam(t) {
+            const name = normalizeSeedName(t.name);
+            if (!name) return;
+            const key = name.toLowerCase();
+            if (!byKey.has(key)) byKey.set(key, { name, flag: t.flag || '' });
+            else if (t.flag && !byKey.get(key).flag) byKey.get(key).flag = t.flag;
+        }
+        if (form.includeGroupStage) uniqueTeamsFromGroups(form.groupDefinitions).forEach(pushTeam);
+        const knockoutSeeds = form.includeKnockoutStage
+            ? form.teams.map(t => ({
+                name: normalizeSeedName(t.name),
+                flag: normalizeSeedName(t.name) ? (t.flag || '') : '',
+            }))
+            : [];
+        knockoutSeeds.forEach(pushTeam);
+        const teams = Array.from(byKey.values());
 
         return {
             competitionType: form.competitionType,
+            includeGroupStage: form.includeGroupStage,
+            includeKnockoutStage: form.includeKnockoutStage,
             includeThirdPlace: form.includeThirdPlace,
             twoLegKnockout: form.twoLegKnockout,
             pointConfig,
@@ -2103,7 +3178,10 @@ window.ArisanSetupForm = (function () {
             trophyImageUrl: form.trophyImageUrl || '',
             ballImageUrl: form.ballImageUrl || '',
             backgroundMusicUrl: form.backgroundMusicUrl || '',
-            teams: form.teams.filter(t => t.name && t.name.trim()),
+            teams,
+            knockoutSeeds,
+            groupDefinitions,
+            groupFixtures,
             participants: form.participants.filter(p => p.name && p.name.trim()),
         };
     }
@@ -2112,9 +3190,27 @@ window.ArisanSetupForm = (function () {
         document.getElementById('competition-type')?.addEventListener('change', e => {
             form.competitionType = e.target.value;
             form.teams.forEach(syncTeamFlagFromCountry);
+            (form.groupDefinitions || []).forEach(g => (g.teams || []).forEach(syncTeamFlagFromCountry));
             updateSectionLabels();
             renderTeams();
             renderParticipants();
+        });
+        document.getElementById('include-group-stage')?.addEventListener('change', e => {
+            form.includeGroupStage = e.target.checked;
+            if (form.includeGroupStage) ensureInitialGroups();
+            updateSectionLabels();
+            syncTeamsSectionUi();
+            renderTeams();
+            renderScheduleSection();
+        });
+        document.getElementById('include-knockout-stage')?.addEventListener('change', e => {
+            form.includeKnockoutStage = e.target.checked;
+            if (form.includeKnockoutStage) ensureInitialTeamPair();
+            syncStageOptionVisibility();
+            updateSectionLabels();
+            syncTeamsSectionUi();
+            renderTeams();
+            renderScheduleSection();
         });
         document.getElementById('include-third-place')?.addEventListener('change', e => {
             form.includeThirdPlace = e.target.checked;
@@ -2135,7 +3231,8 @@ window.ArisanSetupForm = (function () {
     function init() {
         bindPointConfig();
         bindLeagueMeta();
-        ensureInitialTeamPair();
+        if (form.includeGroupStage) ensureInitialGroups();
+        if (form.includeKnockoutStage) ensureInitialTeamPair();
         ensureInitialParticipant();
         renderAll();
     }
@@ -2149,11 +3246,14 @@ window.ArisanSetupForm = (function () {
         renderAll,
         addParticipant,
         removeParticipant,
+        addGroup,
         addTeamPair,
         removeTeamPair,
         newBlankLeague,
         loadFromSetupData,
         getPayload,
+        validateTeamsForSave,
+        teamPairsFromFixtures,
         isTeamsSectionComplete,
         renderScheduleSection,
     };
@@ -2163,5 +3263,6 @@ window.ArisanSetupForm = (function () {
 function addParticipant() { ArisanSetupForm.addParticipant(); }
 function removeParticipant(i) { ArisanSetupForm.removeParticipant(i); }
 function addTeam() { ArisanSetupForm.addTeamPair(); }
+function addGroup() { ArisanSetupForm.addGroup(); }
 function removeTeamPair(i) { ArisanSetupForm.removeTeamPair(i); }
 function newBlankLeague() { ArisanSetupForm.newBlankLeague(); }

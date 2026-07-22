@@ -1,4 +1,4 @@
-﻿
+
         function splitLegacyScoreString(scoreStr) {
             const text = String(scoreStr ?? '').trim();
             const m = text.match(/^(\d+)\s*\(\s*(\d+)\s*\)$/);
@@ -121,14 +121,112 @@
             if (isTwoLegKnockout() && typeof ArisanBracket !== 'undefined') {
                 ArisanBracket.updateTieAggregates(ADMIN_CONFIG.finishedMatches || []);
             }
+
+            if (typeof buildTotalGoalBar === 'function') {
+                buildTotalGoalBar();
+            }
         }
     
 
 /* --- */
 
 
+        function getBracketUnitLineAnchor(unitEl, bracketRect) {
+            const r = unitEl.getBoundingClientRect();
+            return {
+                x: r.right - bracketRect.left,
+                y: r.top + r.height / 2 - bracketRect.top,
+            };
+        }
+
+        function resolveBracketLineSource(prevRoundEl, units, winnerIndex) {
+            const hasByeCarrier = !!prevRoundEl.dataset.koByeCarrier;
+            if (hasByeCarrier && winnerIndex === 0) {
+                return null;
+            }
+            const unitIndex = hasByeCarrier ? winnerIndex - 1 : winnerIndex;
+            return units[unitIndex] || null;
+        }
+
+        function drawByeAdvanceLine(svg, bracketRect, sourceEl, nextRoundEl, nextUnits) {
+            if (!sourceEl) return;
+            const src = getBracketUnitLineAnchor(sourceEl, bracketRect);
+            const nextRect = nextRoundEl.getBoundingClientRect();
+            const targetX = nextRect.left - bracketRect.left;
+            let targetY;
+            if (nextUnits.length) {
+                const firstRect = nextUnits[0].getBoundingClientRect();
+                targetY = firstRect.top - bracketRect.top - 6;
+            } else {
+                targetY = nextRect.top + nextRect.height * 0.2 - bracketRect.top;
+            }
+            const midX = (src.x + targetX) / 2;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M${src.x},${src.y} H${midX} V${targetY} H${targetX}`);
+            path.setAttribute('stroke', '#666');
+            path.setAttribute('stroke-width', '1.5');
+            path.setAttribute('stroke-dasharray', '4 3');
+            path.setAttribute('fill', 'none');
+            svg.appendChild(path);
+        }
+
+        function drawRoundTransitionLines(svg, bracketRect, bracket, prevRoundEl, nextRoundEl, currentUnits, nextUnits) {
+            const nextBye = parseInt(nextRoundEl.dataset.koByes || '0', 10);
+            const isSfToFinal = (prevRoundEl.classList.contains('round-sf') ||
+                prevRoundEl.dataset.semifinalRound === 'true') &&
+                nextRoundEl.classList.contains('round-final');
+
+            for (let j = 0; j < nextUnits.length; j++) {
+                const idx1 = nextBye + j * 2;
+                const idx2 = nextBye + j * 2 + 1;
+                const src1El = resolveBracketLineSource(prevRoundEl, currentUnits, idx1);
+                const src2El = resolveBracketLineSource(prevRoundEl, currentUnits, idx2);
+                const targetEl = nextUnits[j];
+                if (!targetEl) continue;
+
+                const targetRect = targetEl.getBoundingClientRect();
+                const x3 = targetRect.left - bracketRect.left;
+                const y3 = targetRect.top + targetRect.height / 2 - bracketRect.top;
+
+                const sources = [src1El, src2El].filter(Boolean);
+                if (!sources.length) continue;
+
+                let midX = (getBracketUnitLineAnchor(sources[0], bracketRect).x + x3) / 2;
+                if (isSfToFinal) {
+                    const thirdRound = bracket.querySelector('.round-3rd');
+                    if (thirdRound) {
+                        const thirdRight = thirdRound.getBoundingClientRect().right - bracketRect.left;
+                        midX = (thirdRight + x3) / 2;
+                    }
+                } else if (sources.length === 2) {
+                    const a1 = getBracketUnitLineAnchor(sources[0], bracketRect);
+                    const a2 = getBracketUnitLineAnchor(sources[1], bracketRect);
+                    midX = (a1.x + a2.x + x3) / 3;
+                }
+
+                sources.forEach((srcEl, idx) => {
+                    const anchor = getBracketUnitLineAnchor(srcEl, bracketRect);
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    if (idx === 0 || sources.length === 1) {
+                        path.setAttribute('d', `M${anchor.x},${anchor.y} H${midX} V${y3} H${x3}`);
+                    } else {
+                        path.setAttribute('d', `M${anchor.x},${anchor.y} H${midX} V${y3}`);
+                    }
+                    path.setAttribute('stroke', '#444');
+                    path.setAttribute('stroke-width', '1.5');
+                    path.setAttribute('fill', 'none');
+                    svg.appendChild(path);
+                });
+            }
+
+            if (nextBye > 0 && !prevRoundEl.dataset.koByeCarrier && currentUnits[0]) {
+                drawByeAdvanceLine(svg, bracketRect, currentUnits[0], nextRoundEl, nextUnits);
+            }
+        }
+
         function drawBracketLines() {
             const bracket = document.querySelector('.bracket');
+            if (!bracket) return;
             // Rantai pairwise: grup → R16 → QF → SF → Final.
             // Juara 3 tidak ikut rantai (ditumpuk di bawah Final di kolom yang sama).
             const rounds = bracket.querySelectorAll('[data-bracket-chain]');
@@ -155,53 +253,17 @@
             for (let i = 0; i < rounds.length - 1; i++) {
                 const currentUnits = getRoundBracketUnits(rounds[i]);
                 const nextUnits = getRoundBracketUnits(rounds[i + 1]);
-
-                for (let j = 0; j < nextUnits.length; j++) {
-                    const match1Index = j * 2;
-                    const match2Index = j * 2 + 1;
-
-                    if (currentUnits[match1Index] && currentUnits[match2Index] && nextUnits[j]) {
-                        const m1Rect = currentUnits[match1Index].getBoundingClientRect();
-                        const m2Rect = currentUnits[match2Index].getBoundingClientRect();
-                        const targetRect = nextUnits[j].getBoundingClientRect();
-
-                        const x1 = m1Rect.right - bracketRect.left;
-                        const y1 = m1Rect.top + m1Rect.height / 2 - bracketRect.top;
-                        const x2 = m2Rect.right - bracketRect.left;
-                        const y2 = m2Rect.top + m2Rect.height / 2 - bracketRect.top;
-                        const x3 = targetRect.left - bracketRect.left;
-                        const y3 = targetRect.top + targetRect.height / 2 - bracketRect.top;
-
-                        let midX = (x1 + x3) / 2;
-                        // SF → Final: letakkan siku di kanan kolom juara 3 supaya
-                        // garis tidak memotong kotak perebutan juara 3 di bawah.
-                        if (rounds[i].classList.contains('round-sf') && rounds[i + 1].classList.contains('round-final')) {
-                            const thirdRound = bracket.querySelector('.round-3rd');
-                            if (thirdRound) {
-                                const thirdRight = thirdRound.getBoundingClientRect().right - bracketRect.left;
-                                midX = (thirdRight + x3) / 2;
-                            }
-                        }
-
-                        const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                        path1.setAttribute('d', `M${x1},${y1} H${midX} V${y3} H${x3}`);
-                        path1.setAttribute('stroke', '#444');
-                        path1.setAttribute('stroke-width', '1.5');
-                        path1.setAttribute('fill', 'none');
-                        svg.appendChild(path1);
-
-                        const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                        path2.setAttribute('d', `M${x2},${y2} H${midX} V${y3}`);
-                        path2.setAttribute('stroke', '#444');
-                        path2.setAttribute('stroke-width', '1.5');
-                        path2.setAttribute('fill', 'none');
-                        svg.appendChild(path2);
-                    }
-                }
+                if (!currentUnits.length || !nextUnits.length) continue;
+                drawRoundTransitionLines(
+                    svg, bracketRect, bracket, rounds[i], rounds[i + 1], currentUnits, nextUnits
+                );
             }
 
             // SF (15 & 16 Juli) → Perebutan Juara 3 (penyisih)
-            const sfUnits = bracket.querySelectorAll('.round-sf .matchup-tie, .round-sf .round-matches > .matchup');
+            const sfUnits = bracket.querySelectorAll(
+                '[data-semifinal-round="true"] .matchup-tie, [data-semifinal-round="true"] .round-matches > .matchup, ' +
+                '.round-sf .matchup-tie, .round-sf .round-matches > .matchup'
+            );
             const thirdUnit = bracket.querySelector('.round-3rd .matchup-tie') ||
                 bracket.querySelector('.round-3rd .matchup');
             if (sfUnits.length >= 2 && thirdUnit) {
@@ -265,12 +327,54 @@
         };
 
         let pointConfig = {
+            mainQuestMode: 'fixed',
             mainQuest: { win: 3, draw: 1, loss: 0 },
-            sideQuest: { champion: 10, runnerup: 5, third: 3, goldenBoot: 5, goldenGlove: 5, totalGoal: 5 },
+            teamPoints: {},
+            sideQuest: { champion: 10, runnerup: 5, third: 3, goldenBoot: 5, goldenGlove: 5, totalGoal: 5, scorePredict: 5 },
+            sideQuestShare: {
+                champion: true, runnerup: true, third: true,
+                goldenBoot: true, goldenGlove: true, totalGoal: true, scorePredict: true,
+            },
         };
+        let includeGroupStage = false;
+        let includeKnockoutStage = true;
         let includeThirdPlace = true;
         let competitionType = 'country';
         let twoLegKnockout = false;
+
+        function isGroupMatchId(matchId) {
+            return String(matchId || '').startsWith('group-');
+        }
+
+        function isKnockoutMatchup(matchup) {
+            const matchId = matchup?.dataset?.matchId || '';
+            return !isGroupMatchId(matchId);
+        }
+
+        function getWdlMatchupSelector() {
+            const parts = [];
+            if (includeGroupStage) parts.push('.group-stage .matchup.finished');
+            if (includeKnockoutStage) parts.push('.bracket .matchup.finished');
+            return parts.join(', ');
+        }
+
+        function forEachWdlMatchup(callback) {
+            const selector = getWdlMatchupSelector();
+            if (!selector) return;
+            document.querySelectorAll(selector).forEach(matchup => {
+                if (includeKnockoutStage && isKnockoutMatchup(matchup) && isThirdPlaceMatchup(matchup)) return;
+                callback(matchup);
+            });
+        }
+
+        function forEachGoalStatMatchup(callback) {
+            if (includeGroupStage) {
+                document.querySelectorAll('.group-stage .matchup.finished').forEach(callback);
+            }
+            if (includeKnockoutStage) {
+                document.querySelectorAll('.bracket .matchup.finished').forEach(callback);
+            }
+        }
 
         function isTwoLegKnockout() {
             return !!twoLegKnockout || !!(window.LEAGUE_DATA && window.LEAGUE_DATA.twoLegKnockout);
@@ -318,7 +422,7 @@
             return ties.length ? ties : matchups;
         }
 
-        const defaultAvatar = 'https://img.icons8.com/ios-filled/50/6b7280/shield.png';
+        const defaultAvatar = 'https://img.icons8.com/ios-filled/50/6b7280/user-male-circle.png';
 
         // Fallback lokal; diganti dari LEAGUE_DATA.participantAvatars saat sync DB.
         let participantAvatars = {};
@@ -394,6 +498,107 @@
                     teamEl.insertAdjacentElement('afterend', panel);
                     teamEl.insertAdjacentElement('afterend', btn);
                 });
+            });
+        }
+
+        let scorePredictions = {};
+
+        function getScorePredictionsForMatch(matchId) {
+            return (scorePredictions && scorePredictions[matchId]) || [];
+        }
+
+        function injectScorePredictions() {
+            document.querySelectorAll('.bracket .matchup, .group-stage .matchup').forEach(matchup => {
+                if (matchup.dataset.scorePredictInjected) return;
+                const matchId = matchup.dataset.matchId;
+                if (!matchId) return;
+                const preds = getScorePredictionsForMatch(matchId);
+                if (!preds.length) return;
+
+                matchup.dataset.scorePredictInjected = 'true';
+
+                const teams = matchup.querySelectorAll(':scope > .team');
+                const teamA = teams[0]?.querySelector('.team-name')?.textContent.trim() || 'A';
+                const teamB = teams[1]?.querySelector('.team-name')?.textContent.trim() || 'B';
+
+                let actualA = null;
+                let actualB = null;
+                if (matchup.classList.contains('finished') && teams.length === 2) {
+                    actualA = typeof parseFullTimeScore === 'function'
+                        ? parseFullTimeScore(teams[0].querySelector('.team-score')?.textContent)
+                        : null;
+                    actualB = typeof parseFullTimeScore === 'function'
+                        ? parseFullTimeScore(teams[1].querySelector('.team-score')?.textContent)
+                        : null;
+                }
+                const hasResult = actualA != null && actualB != null;
+
+                const panel = document.createElement('div');
+                panel.className = 'score-predict-panel';
+
+                preds.forEach(pred => {
+                    const item = document.createElement('div');
+                    item.className = 'score-predict-item';
+                    const exact = hasResult && pred.a === actualA && pred.b === actualB;
+                    if (hasResult) item.classList.add(exact ? 'correct' : 'wrong');
+
+                    const img = document.createElement('img');
+                    img.className = 'score-predict-avatar';
+                    applyParticipantAvatar(img, pred.name);
+
+                    const meta = document.createElement('div');
+                    meta.className = 'score-predict-meta';
+
+                    const left = document.createElement('div');
+                    left.className = 'score-predict-left';
+                    const nameEl = document.createElement('span');
+                    nameEl.className = 'score-predict-name';
+                    nameEl.textContent = pred.name;
+                    left.appendChild(nameEl);
+
+                    const right = document.createElement('div');
+                    right.className = 'score-predict-right';
+                    const scoreEl = document.createElement('span');
+                    scoreEl.className = 'score-predict-score';
+                    scoreEl.textContent = pred.a + ' - ' + pred.b;
+                    scoreEl.title = teamA + ' ' + pred.a + ' - ' + pred.b + ' ' + teamB;
+                    right.appendChild(scoreEl);
+
+                    if (hasResult) {
+                        const badge = document.createElement('span');
+                        badge.className = 'score-predict-badge';
+                        badge.textContent = exact ? 'Hit' : 'Miss';
+                        right.appendChild(badge);
+                    }
+
+                    meta.appendChild(left);
+                    meta.appendChild(right);
+                    item.appendChild(img);
+                    item.appendChild(meta);
+                    panel.appendChild(item);
+                });
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'score-predict-toggle';
+                btn.textContent = 'Predictions (' + preds.length + ')';
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const open = panel.classList.toggle('show');
+                    btn.textContent = open
+                        ? 'Hide predictions'
+                        : 'Predictions (' + preds.length + ')';
+                    if (typeof drawBracketLines === 'function') setTimeout(drawBracketLines, 50);
+                });
+
+                const anchor = matchup.querySelector(':scope > .team:last-of-type') || matchup.lastElementChild;
+                if (anchor) {
+                    anchor.insertAdjacentElement('afterend', panel);
+                    anchor.insertAdjacentElement('afterend', btn);
+                } else {
+                    matchup.appendChild(btn);
+                    matchup.appendChild(panel);
+                }
             });
         }
 
@@ -537,7 +742,7 @@
         function updateSoonCountdowns() {
             const now = Date.now();
             let needFullUpdate = false;
-            document.querySelectorAll('.bracket .matchup.today').forEach(matchup => {
+            document.querySelectorAll('.bracket .matchup.today, .group-stage .matchup.today').forEach(matchup => {
                 const kickoff = Number(matchup.dataset.kickoff);
                 if (!kickoff) return;
                 const untilKickoff = kickoff - now;
@@ -584,7 +789,10 @@
         function updateMatchupScheduleStatus() {
             const now = Date.now();
 
-            document.querySelectorAll('.bracket .matchup:not(.finished):not([data-admin-managed])').forEach(matchup => {
+            document.querySelectorAll(
+                '.bracket .matchup:not(.finished):not([data-admin-managed]), ' +
+                '.group-stage .matchup:not(.finished):not([data-admin-managed])'
+            ).forEach(matchup => {
                 const dateEl = matchup.querySelector('.matchup-date');
                 if (!dateEl) return;
 
@@ -661,7 +869,9 @@
         }
 
         function applyFinishedMatchBadges() {
-            document.querySelectorAll('.bracket .matchup.finished .matchup-date').forEach(dateEl => {
+            document.querySelectorAll(
+                '.bracket .matchup.finished .matchup-date, .group-stage .matchup.finished .matchup-date'
+            ).forEach(dateEl => {
                 if (dateEl.querySelector('.matchup-finished-badge')) return;
 
                 const dateText = extractMatchupDateText(dateEl).replace(/^✅\s*/, '').trim();
@@ -780,6 +990,51 @@
             });
         }
 
+        function getRoundOutputWinners(roundEl) {
+            const list = [];
+            if (roundEl.dataset.koByeCarrier) {
+                try {
+                    list.push(JSON.parse(roundEl.dataset.koByeCarrier));
+                } catch (e) { /* ignore */ }
+            }
+            getRoundBracketUnits(roundEl).forEach(unit => {
+                const winner = getBracketUnitWinner(unit);
+                if (winner) list.push(winner);
+            });
+            return list;
+        }
+
+        function setBracketUnitTeamSlots(unitEl, teamA, teamB) {
+            if (unitEl.classList.contains('matchup-tie')) {
+                if (teamA) setTieTeamSlots(unitEl, 0, teamA);
+                if (teamB) setTieTeamSlots(unitEl, 1, teamB);
+                return;
+            }
+            const teams = unitEl.querySelectorAll(':scope > .team');
+            if (teamA && teams[0]) setTeamSlot(teams[0], teamA);
+            if (teamB && teams[1]) setTeamSlot(teams[1], teamB);
+        }
+
+        function advanceKnockoutRound(prevRoundEl, nextRoundEl) {
+            const prevWinners = getRoundOutputWinners(prevRoundEl);
+            const nextBye = parseInt(nextRoundEl.dataset.koByes || '0', 10);
+            const nextUnits = getRoundBracketUnits(nextRoundEl);
+
+            if (nextBye && prevWinners[0]) {
+                nextRoundEl.dataset.koByeCarrier = JSON.stringify(prevWinners[0]);
+            } else {
+                delete nextRoundEl.dataset.koByeCarrier;
+            }
+
+            for (let j = 0; j < nextUnits.length; j++) {
+                setBracketUnitTeamSlots(
+                    nextUnits[j],
+                    prevWinners[nextBye + j * 2] || null,
+                    prevWinners[nextBye + j * 2 + 1] || null
+                );
+            }
+        }
+
         function fillNextRoundSlotsFromTies(currentTies, nextTies) {
             for (let j = 0; j < nextTies.length; j++) {
                 [j * 2, j * 2 + 1].forEach((tieIndex, slotIndex) => {
@@ -849,7 +1104,10 @@
             const bracket = document.querySelector('.bracket');
             if (!bracket) return;
 
-            const sfUnits = bracket.querySelectorAll('.round-sf .matchup-tie, .round-sf .round-matches > .matchup');
+            const sfUnits = bracket.querySelectorAll(
+                '[data-semifinal-round="true"] .matchup-tie, [data-semifinal-round="true"] .round-matches > .matchup, ' +
+                '.round-sf .matchup-tie, .round-sf .round-matches > .matchup'
+            );
             const thirdTie = bracket.querySelector('.round-3rd .matchup-tie');
             const thirdMatchup = thirdTie || bracket.querySelector('.round-3rd .matchup');
             if (!thirdMatchup || sfUnits.length < 2) return;
@@ -893,6 +1151,13 @@
                 const nextUnits = getRoundBracketUnits(rounds[i + 1]);
                 if (!currentUnits.length || !nextUnits.length) continue;
 
+                const usesFlexibleKo = rounds[i].dataset.koRound || rounds[i + 1].dataset.koRound;
+                if (usesFlexibleKo) {
+                    advanceKnockoutRound(rounds[i], rounds[i + 1]);
+                    applyAdminConfig();
+                    continue;
+                }
+
                 const currentAreTies = currentUnits[0].classList.contains('matchup-tie');
                 const nextAreTies = nextUnits[0].classList.contains('matchup-tie');
                 if (currentAreTies && nextAreTies) {
@@ -906,6 +1171,7 @@
             advanceThirdPlaceMatch();
             applyAdminConfig();
             applyFinalPlacementBadges();
+            if (typeof drawBracketLines === 'function') drawBracketLines();
         }
 
         const DEFAULT_TROPHY_URL = 'https://png.pngtree.com/png-vector/20250923/ourmid/pngtree-the-fifa-world-cup-trophy-png-image_17551611.webp';
@@ -1407,15 +1673,19 @@
         }
 
         function initLiveMatchupLinks() {
-            const bracket = document.querySelector('.bracket');
-            if (!bracket || bracket.dataset.liveLinksBound) return;
-            bracket.dataset.liveLinksBound = 'true';
-
-            bracket.addEventListener('click', (e) => {
-                const matchup = e.target.closest('.matchup.live');
-                if (!matchup) return;
-                if (e.target.closest('.supporters-toggle, .supporters-panel')) return;
-                window.open(matchup.dataset.liveUrl || LIVE_STREAM_URL, '_blank', 'noopener,noreferrer');
+            const roots = [
+                document.querySelector('.bracket'),
+                document.querySelector('.group-stage'),
+            ].filter(Boolean);
+            roots.forEach(root => {
+                if (root.dataset.liveLinksBound) return;
+                root.dataset.liveLinksBound = 'true';
+                root.addEventListener('click', (e) => {
+                    const matchup = e.target.closest('.matchup.live');
+                    if (!matchup || !root.contains(matchup)) return;
+                    if (e.target.closest('.supporters-toggle, .supporters-panel, .score-predict-toggle, .score-predict-panel')) return;
+                    window.open(matchup.dataset.liveUrl || LIVE_STREAM_URL, '_blank', 'noopener,noreferrer');
+                });
             });
         }
     
@@ -1631,6 +1901,7 @@
                 return Array.from(document.querySelectorAll('.bracket .matchup-tie')).some(tieEl => {
                     const tieId = tieEl.dataset.tieId || '';
                     if (tieId.startsWith('sf-') || tieId.startsWith('final-0') || tieId.startsWith('third-0')) return false;
+                    if (tieEl.closest('[data-semifinal-round="true"]')) return false;
                     if (!isTieResolved(tieId)) return false;
                     const loser = getTieLoserTeamData(tieEl);
                     return podiumTeamMatchesResult(teamName, info, loser);
@@ -1639,6 +1910,7 @@
             return Array.from(document.querySelectorAll('.bracket .matchup.finished')).some(matchup => {
                 const matchId = matchup.dataset.matchId || '';
                 if (matchId.startsWith('sf-') || matchId.startsWith('final-0') || matchId.startsWith('third-0')) return false;
+                if (matchup.closest('[data-semifinal-round="true"]')) return false;
                 return isPodiumTeamMatchLoser(teamName, info, matchup);
             });
         }
@@ -2270,13 +2542,40 @@
             return Math.max(endValue, 1);
         }
 
+        function getClosestTotalGoalParticipants(currentGoal) {
+            let closestDiff = Infinity;
+            const closest = [];
+            (totalGoalData || []).forEach(p => {
+                if (!p || !p.name) return;
+                const diff = Math.abs((parseInt(p.goal, 10) || 0) - currentGoal);
+                if (diff < closestDiff) {
+                    closestDiff = diff;
+                    closest.length = 0;
+                    closest.push(p.name);
+                } else if (diff === closestDiff) {
+                    closest.push(p.name);
+                }
+            });
+            return closest;
+        }
+
+        function getClosestTotalGoalParticipant(currentGoal) {
+            const closest = getClosestTotalGoalParticipants(currentGoal).slice().sort((a, b) =>
+                a.localeCompare(b)
+            );
+            return closest[0] || '';
+        }
+
         function buildTotalGoalBar() {
             const container = document.getElementById('total-goal-bar');
             if (!container) return;
+            container.innerHTML = '';
 
             const startValue = 0;
             const currentGoal = calculateCurrentGoalFromBracket();
             const endValue = getTotalGoalBarEndValue(currentGoal);
+            const finalResolved = isFinalResolved();
+            const closestNames = new Set(getClosestTotalGoalParticipants(currentGoal));
             const trackHeight = 500; // Total height of the track in px
 
             // Adjustable spacing offsets (in px from calculated position)
@@ -2373,33 +2672,22 @@
 
             track.appendChild(currentIndicator);
 
-            // Peserta yang prediksinya sudah terlewati skor aktual = sudah kalah (visual saja)
-            const isEliminated = (p) => currentGoal > p.goal;
-
-            // Glow: siapa yang paling dekat secara angka ke currentGoal (absolut)
-            let closestName = '';
-            let closestDiff = Infinity;
-            sorted.forEach(p => {
-                const diff = Math.abs(p.goal - currentGoal);
-                if (diff < closestDiff || (diff === closestDiff && p.name.localeCompare(closestName) < 0)) {
-                    closestDiff = diff;
-                    closestName = p.name;
-                }
-            });
-
-            // Place markers
+            // Sebelum Final: eliminasi progresif bila skor aktual melewati prediksi.
+            // Setelah Final: hanya peserta terdekat (glowing) yang tersisa; sisanya eliminated.
             sorted.forEach((p, index) => {
                 const pct = ((p.goal - startValue) / (endValue - startValue));
                 const baseTop = pct * trackHeight;
                 const offset = markerOffsets[p.name] || 0;
                 const finalTop = baseTop + offset;
-                const isClosest = p.name === closestName && currentGoal > 0;
+                const isClosest = closestNames.has(p.name);
+                const shouldEliminate = finalResolved
+                    ? !isClosest
+                    : currentGoal > p.goal && !isClosest;
 
                 const marker = document.createElement('div');
                 marker.className = 'total-goal-marker-v';
                 marker.style.top = finalTop + 'px';
-                // Closest (glowing) tetap penuh; jangan dimatikan style eliminated
-                if (isEliminated(p) && !isClosest) marker.classList.add('eliminated');
+                if (shouldEliminate) marker.classList.add('eliminated');
 
                 // Index ganjil di kiri, selain itu di kanan
                 if (index % 2 !== 0) {
@@ -2496,7 +2784,7 @@
                 stats[name] = { scored: 0, conceded: 0 };
             });
 
-            document.querySelectorAll('.bracket .matchup.finished').forEach(matchup => {
+            forEachGoalStatMatchup(matchup => {
                 const teams = matchup.querySelectorAll(':scope > .team');
                 if (teams.length !== 2) return;
 
@@ -2535,6 +2823,29 @@
             });
         }
 
+        function isSideQuestShareEnabled(category) {
+            const share = pointConfig && pointConfig.sideQuestShare;
+            if (!share || typeof share !== 'object') return true;
+            return share[category] !== false;
+        }
+
+        /** Award side-quest points to correct guessers; optionally split the pool equally. */
+        function awardSideQuestPoints(points, winners, totalAmount, shareEqually) {
+            const unique = [];
+            const seen = Object.create(null);
+            (winners || []).forEach(name => {
+                if (!name || points[name] === undefined || seen[name]) return;
+                seen[name] = true;
+                unique.push(name);
+            });
+            if (!unique.length) return;
+            const pool = Number(totalAmount) || 0;
+            const each = shareEqually ? (pool / unique.length) : pool;
+            unique.forEach(name => {
+                points[name] += each;
+            });
+        }
+
         function getFinishedMatchTeam(matchId, role) {
             if (isTwoLegKnockout() && typeof ArisanBracket !== 'undefined') {
                 const parsed = ArisanBracket.parseMatchId(matchId);
@@ -2562,13 +2873,28 @@
             const third = getFinishedMatchTeam(THIRD_PLACE_MATCH_ID, 'winner');
 
             if (champion) {
-                addPointsToSupporters(points, sideQuestPodium.champion[champion.name]?.supporters, pointConfig.sideQuest.champion);
+                awardSideQuestPoints(
+                    points,
+                    sideQuestPodium.champion[champion.name]?.supporters,
+                    pointConfig.sideQuest.champion,
+                    isSideQuestShareEnabled('champion')
+                );
             }
             if (runnerUp) {
-                addPointsToSupporters(points, sideQuestPodium.runnerup[runnerUp.name]?.supporters, pointConfig.sideQuest.runnerup);
+                awardSideQuestPoints(
+                    points,
+                    sideQuestPodium.runnerup[runnerUp.name]?.supporters,
+                    pointConfig.sideQuest.runnerup,
+                    isSideQuestShareEnabled('runnerup')
+                );
             }
             if (third && includeThirdPlace) {
-                addPointsToSupporters(points, sideQuestPodium.third[third.name]?.supporters, pointConfig.sideQuest.third);
+                awardSideQuestPoints(
+                    points,
+                    sideQuestPodium.third[third.name]?.supporters,
+                    pointConfig.sideQuest.third,
+                    isSideQuestShareEnabled('third')
+                );
             }
         }
 
@@ -2579,20 +2905,34 @@
             const maxGoals = Math.max(...bootData.map(p => p.goals || 0));
             if (maxGoals <= 0) return;
 
+            const winners = [];
             bootData
                 .filter(p => (p.goals || 0) === maxGoals)
                 .forEach(player => {
-                    addPointsToSupporters(points, player.supporters, pointConfig.sideQuest.goldenBoot);
+                    (player.supporters || []).forEach(name => winners.push(name));
                 });
+            awardSideQuestPoints(
+                points,
+                winners,
+                pointConfig.sideQuest.goldenBoot,
+                isSideQuestShareEnabled('goldenBoot')
+            );
         }
 
         function applyGoldenGloveBonus(points) {
             const gloveData = (window.ADMIN_CONFIG && window.ADMIN_CONFIG.goldenGlove) || [];
+            const winners = [];
             gloveData
                 .filter(p => p.winner)
                 .forEach(player => {
-                    addPointsToSupporters(points, player.supporters, pointConfig.sideQuest.goldenGlove);
+                    (player.supporters || []).forEach(name => winners.push(name));
                 });
+            awardSideQuestPoints(
+                points,
+                winners,
+                pointConfig.sideQuest.goldenGlove,
+                isSideQuestShareEnabled('goldenGlove')
+            );
         }
 
         function applyTotalGoalBonus(points) {
@@ -2600,20 +2940,43 @@
                 ? calculateCurrentGoalFromBracket()
                 : 0;
 
-            // Sama seperti glowing: paling dekat secara angka (absolut) ke currentGoal
-            let closestName = '';
-            let closestDiff = Infinity;
-            totalGoalData.forEach(p => {
-                const diff = Math.abs(p.goal - currentGoal);
-                if (diff < closestDiff || (diff === closestDiff && p.name.localeCompare(closestName) < 0)) {
-                    closestDiff = diff;
-                    closestName = p.name;
-                }
-            });
+            awardSideQuestPoints(
+                points,
+                getClosestTotalGoalParticipants(currentGoal),
+                pointConfig.sideQuest.totalGoal,
+                isSideQuestShareEnabled('totalGoal')
+            );
+        }
 
-            if (closestName && points[closestName] !== undefined) {
-                points[closestName] += pointConfig.sideQuest.totalGoal;
+        function mainQuestOutcomePoints(teamName, outcome) {
+            if (pointConfig.mainQuestMode === 'fifa') {
+                const row = pointConfig.teamPoints && pointConfig.teamPoints[teamName];
+                if (row && row[outcome] != null) return Number(row[outcome]) || 0;
             }
+            return Number(pointConfig.mainQuest && pointConfig.mainQuest[outcome]) || 0;
+        }
+
+        function applyScorePredictBonus(points) {
+            const amount = pointConfig.sideQuest.scorePredict;
+            if (amount == null) return;
+            const share = isSideQuestShareEnabled('scorePredict');
+
+            document.querySelectorAll(
+                '.bracket .matchup.finished, .group-stage .matchup.finished'
+            ).forEach(matchup => {
+                const matchId = matchup.dataset.matchId;
+                if (!matchId) return;
+                const teams = matchup.querySelectorAll(':scope > .team');
+                if (teams.length !== 2) return;
+                const actualA = parseFullTimeScore(teams[0].querySelector('.team-score')?.textContent);
+                const actualB = parseFullTimeScore(teams[1].querySelector('.team-score')?.textContent);
+                if (actualA == null || actualB == null) return;
+
+                const winners = getScorePredictionsForMatch(matchId)
+                    .filter(p => p.a === actualA && p.b === actualB)
+                    .map(p => p.name);
+                awardSideQuestPoints(points, winners, amount, share);
+            });
         }
 
         function calculateStandingsPointsFromBracket() {
@@ -2622,10 +2985,7 @@
                 points[name] = 0;
             });
 
-            document.querySelectorAll('.bracket .matchup.finished').forEach(matchup => {
-                // Perebutan juara 3: tidak ada poin Main Quest 3/1/0
-                if (isThirdPlaceMatchup(matchup)) return;
-
+            forEachWdlMatchup(matchup => {
                 const teams = matchup.querySelectorAll(':scope > .team');
                 if (teams.length !== 2) return;
 
@@ -2637,7 +2997,7 @@
                 if (!teamData[0].name || !teamData[1].name) return;
                 if (teamData[0].name === 'TBD' || teamData[1].name === 'TBD') return;
 
-                // Aturan: 3 = menang FT, 1 = seri FT, 0 = kalah FT (ET/penalti tidak mempengaruhi poin)
+                // FT only — ET/penalti tidak mempengaruhi poin Main Quest
                 const score1 = parseFullTimeScore(teamData[0].scoreText);
                 const score2 = parseFullTimeScore(teamData[1].scoreText);
                 if (score1 === null || score2 === null) return;
@@ -2645,14 +3005,14 @@
                 let team1Points;
                 let team2Points;
                 if (score1 > score2) {
-                    team1Points = pointConfig.mainQuest.win;
-                    team2Points = pointConfig.mainQuest.loss;
+                    team1Points = mainQuestOutcomePoints(teamData[0].name, 'win');
+                    team2Points = mainQuestOutcomePoints(teamData[1].name, 'loss');
                 } else if (score1 < score2) {
-                    team1Points = pointConfig.mainQuest.loss;
-                    team2Points = pointConfig.mainQuest.win;
+                    team1Points = mainQuestOutcomePoints(teamData[0].name, 'loss');
+                    team2Points = mainQuestOutcomePoints(teamData[1].name, 'win');
                 } else {
-                    team1Points = pointConfig.mainQuest.draw;
-                    team2Points = pointConfig.mainQuest.draw;
+                    team1Points = mainQuestOutcomePoints(teamData[0].name, 'draw');
+                    team2Points = mainQuestOutcomePoints(teamData[1].name, 'draw');
                 }
 
                 [
@@ -2669,6 +3029,9 @@
 
             // Bonus Side Quest (Champion / Runner-Up / Third Place) — Third Place dari perebutan juara 3 saja
             applyFinalSideQuestBonuses(points);
+
+            // Exact score predictions — awarded as soon as each match is finished (FT)
+            applyScorePredictBonus(points);
 
             // Bonus awards lain — hanya setelah Final selesai
             if (isFinalResolved()) {
@@ -2704,6 +3067,12 @@
             return names.length ? [names[0]] : [];
         }
 
+        function formatStandingsPoints(value) {
+            const n = Number(value) || 0;
+            if (Number.isInteger(n)) return String(n);
+            return String(Math.round(n * 100) / 100);
+        }
+
         function updateStandingsPoints() {
             const points = calculateStandingsPointsFromBracket();
             const chart = document.querySelector('.standings-section > .standings-chart');
@@ -2713,7 +3082,7 @@
                 const name = row.querySelector('.chart-name')?.textContent.trim();
                 const valueEl = row.querySelector('.chart-value');
                 if (name && valueEl) {
-                    valueEl.textContent = points[name] ?? 0;
+                    valueEl.textContent = formatStandingsPoints(points[name] ?? 0);
                 }
             });
         }
@@ -2741,14 +3110,15 @@
             rows.forEach((row, index) => {
                 chart.appendChild(row);
                 row.classList.remove('top-1', 'rank-1', 'rank-2', 'rank-3', 'podium-place-1', 'podium-place-2', 'podium-place-3');
+                row.style.removeProperty('--glow-color');
                 const rank = index + 1;
                 const rankEl = row.querySelector('.chart-rank');
-                if (rankEl) rankEl.textContent = String(rank);
-                if (rank === 1) {
-                    row.classList.add('rank-1', 'podium-place-1');
-                    const bar = row.querySelector('.chart-bar');
-                    const barColor = bar.style.background || bar.style.backgroundColor;
-                    row.style.setProperty('--glow-color', barColor);
+                const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+                const glowColors = { 1: '#ffd700', 2: '#c0c0c0', 3: '#cd7f32' };
+                if (rankEl) rankEl.textContent = medals[rank] || String(rank);
+                if (rank <= 3) {
+                    row.classList.add('rank-' + rank, 'podium-place-' + rank);
+                    row.style.setProperty('--glow-color', glowColors[rank]);
                 }
             });
 
@@ -2839,7 +3209,22 @@ window.syncLeagueDataFromDb = function syncLeagueDataFromDb() {
     if (d.participantAvatars) participantAvatars = d.participantAvatars;
     if (d.totalGoalData) totalGoalData = d.totalGoalData;
     if (d.sideQuestPodium) sideQuestPodium = d.sideQuestPodium;
-    if (d.pointConfig) pointConfig = d.pointConfig;
+    if (d.scorePredictions) scorePredictions = d.scorePredictions;
+    if (d.pointConfig) {
+        pointConfig = {
+            mainQuestMode: d.pointConfig.mainQuestMode === 'fifa' ? 'fifa' : 'fixed',
+            mainQuest: Object.assign({}, pointConfig.mainQuest, d.pointConfig.mainQuest || {}),
+            teamPoints: Object.assign({}, d.pointConfig.teamPoints || {}),
+            sideQuest: Object.assign({}, pointConfig.sideQuest, d.pointConfig.sideQuest || {}),
+            sideQuestShare: Object.assign(
+                {},
+                pointConfig.sideQuestShare,
+                d.pointConfig.sideQuestShare || {}
+            ),
+        };
+    }
+    if (d.includeGroupStage != null) includeGroupStage = !!d.includeGroupStage;
+    if (d.includeKnockoutStage != null) includeKnockoutStage = d.includeKnockoutStage !== false;
     if (d.includeThirdPlace != null) includeThirdPlace = d.includeThirdPlace;
     if (d.twoLegKnockout != null) twoLegKnockout = !!d.twoLegKnockout;
     if (d.competitionType) competitionType = d.competitionType;

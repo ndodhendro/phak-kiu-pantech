@@ -8,6 +8,21 @@ async function loadAdminConfig() {
 }
 
 const DEFAULT_LEAGUE_ICON_URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT41kl1nnX-tqBQiGHVikOIDViXDZXRRulNdKFAK6c1eQ&s=10';
+const DEFAULT_PARTICIPANT_AVATAR =
+    'https://img.icons8.com/ios-filled/50/6b7280/user-male-circle.png';
+
+function resolveParticipantAvatarUrl(avatars, name) {
+    const src = avatars && name != null ? String(avatars[name] || '').trim() : '';
+    return src || DEFAULT_PARTICIPANT_AVATAR;
+}
+
+function participantAvatarImgHtml(src, name, className) {
+    const fallback = DEFAULT_PARTICIPANT_AVATAR.replace(/'/g, "\\'");
+    return '<img src="' + escHtml(src) + '" alt="' + escHtml(name) +
+        '" class="' + escHtml(className) +
+        '" referrerpolicy="no-referrer" decoding="async"' +
+        " onerror=\"if(this.dataset.fb)return;this.dataset.fb='1';this.src='" + fallback + "'\">";
+}
 
 function getLeagueIconUrl() {
     const d = window.LEAGUE_DATA;
@@ -218,12 +233,37 @@ function escHtml(s) {
         .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+function hasAnyMainQuestPotPick(rows) {
+    return (rows || []).some(row =>
+        (row.pots || []).some(pot =>
+            (Array.isArray(pot) ? pot : []).some(name => String(name || '').trim())
+        )
+    );
+}
+
 function buildMainQuestTableFromParticipants() {
     const d = window.LEAGUE_DATA;
     const wrapper = document.getElementById('main-quest-table-root');
     if (!d || !wrapper) return;
 
+    const heading = wrapper.previousElementSibling;
     const rows = d.participantsMainQuest || [];
+    const showTable = hasAnyMainQuestPotPick(rows);
+
+    if (!showTable) {
+        wrapper.innerHTML = '';
+        wrapper.classList.add('hidden');
+        if (heading && heading.classList.contains('table-section-title')) {
+            heading.classList.add('hidden');
+        }
+        return;
+    }
+
+    wrapper.classList.remove('hidden');
+    if (heading && heading.classList.contains('table-section-title')) {
+        heading.classList.remove('hidden');
+    }
+
     if (!rows.length) {
         wrapper.innerHTML = '<p class="hint">No participant data yet.</p>';
         return;
@@ -241,12 +281,9 @@ function buildMainQuestTableFromParticipants() {
 
     const tbody = rows.map((row) => {
         let tr = '<tr>';
-        const avatar = avatars[row.name] || '';
+        const avatar = resolveParticipantAvatarUrl(avatars, row.name);
         tr += '<td class="participant-cell">';
-        if (avatar) {
-            tr += '<img src="' + escHtml(avatar) + '" alt="' + escHtml(row.name) +
-                '" class="participant-avatar" referrerpolicy="no-referrer" decoding="async">';
-        }
+        tr += participantAvatarImgHtml(avatar, row.name, 'participant-avatar');
         tr += '<span class="participant-name-battery"><span class="participant-battery-fill"></span><strong>' +
             escHtml(row.name) + '</strong></span></td>';
 
@@ -275,7 +312,7 @@ function buildStandingsChartFromParticipants() {
     const colors = d.participantColors || {};
     chart.innerHTML = names.map(name => {
         const color = colors[name] || '#3498db';
-        const avatar = d.participantAvatars[name] || '';
+        const avatar = resolveParticipantAvatarUrl(d.participantAvatars, name);
         return '<div class="chart-row">' +
             '<div class="chart-label">' +
             '<div class="chart-label-box podium-team-card">' +
@@ -286,25 +323,59 @@ function buildStandingsChartFromParticipants() {
             '<div class="chart-bar-wrapper">' +
             '<div class="chart-bar" style="background:' + color + ';">' +
             '<span class="chart-value">0</span>' +
-            (avatar ? '<img src="' + avatar + '" alt="' + name +
-                '" class="chart-avatar" referrerpolicy="no-referrer" decoding="async">' : '') +
+            participantAvatarImgHtml(avatar, name, 'chart-avatar') +
             '</div></div></div>';
     }).join('');
 }
 
 function mountDynamicBracket() {
-    const root = document.getElementById('bracket-root') || document.querySelector('.bracket');
+    const bracketRoot = document.getElementById('bracket-root') || document.querySelector('.bracket');
+    const groupRoot = document.getElementById('group-stage-root') || document.querySelector('.group-stage');
     const d = window.LEAGUE_DATA;
-    if (!root || !d || !d.teams || !d.teams.length) return;
-    if (typeof ArisanBracket === 'undefined') return;
+    if (!d || typeof ArisanBracket === 'undefined') return;
 
-    ArisanBracket.mountBracket(root, {
-        teams: d.teams,
+    const hasGroup = !!d.includeGroupStage;
+    const hasKnockout = d.includeKnockoutStage !== false;
+    const knockoutTeams = (Array.isArray(d.knockoutSeeds) && d.knockoutSeeds.length)
+        ? d.knockoutSeeds.map(t => ({
+            name: t && t.name ? String(t.name).trim() : '',
+            flag: (t && t.flag) || '',
+        }))
+        : (hasGroup ? [] : (d.teams || []));
+
+    if (!hasGroup && !knockoutTeams.length && !(d.teams || []).length) return;
+
+    const mountOpts = {
+        teams: d.teams || [],
         competitionType: d.competitionType || 'country',
         includeThirdPlace: d.includeThirdPlace !== false,
         twoLegKnockout: !!d.twoLegKnockout,
         trophyImageUrl: d.trophyImageUrl || '',
-    });
+        groupFixtures: d.groupFixtures || [],
+        groupDefinitions: d.groupDefinitions || [],
+        matchSchedule: d.matchSchedule || {},
+        leagueYear: d.year,
+    };
+
+    if (groupRoot && hasGroup) {
+        ArisanBracket.mountGroupStage(groupRoot, mountOpts);
+    } else if (groupRoot) {
+        groupRoot.innerHTML = '';
+    }
+
+    if (bracketRoot && hasKnockout) {
+        if (knockoutTeams.length >= 2) {
+            ArisanBracket.mountBracket(bracketRoot, Object.assign({}, mountOpts, { teams: knockoutTeams }));
+        } else if (hasGroup) {
+            bracketRoot.innerHTML = '<p class="bracket-error">Set knockout bracket pairs in league setup. TBD is allowed until group winners are known.</p>';
+        } else if ((d.teams || []).length >= 2) {
+            ArisanBracket.mountBracket(bracketRoot, mountOpts);
+        } else {
+            bracketRoot.innerHTML = '<p class="bracket-error">At least 2 knockout slots are required.</p>';
+        }
+    } else if (bracketRoot) {
+        bracketRoot.innerHTML = '';
+    }
 
     if (d.matchSchedule && typeof ArisanBracket.applyMatchSchedules === 'function') {
         ArisanBracket.applyMatchSchedules(d.matchSchedule, d.year);
@@ -336,6 +407,7 @@ function startApp() {
 
     setTimeout(drawBracketLines, 100);
     setTimeout(injectSupporters, 200);
+    setTimeout(injectScorePredictions, 220);
     setTimeout(drawBracketLines, 300);
 
     setTimeout(function () {
@@ -348,7 +420,6 @@ function startApp() {
         buildPlayerPodium('podium-goldenglove-container', ADMIN_CONFIG.goldenGlove || [], '🧤');
     }, 250);
 
-    setTimeout(buildTotalGoalBar, 300);
     setTimeout(updateStandingsChart, 100);
 }
 

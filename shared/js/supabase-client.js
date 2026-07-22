@@ -228,25 +228,73 @@ window.ArisanDB = (function () {
     }
 
     const DEFAULT_POINT_CONFIG = {
+        mainQuestMode: 'fixed',
         mainQuest: { win: 3, draw: 1, loss: 0 },
+        teamPoints: {},
         sideQuest: {
             champion: 10, runnerup: 5, third: 3,
-            goldenBoot: 5, goldenGlove: 5, totalGoal: 5,
+            goldenBoot: 5, goldenGlove: 5, totalGoal: 5, scorePredict: 5,
+        },
+        sideQuestShare: {
+            champion: true, runnerup: true, third: true,
+            goldenBoot: true, goldenGlove: true, totalGoal: true, scorePredict: true,
         },
     };
 
+    function normalizeTeamPointRow(raw, mainQuestDefaults) {
+        const r = raw && typeof raw === 'object' ? raw : {};
+        const mq = mainQuestDefaults || DEFAULT_POINT_CONFIG.mainQuest;
+        const num = (v, fallback) => {
+            const n = parseInt(v, 10);
+            return Number.isNaN(n) ? fallback : Math.max(0, n);
+        };
+        return {
+            win: num(r.win, mq.win),
+            draw: num(r.draw, mq.draw),
+            loss: num(r.loss, mq.loss),
+        };
+    }
+
+    function normalizeTeamPointsMap(raw, mainQuestDefaults) {
+        const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+        const out = {};
+        Object.keys(src).forEach(name => {
+            const key = String(name || '').trim();
+            if (!key) return;
+            out[key] = normalizeTeamPointRow(src[name], mainQuestDefaults);
+        });
+        return out;
+    }
+
+    function normalizePointConfig(raw) {
+        const pc = raw && typeof raw === 'object' ? raw : {};
+        const mainQuest = Object.assign({}, DEFAULT_POINT_CONFIG.mainQuest, pc.mainQuest || {});
+        return {
+            mainQuestMode: pc.mainQuestMode === 'fifa' ? 'fifa' : 'fixed',
+            mainQuest,
+            teamPoints: normalizeTeamPointsMap(pc.teamPoints, mainQuest),
+            sideQuest: Object.assign({}, DEFAULT_POINT_CONFIG.sideQuest, pc.sideQuest || {}),
+            sideQuestShare: Object.assign(
+                {},
+                DEFAULT_POINT_CONFIG.sideQuestShare,
+                pc.sideQuestShare || {}
+            ),
+        };
+    }
+
     function normalizeSettings(raw) {
         const s = raw && typeof raw === 'object' ? raw : {};
-        const pc = s.pointConfig || {};
         return {
             competitionType: s.competitionType === 'club' ? 'club' : 'country',
+            includeGroupStage: !!s.includeGroupStage,
+            includeKnockoutStage: s.includeKnockoutStage !== false,
             includeThirdPlace: s.includeThirdPlace !== false,
             twoLegKnockout: !!s.twoLegKnockout,
-            pointConfig: {
-                mainQuest: Object.assign({}, DEFAULT_POINT_CONFIG.mainQuest, pc.mainQuest || {}),
-                sideQuest: Object.assign({}, DEFAULT_POINT_CONFIG.sideQuest, pc.sideQuest || {}),
-            },
+            pointConfig: normalizePointConfig(s.pointConfig),
             teamOrder: Array.isArray(s.teamOrder) ? s.teamOrder : [],
+            knockoutSeeds: normalizeKnockoutSeeds(s.knockoutSeeds),
+            groupDefinitions: normalizeGroupDefinitions(s.groupDefinitions),
+            groupFixtures: normalizeGroupFixtures(s.groupFixtures),
             matchSchedule: (s.matchSchedule && typeof s.matchSchedule === 'object') ? s.matchSchedule : {},
             scheduleStartDate: s.scheduleStartDate || '',
             scheduleKickoff: s.scheduleKickoff || '19:00',
@@ -255,6 +303,43 @@ window.ArisanDB = (function () {
             ballImageUrl: s.ballImageUrl || '',
             backgroundMusicUrl: s.backgroundMusicUrl || '',
         };
+    }
+
+    function normalizeKnockoutSeeds(raw) {
+        if (!Array.isArray(raw)) return [];
+        return raw.map(t => {
+            if (typeof t === 'string') {
+                const name = t.trim();
+                return { name: (!name || name.toUpperCase() === 'TBD') ? '' : name, flag: '' };
+            }
+            const name = String((t && t.name) || '').trim();
+            return {
+                name: (!name || name.toUpperCase() === 'TBD') ? '' : name,
+                flag: (t && t.flag) || '',
+            };
+        });
+    }
+
+    function normalizeGroupDefinitions(raw) {
+        if (!Array.isArray(raw)) return [];
+        return raw.map((g, i) => ({
+            label: String((g && (g.label || g.name)) || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
+            teams: Array.isArray(g && g.teams)
+                ? g.teams.map(t => {
+                    if (typeof t === 'string') return t.trim();
+                    return String((t && t.name) || '').trim();
+                }).filter(Boolean)
+                : [],
+        })).filter(g => g.teams.length);
+    }
+
+    function normalizeGroupFixtures(raw) {
+        if (!Array.isArray(raw)) return [];
+        return raw.map(f => ({
+            a: String((f && (f.a || f.teamA || f[0])) || '').trim(),
+            b: String((f && (f.b || f.teamB || f[1])) || '').trim(),
+            group: String((f && (f.group || f.groupLabel)) || '').trim(),
+        })).filter(f => f.a || f.b);
     }
 
     /**
@@ -371,7 +456,50 @@ window.ArisanDB = (function () {
             goldenBoot: Object.values(goldenBootMap),
             goldenGlove: Object.values(goldenGloveMap),
             totalGoalData,
+            scorePredictions: deriveScorePredictions(participants),
         };
+    }
+
+    /** { [matchId]: [{ name, a, b }, ...] } from participant picks. */
+    function deriveScorePredictions(participants) {
+        const byMatch = {};
+        (participants || []).forEach(p => {
+            const map = (p.picks && p.picks.sideQuest && p.picks.sideQuest.scorePredict) || {};
+            if (!map || typeof map !== 'object') return;
+            Object.keys(map).forEach(matchId => {
+                const raw = map[matchId];
+                if (!raw || typeof raw !== 'object') return;
+                const a = parseInt(raw.a, 10);
+                const b = parseInt(raw.b, 10);
+                if (Number.isNaN(a) || Number.isNaN(b)) return;
+                if (!byMatch[matchId]) byMatch[matchId] = [];
+                byMatch[matchId].push({
+                    name: p.name,
+                    a: Math.max(0, a),
+                    b: Math.max(0, b),
+                });
+            });
+        });
+        return byMatch;
+    }
+
+    /** Preserve admin-entered goals / eliminated / winner when league setup is re-saved. */
+    function mergeDerivedAwardsWithExisting(derivedList, existingAwards, kind) {
+        const byName = {};
+        (existingAwards || []).filter(a => a.kind === kind).forEach(a => {
+            byName[String(a.player_name || '').toLowerCase()] = a;
+        });
+        return (derivedList || []).map(a => {
+            const db = byName[String(a.player_name || '').toLowerCase()];
+            if (!db) return { ...a };
+            return {
+                ...a,
+                goals: db.goals != null ? db.goals : a.goals,
+                eliminated: !!db.eliminated,
+                winner: !!db.winner,
+                img: a.img || db.img || null,
+            };
+        });
     }
 
     function legacyTeamSupporters(bundle) {
@@ -429,6 +557,7 @@ window.ArisanDB = (function () {
         let teamSupporters;
         let sideQuestPodium;
         let totalGoalData;
+        let scorePredictions = {};
         let derivedAwards = null;
 
         if (hasParticipantPicks(bundle.participants)) {
@@ -436,6 +565,7 @@ window.ArisanDB = (function () {
             teamSupporters = derived.teamSupporters;
             sideQuestPodium = derived.sideQuestPodium;
             totalGoalData = derived.totalGoalData;
+            scorePredictions = derived.scorePredictions || {};
             derivedAwards = { goldenBoot: derived.goldenBoot, goldenGlove: derived.goldenGlove };
         } else {
             teamSupporters = legacyTeamSupporters(bundle);
@@ -446,6 +576,7 @@ window.ArisanDB = (function () {
                     totalGoalData.push({ name: p.name, goal: p.total_goal_prediction });
                 }
             });
+            scorePredictions = deriveScorePredictions(bundle.participants);
         }
 
         const participantsMainQuest = (bundle.participants || []).map(p => {
@@ -468,13 +599,19 @@ window.ArisanDB = (function () {
             participantColors,
             totalGoalData,
             sideQuestPodium,
+            scorePredictions,
             participantsMainQuest,
             teams,
             settings,
             pointConfig: settings.pointConfig,
             competitionType: settings.competitionType,
+            includeGroupStage: settings.includeGroupStage,
+            includeKnockoutStage: settings.includeKnockoutStage,
             includeThirdPlace: settings.includeThirdPlace,
             twoLegKnockout: settings.twoLegKnockout,
+            groupDefinitions: settings.groupDefinitions || [],
+            groupFixtures: settings.groupFixtures || [],
+            knockoutSeeds: settings.knockoutSeeds || [],
             derivedAwards,
             title: bundle.league.title,
             communityName: bundle.community && bundle.community.name,
@@ -636,12 +773,55 @@ window.ArisanDB = (function () {
      * Tidak menyentuh tabel matches (skor playoff di admin liga terpisah).
      */
     async function saveLeagueSetup(communitySlug, leagueSlug, setup) {
+        const groupDefinitions = (typeof ArisanBracket !== 'undefined' && ArisanBracket.normalizeGroupDefinitions)
+            ? ArisanBracket.normalizeGroupDefinitions(setup.groupDefinitions)
+            : normalizeGroupDefinitions(setup.groupDefinitions);
+        let groupFixtures = normalizeGroupFixtures(setup.groupFixtures);
+        if (groupDefinitions.length && typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions) {
+            groupFixtures = normalizeGroupFixtures(ArisanBracket.fixturesFromGroupDefinitions(groupDefinitions));
+        } else if (groupDefinitions.length) {
+            // Fallback if bracket-builder not loaded: simple round-robin
+            groupFixtures = [];
+            groupDefinitions.forEach(g => {
+                const names = g.teams || [];
+                for (let i = 0; i < names.length; i++) {
+                    for (let j = i + 1; j < names.length; j++) {
+                        groupFixtures.push({ a: names[i], b: names[j], group: g.label });
+                    }
+                }
+            });
+        }
+
+        const uniqueTeamRows = [];
+        const seenTeamNames = new Set();
+        function pushUniqueTeam(name, flag) {
+            const n = String(name || '').trim();
+            if (!n) return;
+            const key = n.toLowerCase();
+            if (seenTeamNames.has(key)) return;
+            seenTeamNames.add(key);
+            uniqueTeamRows.push({ name: n, flag: flag || null });
+        }
+        (setup.teams || []).forEach(t => pushUniqueTeam(t.name, t.flag));
+        groupDefinitions.forEach(g => (g.teams || []).forEach(n => pushUniqueTeam(n, null)));
+        groupFixtures.forEach(f => {
+            pushUniqueTeam(f.a, null);
+            pushUniqueTeam(f.b, null);
+        });
+
         const settings = normalizeSettings({
             competitionType: setup.competitionType,
+            includeGroupStage: setup.includeGroupStage,
+            includeKnockoutStage: setup.includeKnockoutStage,
             includeThirdPlace: setup.includeThirdPlace,
             twoLegKnockout: setup.twoLegKnockout,
             pointConfig: setup.pointConfig,
-            teamOrder: (setup.teams || []).map(t => t.name.trim()).filter(Boolean),
+            teamOrder: uniqueTeamRows.map(t => t.name),
+            knockoutSeeds: Array.isArray(setup.knockoutSeeds)
+                ? normalizeKnockoutSeeds(setup.knockoutSeeds)
+                : [],
+            groupDefinitions,
+            groupFixtures,
             matchSchedule: setup.matchSchedule || {},
             scheduleStartDate: setup.scheduleStartDate || '',
             scheduleKickoff: setup.scheduleKickoff || '19:00',
@@ -658,6 +838,8 @@ window.ArisanDB = (function () {
             timezone: setup.league.timezone,
             settings,
         });
+
+        const existingAwards = await rest('GET', 'awards?select=*&league_id=eq.' + leagueId) || [];
 
         const existingTeams = await rest('GET', 'teams?select=id&league_id=eq.' + leagueId) || [];
         if (existingTeams.length) {
@@ -688,9 +870,9 @@ window.ArisanDB = (function () {
         const participantIdByName = {};
         insertedParticipants.forEach(p => { participantIdByName[p.name] = p.id; });
 
-        const teamRows = (setup.teams || []).map(t => ({
+        const teamRows = uniqueTeamRows.map(t => ({
             league_id: leagueId,
-            name: t.name.trim(),
+            name: t.name,
             flag: t.flag || null,
         }));
 
@@ -704,6 +886,13 @@ window.ArisanDB = (function () {
         const derived = deriveFromParticipantPicks(
             (setup.participants || []).map(p => ({ name: p.name.trim(), picks: p.picks })),
             setup.teams || []
+        );
+
+        const mergedGoldenBoot = mergeDerivedAwardsWithExisting(
+            derived.goldenBoot, existingAwards, 'golden_boot'
+        );
+        const mergedGoldenGlove = mergeDerivedAwardsWithExisting(
+            derived.goldenGlove, existingAwards, 'golden_glove'
         );
 
         const supporterRows = [];
@@ -737,7 +926,7 @@ window.ArisanDB = (function () {
         }
 
         const awardRows = [];
-        derived.goldenBoot.forEach((a, i) => {
+        mergedGoldenBoot.forEach((a, i) => {
             awardRows.push({
                 league_id: leagueId,
                 kind: 'golden_boot',
@@ -752,7 +941,7 @@ window.ArisanDB = (function () {
                 supporters: a.supporters || [],
             });
         });
-        derived.goldenGlove.forEach((a, i) => {
+        mergedGoldenGlove.forEach((a, i) => {
             awardRows.push({
                 league_id: leagueId,
                 kind: 'golden_glove',
@@ -782,6 +971,7 @@ window.ArisanDB = (function () {
                 goldenBoot: { player_name: '', img: '', team: '' },
                 goldenGlove: { player_name: '', img: '', team: '' },
                 totalGoal: null,
+                scorePredict: {},
             },
         };
 
@@ -849,6 +1039,8 @@ window.ArisanDB = (function () {
 
         return {
             competitionType: settings.competitionType,
+            includeGroupStage: settings.includeGroupStage,
+            includeKnockoutStage: settings.includeKnockoutStage,
             includeThirdPlace: settings.includeThirdPlace,
             twoLegKnockout: settings.twoLegKnockout,
             pointConfig: settings.pointConfig,
@@ -873,6 +1065,9 @@ window.ArisanDB = (function () {
                     : picksFromLegacy(p.name, bundle),
             })),
             teams,
+            groupDefinitions: settings.groupDefinitions || [],
+            groupFixtures: settings.groupFixtures || [],
+            knockoutSeeds: settings.knockoutSeeds || [],
         };
     }
 

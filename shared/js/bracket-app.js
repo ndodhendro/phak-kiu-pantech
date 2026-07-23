@@ -2840,9 +2840,11 @@
             });
             if (!unique.length) return;
             const pool = Number(totalAmount) || 0;
-            const each = shareEqually ? (pool / unique.length) : pool;
+            const each = shareEqually
+                ? roundStandingsPoints(pool / unique.length)
+                : roundStandingsPoints(pool);
             unique.forEach(name => {
-                points[name] += each;
+                points[name] = roundStandingsPoints(points[name] + each);
             });
         }
 
@@ -3021,7 +3023,7 @@
                 ].forEach(({ name, pts }) => {
                     (teamSupporters[name] || []).forEach(supporter => {
                         if (points[supporter] !== undefined) {
-                            points[supporter] += pts;
+                            points[supporter] = roundStandingsPoints(points[supporter] + pts);
                         }
                     });
                 });
@@ -3067,10 +3069,12 @@
             return names.length ? [names[0]] : [];
         }
 
+        function roundStandingsPoints(value) {
+            return Math.round((Number(value) || 0) * 100) / 100;
+        }
+
         function formatStandingsPoints(value) {
-            const n = Number(value) || 0;
-            if (Number.isInteger(n)) return String(n);
-            return String(Math.round(n * 100) / 100);
+            return roundStandingsPoints(value).toFixed(2);
         }
 
         function updateStandingsPoints() {
@@ -3094,10 +3098,10 @@
             if (!chart) return;
             const rows = Array.from(chart.querySelectorAll('.chart-row'));
             
-            // Get points from each row
+            // Get points from each row (supports decimals e.g. shared side-quest points)
             rows.forEach(row => {
                 const valueEl = row.querySelector('.chart-value');
-                row._points = parseInt(valueEl.textContent) || 0;
+                row._points = roundStandingsPoints(parseFloat(valueEl?.textContent) || 0);
                 row._name = row.querySelector('.chart-name')?.textContent.trim() || '';
             });
 

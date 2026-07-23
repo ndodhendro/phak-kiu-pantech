@@ -152,9 +152,7 @@
             flex-direction: column;
             flex-wrap: nowrap;
             align-items: stretch;
-            overflow-x: auto;
-            overflow-y: visible;
-            -webkit-overflow-scrolling: touch;
+            overflow: visible;
             padding: 20px 0;
             width: 100%;
             gap: 28px;
@@ -451,11 +449,16 @@
             }
         }
         .bracket {
-            display: inline-flex;
+            display: flex;
             align-items: stretch;
             position: relative;
             margin: 0;
+            width: 100%;
             max-width: 100%;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
         }
         .round {
             display: flex;

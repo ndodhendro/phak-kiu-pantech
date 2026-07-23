@@ -2072,7 +2072,7 @@
                 const ratio = total > 0 ? alive / total : 0;
                 const pct = Math.round(ratio * 100);
 
-                fill.style.width = pct + '%';
+                slideDimension(fill, 'width', pct + '%');
 
                 if (alive === 0) {
                     battery.classList.add('is-empty');
@@ -2392,6 +2392,102 @@
             });
         }
 
+        // Smooth bar/chart sliding: ease start + ease finish (CSS --bar-ease)
+        // Replays whenever the bar becomes visible again while scrolling.
+        const barSlideVisible = new WeakMap();
+        let barSlideObserver = null;
+
+        function prefersReducedMotion() {
+            return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        }
+
+        function playBarSlide(el) {
+            if (!el) return;
+            const prop = el.dataset.barProp || 'width';
+            const value = el.dataset.barTarget;
+            if (!value) return;
+            if (prefersReducedMotion()) {
+                el.style[prop] = value;
+                el.dataset.barSlid = '1';
+                return;
+            }
+            el.style[prop] = '0%';
+            delete el.dataset.barSlid;
+            void el.offsetWidth;
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    el.style[prop] = value;
+                    el.dataset.barSlid = '1';
+                });
+            });
+        }
+
+        function resetBarSlide(el) {
+            if (!el) return;
+            const prop = el.dataset.barProp || 'width';
+            el.style[prop] = '0%';
+            delete el.dataset.barSlid;
+        }
+
+        function getBarSlideObserver() {
+            if (barSlideObserver) return barSlideObserver;
+            if (!('IntersectionObserver' in window)) return null;
+            barSlideObserver = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    const el = entry.target;
+                    const wasVisible = !!barSlideVisible.get(el);
+
+                    if (entry.isIntersecting) {
+                        if (!wasVisible) {
+                            barSlideVisible.set(el, true);
+                            playBarSlide(el);
+                        }
+                    } else if (wasVisible) {
+                        barSlideVisible.set(el, false);
+                        resetBarSlide(el);
+                    }
+                });
+            }, {
+                threshold: [0, 0.08, 0.2, 0.4],
+                rootMargin: '0px 0px -6% 0px',
+            });
+            return barSlideObserver;
+        }
+
+        function observeBarSlide(el) {
+            const obs = getBarSlideObserver();
+            if (!obs) {
+                playBarSlide(el);
+                return;
+            }
+            obs.observe(el);
+        }
+
+        function slideDimension(el, prop, value) {
+            if (!el) return;
+            el.dataset.barProp = prop;
+            el.dataset.barTarget = value;
+            el.classList.add('bar-slide-watch');
+
+            if (prefersReducedMotion()) {
+                el.style[prop] = value;
+                el.dataset.barSlid = '1';
+                return;
+            }
+
+            observeBarSlide(el);
+
+            if (barSlideVisible.get(el)) {
+                // Already on screen: ease to the new target from current width/height
+                el.style[prop] = value;
+                el.dataset.barSlid = '1';
+            } else {
+                // Off-screen (or waiting for first observer tick): keep collapsed
+                el.style[prop] = '0%';
+                delete el.dataset.barSlid;
+            }
+        }
+
         // Build Golden Boot Bar Chart (based on goals scored)
         function buildGoldenBootChart() {
             const container = document.getElementById('goldenboot-chart');
@@ -2469,7 +2565,6 @@
                 const bar = document.createElement('div');
                 bar.className = 'goldenboot-bar';
                 const pct = player.goals > 0 ? Math.max((player.goals / maxGoals) * 100, 15) : 15;
-                bar.style.width = pct + '%';
                 const valueSpan = document.createElement('span');
                 valueSpan.className = 'goldenboot-value';
                 valueSpan.textContent = player.goals + ' Goal';
@@ -2488,6 +2583,7 @@
                 barArea.appendChild(barWrapper);
                 row.appendChild(barArea);
                 container.appendChild(row);
+                slideDimension(bar, 'width', pct + '%');
             });
         }
 
@@ -2640,8 +2736,9 @@
             const currentPct = ((currentGoal - startValue) / (endValue - startValue)) * 100;
             const fill = document.createElement('div');
             fill.className = 'total-goal-fill-v';
-            fill.style.height = currentPct + '%';
+            fill.style.height = '0%';
             track.appendChild(fill);
+            slideDimension(fill, 'height', currentPct + '%');
 
             // Start label
             const startLabel = document.createElement('span');
@@ -3133,7 +3230,7 @@
             rows.forEach(row => {
                 const bar = row.querySelector('.chart-bar');
                 const pct = Math.max((row._points / maxPoints) * 100, 8);
-                bar.style.width = pct + '%';
+                slideDimension(bar, 'width', pct + '%');
             });
         }
     

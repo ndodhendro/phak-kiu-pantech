@@ -72,9 +72,46 @@ window.ArisanSetupForm = (function () {
         '#e91e63', '#ff5722', '#00bcd4', '#8bc34a', '#ffc107', '#795548',
     ];
 
+    function ensurePotList(pots) {
+        if (!Array.isArray(pots) || !pots.length) return [{ teams: ['', ''] }];
+        return pots.map((pot) => {
+            const t = (pot && pot.teams) || [];
+            return { teams: [t[0] || '', t[1] || ''] };
+        });
+    }
+
+    /**
+     * Dual Main Quest pots: group + knockout.
+     * Legacy flat `mainQuest.pots` migrates into the active stage (or group if both).
+     */
+    function normalizeMainQuestPicks(mq, opts) {
+        const options = opts || {};
+        const raw = mq && typeof mq === 'object' ? mq : {};
+        if (raw.group || raw.knockout) {
+            return {
+                group: { pots: ensurePotList(raw.group && raw.group.pots) },
+                knockout: { pots: ensurePotList(raw.knockout && raw.knockout.pots) },
+            };
+        }
+        const legacy = ensurePotList(raw.pots);
+        const empty = [{ teams: ['', ''] }];
+        const hasGroup = !!options.includeGroupStage;
+        const hasKo = options.includeKnockoutStage !== false;
+        if (hasGroup && !hasKo) {
+            return { group: { pots: legacy }, knockout: { pots: empty } };
+        }
+        if (!hasGroup && hasKo) {
+            return { group: { pots: empty }, knockout: { pots: legacy } };
+        }
+        return { group: { pots: legacy }, knockout: { pots: empty } };
+    }
+
     function defaultPicks(includeThirdPlace) {
         return {
-            mainQuest: { pots: [{ teams: ['', ''] }] },
+            mainQuest: normalizeMainQuestPicks(null, {
+                includeGroupStage: form && form.includeGroupStage,
+                includeKnockoutStage: form && form.includeKnockoutStage !== false,
+            }),
             sideQuest: {
                 champion: '',
                 runnerup: '',
@@ -85,6 +122,15 @@ window.ArisanSetupForm = (function () {
                 scorePredict: {},
             },
         };
+    }
+
+    function ensureParticipantMainQuest(p) {
+        if (!p.picks) p.picks = defaultPicks(form.includeThirdPlace);
+        p.picks.mainQuest = normalizeMainQuestPicks(p.picks.mainQuest, {
+            includeGroupStage: form.includeGroupStage,
+            includeKnockoutStage: form.includeKnockoutStage,
+        });
+        return p.picks.mainQuest;
     }
 
     function ensureScorePredictPicks(p) {
@@ -824,23 +870,27 @@ window.ArisanSetupForm = (function () {
         return names;
     }
 
-    function collectSelectedPotTeams(participantIndex) {
+    function collectSelectedPotTeams(participantIndex, stage) {
         const selected = new Set();
         const p = form.participants[participantIndex];
         if (!p) return selected;
-        (p.picks?.mainQuest?.pots || []).forEach(pot => {
-            (pot.teams || []).forEach(t => {
-                const name = (t || '').trim();
-                if (name) selected.add(name);
+        const mq = ensureParticipantMainQuest(p);
+        const stages = stage ? [stage] : ['group', 'knockout'];
+        stages.forEach((key) => {
+            ((mq[key] && mq[key].pots) || []).forEach((pot) => {
+                (pot.teams || []).forEach((t) => {
+                    const name = (t || '').trim();
+                    if (name) selected.add(name);
+                });
             });
         });
         return selected;
     }
 
-    /** Main Quest pot dropdown: hide teams already picked in this participant's other pot slots. */
-    function potTeamOptions(selectedValue, participantIndex) {
+    /** Main Quest pot dropdown: hide teams already picked in this stage's other pot slots. */
+    function potTeamOptions(selectedValue, participantIndex, stage) {
         const names = teamNames();
-        const taken = collectSelectedPotTeams(participantIndex);
+        const taken = collectSelectedPotTeams(participantIndex, stage || 'group');
         const current = (selectedValue || '').trim();
         let html = '<option value="">— select —</option>';
         names.forEach(n => {
@@ -2119,8 +2169,10 @@ window.ArisanSetupForm = (function () {
         });
     }
 
-    function renderTeamSelectField(label, selected, participantIndex, dataAttr, optionsFn) {
-        const opts = optionsFn(selected, participantIndex);
+    function renderTeamSelectField(label, selected, participantIndex, dataAttr, optionsFn, stage) {
+        const opts = optionsFn.length >= 3
+            ? optionsFn(selected, participantIndex, stage)
+            : optionsFn(selected, participantIndex);
         return labeledPreviewField(
             label,
             '<select ' + dataAttr + ' data-preview="team-flag">' + opts + '</select>',
@@ -2131,22 +2183,46 @@ window.ArisanSetupForm = (function () {
         );
     }
 
-    function renderParticipantPots(p, pi) {
-        const pots = (p.picks && p.picks.mainQuest && p.picks.mainQuest.pots) || [{ teams: ['', ''] }];
+    function renderParticipantPotsForStage(p, pi, stage, title) {
+        const mq = ensureParticipantMainQuest(p);
+        const pots = (mq[stage] && mq[stage].pots) || [{ teams: ['', ''] }];
         const entity = form.competitionType === 'country' ? 'Country' : 'Club';
-        return pots.map((pot, potIdx) => {
+        const stageOpts = (selected, participantIndex) => potTeamOptions(selected, participantIndex, stage);
+        const blocks = pots.map((pot, potIdx) => {
             const t0 = (pot.teams && pot.teams[0]) || '';
             const t1 = (pot.teams && pot.teams[1]) || '';
-            return '<div class="sub-block" data-pot="' + potIdx + '">' +
+            return '<div class="sub-block" data-mq-stage="' + stage + '" data-pot="' + potIdx + '">' +
                 '<div class="row-head"><strong>Pot ' + (potIdx + 1) + '</strong>' +
-                (pots.length > 1 ? '<button type="button" class="btn btn-danger btn-sm" data-action="remove-pot">Remove pot</button>' : '') +
+                (pots.length > 1
+                    ? '<button type="button" class="btn btn-danger btn-sm" data-action="remove-pot">Remove pot</button>'
+                    : '') +
                 '</div>' +
                 '<div class="grid-2">' +
-                renderTeamSelectField(entity + ' A', t0, pi, 'data-f="pot-a"', potTeamOptions) +
-                renderTeamSelectField(entity + ' B', t1, pi, 'data-f="pot-b"', potTeamOptions) +
+                renderTeamSelectField(entity + ' A', t0, pi, 'data-f="pot-a"', stageOpts, stage) +
+                renderTeamSelectField(entity + ' B', t1, pi, 'data-f="pot-b"', stageOpts, stage) +
                 '</div></div>';
-        }).join('') +
-            '<button type="button" class="btn btn-secondary btn-sm" data-action="add-pot">+ Add pot</button>';
+        }).join('');
+        return '<div class="mq-stage-pots" data-mq-stage="' + stage + '">' +
+            '<h4 class="sub-title" style="font-size:0.95rem;margin:10px 0 6px;">' + esc(title) + '</h4>' +
+            blocks +
+            '<button type="button" class="btn btn-secondary btn-sm" data-action="add-pot" data-mq-stage="' +
+            stage + '">+ Add pot</button>' +
+            '</div>';
+    }
+
+    function renderParticipantPots(p, pi) {
+        ensureParticipantMainQuest(p);
+        let html = '';
+        if (form.includeGroupStage) {
+            html += renderParticipantPotsForStage(p, pi, 'group', 'Table pot — Group Stage');
+        }
+        if (form.includeKnockoutStage) {
+            html += renderParticipantPotsForStage(p, pi, 'knockout', 'Table pot — Knockout Stage');
+        }
+        if (!html) {
+            html = '<p class="hint">Enable Group Stage and/or Knockout Stage to configure Main Quest pots.</p>';
+        }
+        return html;
     }
 
     function renderSideQuestTeamSelect(label, dataAttr, selected) {
@@ -2683,6 +2759,7 @@ window.ArisanSetupForm = (function () {
             const i = +row.dataset.idx;
             const p = form.participants[i];
             if (!p.picks) p.picks = defaultPicks(form.includeThirdPlace);
+            ensureParticipantMainQuest(p);
 
             bindParticipantCollapse(row);
             row.querySelector('[data-action="remove-participant"]')?.addEventListener('click', () => removeParticipant(i));
@@ -2694,25 +2771,34 @@ window.ArisanSetupForm = (function () {
                 });
             });
 
-            row.querySelector('[data-action="add-pot"]')?.addEventListener('click', () => {
-                p.picks.mainQuest.pots.push({ teams: ['', ''] });
-                renderParticipants();
-            });
-
-            row.querySelectorAll('[data-pot]').forEach(potEl => {
-                const potIdx = +potEl.dataset.pot;
-                potEl.querySelector('[data-action="remove-pot"]')?.addEventListener('click', () => {
-                    p.picks.mainQuest.pots.splice(potIdx, 1);
-                    if (!p.picks.mainQuest.pots.length) p.picks.mainQuest.pots.push({ teams: ['', ''] });
+            row.querySelectorAll('[data-action="add-pot"]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const stage = btn.getAttribute('data-mq-stage') || 'group';
+                    const mq = ensureParticipantMainQuest(p);
+                    if (!mq[stage]) mq[stage] = { pots: [] };
+                    mq[stage].pots.push({ teams: ['', ''] });
                     renderParticipants();
                 });
-                const pot = p.picks.mainQuest.pots[potIdx];
+            });
+
+            row.querySelectorAll('.sub-block[data-pot][data-mq-stage]').forEach((potEl) => {
+                const stage = potEl.getAttribute('data-mq-stage') || 'group';
+                const potIdx = +potEl.dataset.pot;
+                const mq = ensureParticipantMainQuest(p);
+                if (!mq[stage]) mq[stage] = { pots: [{ teams: ['', ''] }] };
+                potEl.querySelector('[data-action="remove-pot"]')?.addEventListener('click', () => {
+                    mq[stage].pots.splice(potIdx, 1);
+                    if (!mq[stage].pots.length) mq[stage].pots.push({ teams: ['', ''] });
+                    renderParticipants();
+                });
+                const pot = mq[stage].pots[potIdx];
+                if (!pot) return;
                 if (!pot.teams) pot.teams = ['', ''];
-                potEl.querySelector('[data-f="pot-a"]')?.addEventListener('change', e => {
+                potEl.querySelector('[data-f="pot-a"]')?.addEventListener('change', (e) => {
                     pot.teams[0] = e.target.value;
                     renderParticipants();
                 });
-                potEl.querySelector('[data-f="pot-b"]')?.addEventListener('change', e => {
+                potEl.querySelector('[data-f="pot-b"]')?.addEventListener('change', (e) => {
                     pot.teams[1] = e.target.value;
                     renderParticipants();
                 });
@@ -3116,6 +3202,10 @@ window.ArisanSetupForm = (function () {
             if (!row.picks.sideQuest.scorePredict || typeof row.picks.sideQuest.scorePredict !== 'object') {
                 row.picks.sideQuest.scorePredict = {};
             }
+            row.picks.mainQuest = normalizeMainQuestPicks(row.picks.mainQuest, {
+                includeGroupStage: form.includeGroupStage,
+                includeKnockoutStage: form.includeKnockoutStage,
+            });
             return row;
         });
         renderAll({ skipCollect: true });
@@ -3182,7 +3272,18 @@ window.ArisanSetupForm = (function () {
             knockoutSeeds,
             groupDefinitions,
             groupFixtures,
-            participants: form.participants.filter(p => p.name && p.name.trim()),
+            participants: form.participants
+                .filter(p => p.name && p.name.trim())
+                .map((p) => {
+                    const copy = Object.assign({}, p, {
+                        picks: Object.assign({}, p.picks || defaultPicks(form.includeThirdPlace)),
+                    });
+                    copy.picks.mainQuest = normalizeMainQuestPicks(copy.picks.mainQuest, {
+                        includeGroupStage: form.includeGroupStage,
+                        includeKnockoutStage: form.includeKnockoutStage,
+                    });
+                    return copy;
+                }),
         };
     }
 
@@ -3202,6 +3303,7 @@ window.ArisanSetupForm = (function () {
             syncTeamsSectionUi();
             renderTeams();
             renderScheduleSection();
+            renderParticipants();
         });
         document.getElementById('include-knockout-stage')?.addEventListener('change', e => {
             form.includeKnockoutStage = e.target.checked;
@@ -3211,6 +3313,7 @@ window.ArisanSetupForm = (function () {
             syncTeamsSectionUi();
             renderTeams();
             renderScheduleSection();
+            renderParticipants();
         });
         document.getElementById('include-third-place')?.addEventListener('change', e => {
             form.includeThirdPlace = e.target.checked;

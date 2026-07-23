@@ -148,7 +148,247 @@
             return units[unitIndex] || null;
         }
 
-        function drawByeAdvanceLine(svg, bracketRect, sourceEl, nextRoundEl, nextUnits) {
+        let bracketFlowCycleTimer = null;
+        let bracketFlowCycleMs = 5000;
+        const BRACKET_FLOW_SPEED = 900; // px/s — same for borders & connectors
+        const BRACKET_FLOW_ARRIVE = 0.88; // keyframe % when dash reaches path end
+        const targetFlowArriveAt = new Map();
+
+        function getBracketFlowTargets(svg) {
+            const bracket = (svg && svg.closest('.bracket')) || document.querySelector('.bracket');
+            const flows = bracket ? bracket.querySelectorAll('.bracket-line-flow') : [];
+            const trophies = bracket ? bracket.querySelectorAll('.bracket-flow-trophy') : [];
+            return { bracket, flows, trophies };
+        }
+
+        function restartBracketLineFlow(svg) {
+            if (!svg || !svg.isConnected) return;
+            const { flows, trophies } = getBracketFlowTargets(svg);
+            flows.forEach((el) => el.classList.remove('is-flowing'));
+            trophies.forEach((el) => el.classList.remove('is-flowing'));
+            void svg.getBoundingClientRect();
+            requestAnimationFrame(() => {
+                if (!svg.isConnected) return;
+                flows.forEach((el) => el.classList.add('is-flowing'));
+                trophies.forEach((el) => el.classList.add('is-flowing'));
+            });
+        }
+
+        function scheduleBracketLineFlow(svg, cycleMs) {
+            if (bracketFlowCycleTimer) {
+                clearInterval(bracketFlowCycleTimer);
+                bracketFlowCycleTimer = null;
+            }
+            if (!svg) return;
+            bracketFlowCycleMs = Math.max(5000, Math.ceil(cycleMs || 5000));
+            const { flows, trophies } = getBracketFlowTargets(svg);
+            flows.forEach((el) => el.classList.add('is-flowing'));
+            trophies.forEach((el) => el.classList.add('is-flowing'));
+            bracketFlowCycleTimer = setInterval(() => {
+                if (!svg.isConnected) {
+                    clearInterval(bracketFlowCycleTimer);
+                    bracketFlowCycleTimer = null;
+                    return;
+                }
+                restartBracketLineFlow(svg);
+            }, bracketFlowCycleMs);
+        }
+
+        function clearBracketBorderFlow(bracket) {
+            if (!bracket) return;
+            bracket.querySelectorAll('.bracket-flow-ring').forEach((el) => el.remove());
+            bracket.querySelectorAll('.bracket-flow-border').forEach((el) => {
+                el.classList.remove('bracket-flow-border');
+                delete el.dataset.flowBorderEnd;
+            });
+            bracket.querySelectorAll('[data-flow-border-end]').forEach((el) => {
+                delete el.dataset.flowBorderEnd;
+            });
+            bracket.querySelectorAll('.bracket-flow-trophy').forEach((el) => {
+                el.classList.remove('bracket-flow-trophy', 'is-flowing');
+                el.style.removeProperty('animation-delay');
+            });
+        }
+
+        function markTrophyFlowGlow(bracket, startDelaySec, cycleEndRef) {
+            const trophy = bracket.querySelector('.round-final .round-trophy');
+            if (!trophy) return;
+            trophy.classList.add('bracket-flow-trophy');
+            trophy.style.animationDelay = Math.max(0, startDelaySec) + 's';
+            // Glow holds ~1.8s after the flow reaches the final
+            if (cycleEndRef) {
+                cycleEndRef.value = Math.max(cycleEndRef.value, startDelaySec + 1.8);
+            }
+        }
+
+        function finalRoundFlowArriveSec(finalRound) {
+            if (!finalRound) return 0;
+            let max = 0;
+            getRoundBracketUnits(finalRound).forEach((unit) => {
+                if (unit.dataset.flowBorderEnd != null) {
+                    max = Math.max(max, parseFloat(unit.dataset.flowBorderEnd) || 0);
+                }
+                if (unit.classList.contains('matchup-tie')) {
+                    unit.querySelectorAll('.matchup[data-flow-border-end]').forEach((m) => {
+                        max = Math.max(max, parseFloat(m.dataset.flowBorderEnd) || 0);
+                    });
+                }
+            });
+            return max;
+        }
+
+        /** Constant px/s travel; returns { travelSec, arriveSec }. */
+        function applyConstantSpeedFlow(flow, delaySec, cycleEndRef) {
+            flow.removeAttribute('pathLength');
+            const len = Math.max(1, flow.getTotalLength());
+            // Keyframes reach the end at BRACKET_FLOW_ARRIVE — match visual px/s
+            const travelSec = (len / BRACKET_FLOW_SPEED) / BRACKET_FLOW_ARRIVE;
+            flow.setAttribute('pathLength', '100');
+            flow.style.strokeDasharray = '12 200';
+            flow.style.strokeDashoffset = '12';
+            flow.style.animationDuration = travelSec + 's';
+            flow.style.animationDelay = Math.max(0, delaySec) + 's';
+            const arriveSec = Math.max(0, delaySec) + travelSec * BRACKET_FLOW_ARRIVE;
+            if (cycleEndRef) {
+                cycleEndRef.value = Math.max(cycleEndRef.value, delaySec + travelSec);
+            }
+            return { travelSec: travelSec, arriveSec: arriveSec };
+        }
+
+        function noteFlowArrival(targetEl, arriveSec) {
+            if (!targetEl) return;
+            const prev = targetFlowArriveAt.get(targetEl) || 0;
+            targetFlowArriveAt.set(targetEl, Math.max(prev, arriveSec));
+            // Tie wrapper shares arrival with its matchup legs
+            const tie = targetEl.closest && targetEl.closest('.matchup-tie');
+            if (tie && tie !== targetEl) {
+                const p = targetFlowArriveAt.get(tie) || 0;
+                targetFlowArriveAt.set(tie, Math.max(p, arriveSec));
+            }
+        }
+
+        function maxArrivalForUnits(units) {
+            let max = 0;
+            units.forEach((unit) => {
+                max = Math.max(max, targetFlowArriveAt.get(unit) || 0);
+                if (unit.classList.contains('matchup-tie')) {
+                    unit.querySelectorAll('.matchup').forEach((m) => {
+                        max = Math.max(max, targetFlowArriveAt.get(m) || 0);
+                    });
+                }
+            });
+            return max;
+        }
+
+        function markMatchupBorderFlow(matchup, startDelaySec, cycleEndRef) {
+            if (!matchup) return startDelaySec;
+            matchup.classList.add('bracket-flow-border');
+            const rect = matchup.getBoundingClientRect();
+            const w = Math.max(1, Math.round(rect.width || matchup.offsetWidth || 1));
+            const h = Math.max(1, Math.round(rect.height || matchup.offsetHeight || 1));
+            const inset = 1;
+            const x0 = inset;
+            const y0 = inset;
+            const x1 = w - inset;
+            const y1 = h - inset;
+            const midY = h / 2;
+            const rad = Math.min(10, Math.max(0, (Math.min(w, h) / 2) - inset));
+
+            const topD = [
+                `M ${x0},${midY}`,
+                `L ${x0},${y0 + rad}`,
+                `Q ${x0},${y0} ${x0 + rad},${y0}`,
+                `L ${x1 - rad},${y0}`,
+                `Q ${x1},${y0} ${x1},${y0 + rad}`,
+                `L ${x1},${midY}`,
+            ].join(' ');
+            const botD = [
+                `M ${x0},${midY}`,
+                `L ${x0},${y1 - rad}`,
+                `Q ${x0},${y1} ${x0 + rad},${y1}`,
+                `L ${x1 - rad},${y1}`,
+                `Q ${x1},${y1} ${x1},${y1 - rad}`,
+                `L ${x1},${midY}`,
+            ].join(' ');
+
+            const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            ring.classList.add('bracket-flow-ring');
+            ring.setAttribute('width', String(w));
+            ring.setAttribute('height', String(h));
+            ring.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            ring.setAttribute('aria-hidden', 'true');
+
+            let travelSec = 0;
+            [topD, botD].forEach((d) => {
+                const flow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                flow.setAttribute('d', d);
+                flow.classList.add('bracket-line-flow', 'bracket-border-flow');
+                ring.appendChild(flow);
+            });
+            matchup.appendChild(ring);
+            ring.querySelectorAll('.bracket-line-flow').forEach((flow) => {
+                const result = applyConstantSpeedFlow(flow, startDelaySec, cycleEndRef);
+                travelSec = Math.max(travelSec, result.arriveSec - startDelaySec);
+            });
+
+            const endSec = startDelaySec + travelSec;
+            matchup.dataset.flowBorderEnd = String(endSec);
+            return endSec;
+        }
+
+        function markRoundMatchupsForFlow(roundEl, startDelaySec, cycleEndRef) {
+            if (!roundEl) return startDelaySec;
+            let maxEnd = startDelaySec;
+            getRoundBracketUnits(roundEl).forEach((unit) => {
+                if (unit.classList.contains('matchup-tie')) {
+                    let tieEnd = startDelaySec;
+                    unit.querySelectorAll('.matchup').forEach((m) => {
+                        tieEnd = Math.max(tieEnd, markMatchupBorderFlow(m, startDelaySec, cycleEndRef));
+                    });
+                    unit.dataset.flowBorderEnd = String(tieEnd);
+                    maxEnd = Math.max(maxEnd, tieEnd);
+                } else {
+                    maxEnd = Math.max(maxEnd, markMatchupBorderFlow(unit, startDelaySec, cycleEndRef));
+                }
+            });
+            return maxEnd;
+        }
+
+        function sourceFlowDelay(sourceEl, fallback) {
+            if (!sourceEl) return fallback || 0;
+            if (sourceEl.dataset.flowBorderEnd != null) {
+                return parseFloat(sourceEl.dataset.flowBorderEnd) || 0;
+            }
+            const m = sourceEl.querySelector && sourceEl.querySelector('.matchup[data-flow-border-end]');
+            if (m) return parseFloat(m.dataset.flowBorderEnd) || 0;
+            return fallback || 0;
+        }
+
+        function appendBracketConnectorPath(svg, d, options) {
+            const opts = options || {};
+            const base = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            base.setAttribute('d', d);
+            base.setAttribute('stroke', opts.stroke || '#444');
+            base.setAttribute('stroke-width', opts.strokeWidth || '1.5');
+            base.setAttribute('fill', 'none');
+            if (opts.dash) base.setAttribute('stroke-dasharray', opts.dash);
+            base.classList.add('bracket-line-base');
+            svg.appendChild(base);
+
+            const flow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            flow.setAttribute('d', d);
+            flow.setAttribute('fill', 'none');
+            flow.classList.add('bracket-line-flow');
+            svg.appendChild(flow);
+
+            const delaySec = opts.flowDelay != null
+                ? opts.flowDelay
+                : sourceFlowDelay(opts.sourceEl, 0);
+            const result = applyConstantSpeedFlow(flow, delaySec, opts.cycleEndRef);
+            noteFlowArrival(opts.targetEl, result.arriveSec);
+        }
+
+        function drawByeAdvanceLine(svg, bracketRect, sourceEl, nextRoundEl, nextUnits, flowOpts) {
             if (!sourceEl) return;
             const src = getBracketUnitLineAnchor(sourceEl, bracketRect);
             const nextRect = nextRoundEl.getBoundingClientRect();
@@ -161,20 +401,24 @@
                 targetY = nextRect.top + nextRect.height * 0.2 - bracketRect.top;
             }
             const midX = (src.x + targetX) / 2;
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', `M${src.x},${src.y} H${midX} V${targetY} H${targetX}`);
-            path.setAttribute('stroke', '#666');
-            path.setAttribute('stroke-width', '1.5');
-            path.setAttribute('stroke-dasharray', '4 3');
-            path.setAttribute('fill', 'none');
-            svg.appendChild(path);
+            appendBracketConnectorPath(
+                svg,
+                `M${src.x},${src.y} H${midX} V${targetY} H${targetX}`,
+                Object.assign({
+                    stroke: '#666',
+                    dash: '4 3',
+                    sourceEl: sourceEl,
+                    targetEl: nextUnits[0] || null,
+                }, flowOpts || {})
+            );
         }
 
-        function drawRoundTransitionLines(svg, bracketRect, bracket, prevRoundEl, nextRoundEl, currentUnits, nextUnits) {
+        function drawRoundTransitionLines(svg, bracketRect, bracket, prevRoundEl, nextRoundEl, currentUnits, nextUnits, flowOpts) {
             const nextBye = parseInt(nextRoundEl.dataset.koByes || '0', 10);
             const isSfToFinal = (prevRoundEl.classList.contains('round-sf') ||
                 prevRoundEl.dataset.semifinalRound === 'true') &&
                 nextRoundEl.classList.contains('round-final');
+            const lineOpts = flowOpts || {};
 
             for (let j = 0; j < nextUnits.length; j++) {
                 const idx1 = nextBye + j * 2;
@@ -206,21 +450,19 @@
 
                 sources.forEach((srcEl, idx) => {
                     const anchor = getBracketUnitLineAnchor(srcEl, bracketRect);
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    if (idx === 0 || sources.length === 1) {
-                        path.setAttribute('d', `M${anchor.x},${anchor.y} H${midX} V${y3} H${x3}`);
-                    } else {
-                        path.setAttribute('d', `M${anchor.x},${anchor.y} H${midX} V${y3}`);
-                    }
-                    path.setAttribute('stroke', '#444');
-                    path.setAttribute('stroke-width', '1.5');
-                    path.setAttribute('fill', 'none');
-                    svg.appendChild(path);
+                    const d = (idx === 0 || sources.length === 1)
+                        ? `M${anchor.x},${anchor.y} H${midX} V${y3} H${x3}`
+                        : `M${anchor.x},${anchor.y} H${midX} V${y3}`;
+                    appendBracketConnectorPath(svg, d, Object.assign({}, lineOpts, {
+                        sourceEl: srcEl,
+                        targetEl: targetEl,
+                        flowDelay: sourceFlowDelay(srcEl, lineOpts.flowDelay),
+                    }));
                 });
             }
 
             if (nextBye > 0 && !prevRoundEl.dataset.koByeCarrier && currentUnits[0]) {
-                drawByeAdvanceLine(svg, bracketRect, currentUnits[0], nextRoundEl, nextUnits);
+                drawByeAdvanceLine(svg, bracketRect, currentUnits[0], nextRoundEl, nextUnits, lineOpts);
             }
         }
 
@@ -231,8 +473,15 @@
             // Juara 3 tidak ikut rantai (ditumpuk di bawah Final di kolom yang sama).
             const rounds = bracket.querySelectorAll('[data-bracket-chain]');
 
+            if (bracketFlowCycleTimer) {
+                clearInterval(bracketFlowCycleTimer);
+                bracketFlowCycleTimer = null;
+            }
+
             const existingSvg = bracket.querySelector('.bracket-lines');
             if (existingSvg) existingSvg.remove();
+            clearBracketBorderFlow(bracket);
+            targetFlowArriveAt.clear();
 
             bracket.style.position = 'relative';
 
@@ -249,17 +498,26 @@
             svg.setAttribute('height', bracket.scrollHeight);
 
             const bracketRect = bracket.getBoundingClientRect();
+            const cycleEndRef = { value: 0 };
+            const flowOptsBase = { cycleEndRef: cycleEndRef };
+
+            // Continuous cascade: border → connectors → next border (constant px/s)
+            if (rounds.length) {
+                markRoundMatchupsForFlow(rounds[0], 0, cycleEndRef);
+            }
 
             for (let i = 0; i < rounds.length - 1; i++) {
                 const currentUnits = getRoundBracketUnits(rounds[i]);
                 const nextUnits = getRoundBracketUnits(rounds[i + 1]);
                 if (!currentUnits.length || !nextUnits.length) continue;
                 drawRoundTransitionLines(
-                    svg, bracketRect, bracket, rounds[i], rounds[i + 1], currentUnits, nextUnits
+                    svg, bracketRect, bracket, rounds[i], rounds[i + 1], currentUnits, nextUnits, flowOptsBase
                 );
+                const arriveAt = maxArrivalForUnits(nextUnits);
+                markRoundMatchupsForFlow(rounds[i + 1], arriveAt, cycleEndRef);
             }
 
-            // SF (15 & 16 Juli) → Perebutan Juara 3 (penyisih)
+            // SF → Perebutan Juara 3
             const sfUnits = bracket.querySelectorAll(
                 '[data-semifinal-round="true"] .matchup-tie, [data-semifinal-round="true"] .round-matches > .matchup, ' +
                 '.round-sf .matchup-tie, .round-sf .round-matches > .matchup'
@@ -276,21 +534,29 @@
                     const mRect = sfUnits[i].getBoundingClientRect();
                     const x1 = mRect.right - bracketRect.left;
                     const y1 = mRect.top + mRect.height / 2 - bracketRect.top;
-
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    if (idx === 0) {
-                        path.setAttribute('d', `M${x1},${y1} H${midX} V${y3} H${x3}`);
-                    } else {
-                        path.setAttribute('d', `M${x1},${y1} H${midX} V${y3}`);
-                    }
-                    path.setAttribute('stroke', '#444');
-                    path.setAttribute('stroke-width', '1.5');
-                    path.setAttribute('fill', 'none');
-                    svg.appendChild(path);
+                    const d = idx === 0
+                        ? `M${x1},${y1} H${midX} V${y3} H${x3}`
+                        : `M${x1},${y1} H${midX} V${y3}`;
+                    appendBracketConnectorPath(svg, d, Object.assign({}, flowOptsBase, {
+                        sourceEl: sfUnits[i],
+                        targetEl: thirdUnit,
+                        flowDelay: sourceFlowDelay(sfUnits[i], 0),
+                    }));
                 });
+                const thirdRound = bracket.querySelector('.round-3rd');
+                if (thirdRound) {
+                    markRoundMatchupsForFlow(thirdRound, maxArrivalForUnits([thirdUnit]), cycleEndRef);
+                }
             }
 
+            // Trophy glow: climax when flow finishes the Final matchup
+            const finalRound = bracket.querySelector('.round-final') ||
+                (rounds.length ? rounds[rounds.length - 1] : null);
+            markTrophyFlowGlow(bracket, finalRoundFlowArriveSec(finalRound), cycleEndRef);
+
             bracket.appendChild(svg);
+            // Idle pad after last pulse, then loop
+            scheduleBracketLineFlow(svg, (cycleEndRef.value + 1.2) * 1000);
         }
 
         window.addEventListener('resize', drawBracketLines);
@@ -300,6 +566,7 @@
 
 
         // Main Quest supporter data: team name -> array of supporters
+        // Union map (group + KO) for bracket panels / goal stats; stage maps for W/D/L
         let teamSupporters = {
             'Portugal': ['Davin'],
             'Argentina': ['Davin', 'Ndod', 'Khuang', 'Marten', 'Cham', 'Willy'],
@@ -325,6 +592,8 @@
             'Sweden': ['Wesly'],
             'Paraguay': ['Wesly'],
         };
+        let teamSupportersGroup = Object.assign({}, teamSupporters);
+        let teamSupportersKnockout = Object.assign({}, teamSupporters);
 
         let pointConfig = {
             mainQuestMode: 'fixed',
@@ -566,8 +835,12 @@
 
                     if (hasResult) {
                         const badge = document.createElement('span');
-                        badge.className = 'score-predict-badge';
-                        badge.textContent = exact ? 'Hit' : 'Miss';
+                        badge.className = 'score-predict-badge' + (exact ? ' is-hit' : ' is-miss');
+                        badge.setAttribute('aria-label', exact ? 'Hit' : 'Miss');
+                        badge.title = exact ? 'Hit' : 'Miss';
+                        badge.innerHTML = exact
+                            ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 11.4 2.8 8l1.1-1.1 2.3 2.3 5-5.1L12.3 5.2z"/></svg>'
+                            : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.1 3.2 3.2 4.1 7.1 8l-3.9 3.9.9.9L8 8.9l3.9 3.9.9-.9L8.9 8l3.9-3.9-.9-.9L8 7.1z"/></svg>';
                         right.appendChild(badge);
                     }
 
@@ -716,6 +989,96 @@
             return 1 - (msRemaining - LIVE_PREMATCH_MS) / (TWENTY_FOUR_HOURS_MS - LIVE_PREMATCH_MS);
         }
 
+        // Soon progress bar: slide when the match card enters the viewport
+        const soonSlideWatchVisible = new WeakMap();
+        const soonSlideWatchToEl = new WeakMap();
+        let soonSlideObserver = null;
+
+        function playSoonProgressSlide(el) {
+            if (!el) return;
+            const value = el.dataset.soonTarget || '0%';
+            if (typeof prefersReducedMotion === 'function' && prefersReducedMotion()) {
+                el.style.transition = 'none';
+                el.style.width = value;
+                return;
+            }
+            el.style.transition = 'none';
+            el.style.width = '0%';
+            void el.offsetWidth;
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    el.style.transition = '';
+                    el.style.width = value;
+                });
+            });
+        }
+
+        function resetSoonProgressSlide(el) {
+            if (!el) return;
+            el.style.transition = 'none';
+            el.style.width = '0%';
+            void el.offsetWidth;
+        }
+
+        function getSoonSlideObserver() {
+            if (soonSlideObserver) return soonSlideObserver;
+            if (!('IntersectionObserver' in window)) return null;
+            soonSlideObserver = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    const watch = entry.target;
+                    const el = soonSlideWatchToEl.get(watch);
+                    const wasVisible = !!soonSlideWatchVisible.get(watch);
+                    if (entry.isIntersecting) {
+                        soonSlideWatchVisible.set(watch, true);
+                        if (!wasVisible && el) playSoonProgressSlide(el);
+                        else if (el && el.dataset.soonTarget) {
+                            el.style.transition = '';
+                            el.style.width = el.dataset.soonTarget;
+                        }
+                    } else if (wasVisible) {
+                        soonSlideWatchVisible.set(watch, false);
+                        if (el) resetSoonProgressSlide(el);
+                    }
+                });
+            }, {
+                threshold: 0,
+                rootMargin: '0px',
+            });
+            return soonSlideObserver;
+        }
+
+        function observeSoonProgressSlide(el) {
+            if (!el) return;
+            const watch = el.closest('.matchup') || el;
+            const obs = getSoonSlideObserver();
+            if (!obs) {
+                el.style.width = el.dataset.soonTarget || '0%';
+                return;
+            }
+            const prevEl = soonSlideWatchToEl.get(watch);
+            soonSlideWatchToEl.set(watch, el);
+            obs.observe(watch);
+
+            if (soonSlideWatchVisible.get(watch)) {
+                // Match already on screen: slide (or re-slide if progress node was recreated)
+                if (prevEl !== el) playSoonProgressSlide(el);
+                else {
+                    el.style.transition = '';
+                    el.style.width = el.dataset.soonTarget || '0%';
+                }
+            } else {
+                el.style.transition = 'none';
+                el.style.width = '0%';
+            }
+        }
+
+        function setSoonProgressTarget(progEl, progressPct) {
+            if (!progEl) return;
+            const value = Math.max(0, Math.min(100, progressPct)) + '%';
+            progEl.dataset.soonTarget = value;
+            observeSoonProgressSlide(progEl);
+        }
+
         function setSoonBadge(dateEl, show, msRemaining) {
             const dateText = getOrStoreMatchDateText(dateEl);
             if (show) {
@@ -726,14 +1089,16 @@
                     const cdEl = existing.querySelector('.matchup-soon-countdown');
                     if (cdEl) cdEl.textContent = countdown;
                     const progEl = existing.querySelector('.matchup-soon-progress');
-                    if (progEl) progEl.style.width = progressPct + '%';
+                    setSoonProgressTarget(progEl, progressPct);
                     return;
                 }
                 dateEl.innerHTML =
                     '<span class="matchup-soon-badge">' +
-                    '<span class="matchup-soon-progress" style="width:' + progressPct + '%"></span>' +
+                    '<span class="matchup-soon-progress" style="width:0%"></span>' +
                     '<span class="matchup-soon-badge-inner">Soon' +
                     '<span class="matchup-soon-countdown">' + countdown + '</span></span></span> ' + dateText;
+                const progEl = dateEl.querySelector('.matchup-soon-progress');
+                setSoonProgressTarget(progEl, progressPct);
             } else if (dateEl.querySelector('.matchup-soon-badge')) {
                 dateEl.textContent = dateText;
             }
@@ -755,9 +1120,7 @@
                 const cdEl = badge.querySelector('.matchup-soon-countdown');
                 if (cdEl) cdEl.textContent = formatCountdownHMS(untilKickoff);
                 const progEl = badge.querySelector('.matchup-soon-progress');
-                if (progEl) {
-                    progEl.style.width = Math.round(getSoonProgress(untilKickoff) * 100) + '%';
-                }
+                setSoonProgressTarget(progEl, Math.round(getSoonProgress(untilKickoff) * 100));
             });
             if (needFullUpdate) updateMatchupScheduleStatus();
         }
@@ -767,7 +1130,7 @@
             if (show) {
                 if (dateEl.querySelector('.matchup-waiting-badge')) return;
                 dateEl.innerHTML =
-                    '<span class="matchup-waiting-badge">Waiting for Admin</span> ' + dateText;
+                    '<span class="matchup-waiting-badge">Pending result</span> ' + dateText;
             } else if (dateEl.querySelector('.matchup-waiting-badge')) {
                 dateEl.textContent = dateText;
             }
@@ -1973,8 +2336,10 @@
         function updateMainQuestEliminatedStatus() {
             const { names, flags } = getEliminatedFromBracket();
             const pendingThird = getThirdPlaceContenders();
-            const table = document.querySelector('.standings-table');
-            if (!table) return;
+            const tables = document.querySelectorAll(
+                '#main-quest-table-root .standings-table, #main-quest-group-root .standings-table, #main-quest-knockout-root .standings-table'
+            );
+            if (!tables.length) return;
 
             const mainQuestTeamFlagCodes = {};
             (window.LEAGUE_DATA?.teams || []).forEach(t => {
@@ -1997,42 +2362,47 @@
             const statusClasses = ['eliminated', 'mq-gold', 'mq-silver', 'mq-bronze'];
             const podiumPhase = isMainQuestPodiumPhaseActive();
 
-            table.querySelectorAll('tbody td.mq-pot-cell').forEach(cell => {
-                const teamName = cell.textContent.trim();
-                const isPot1 = cell.classList.contains('pot1');
-                cell.classList.remove(...statusClasses);
+            tables.forEach((table) => {
+                const stageBlock = table.closest('[data-mq-stage]');
+                const stage = stageBlock ? stageBlock.getAttribute('data-mq-stage') : '';
+                const allowPodiumMedals = stage === 'knockout' || stage === 'legacy' || !stage;
 
-                // Podium results take priority over eliminated (e.g. runner-up lost final but earns silver)
-                if (isPot1 && podiumPhase) {
-                    if (mainQuestTeamMatchesResult(teamName, champion, mainQuestTeamFlagCodes)) {
+                table.querySelectorAll('tbody td.mq-pot-cell').forEach(cell => {
+                    const teamName = cell.textContent.trim();
+                    const isPot1 = cell.classList.contains('pot1');
+                    cell.classList.remove(...statusClasses);
+
+                    if (isPot1 && podiumPhase && allowPodiumMedals) {
+                        if (mainQuestTeamMatchesResult(teamName, champion, mainQuestTeamFlagCodes)) {
+                            cell.classList.add('mq-gold');
+                            return;
+                        }
+                        if (mainQuestTeamMatchesResult(teamName, runnerUp, mainQuestTeamFlagCodes)) {
+                            cell.classList.add('mq-silver');
+                            return;
+                        }
+                        if (mainQuestTeamMatchesResult(teamName, thirdWinner, mainQuestTeamFlagCodes)) {
+                            cell.classList.add('mq-bronze');
+                            return;
+                        }
+                        if (mainQuestTeamInSet(teamName, pendingThird.names, pendingThird.flags, mainQuestTeamFlagCodes)) {
+                            cell.classList.add('mq-bronze');
+                            return;
+                        }
+                    }
+
+                    if (mainQuestTeamInSet(teamName, names, flags, mainQuestTeamFlagCodes)) {
+                        cell.classList.add('eliminated');
+                        return;
+                    }
+
+                    if (isPot1 && podiumPhase && allowPodiumMedals) {
                         cell.classList.add('mq-gold');
-                        return;
                     }
-                    if (mainQuestTeamMatchesResult(teamName, runnerUp, mainQuestTeamFlagCodes)) {
-                        cell.classList.add('mq-silver');
-                        return;
-                    }
-                    if (mainQuestTeamMatchesResult(teamName, thirdWinner, mainQuestTeamFlagCodes)) {
-                        cell.classList.add('mq-bronze');
-                        return;
-                    }
-                    if (mainQuestTeamInSet(teamName, pendingThird.names, pendingThird.flags, mainQuestTeamFlagCodes)) {
-                        cell.classList.add('mq-bronze');
-                        return;
-                    }
-                }
+                });
 
-                if (mainQuestTeamInSet(teamName, names, flags, mainQuestTeamFlagCodes)) {
-                    cell.classList.add('eliminated');
-                    return;
-                }
-
-                if (isPot1 && podiumPhase) {
-                    cell.classList.add('mq-gold');
-                }
+                updateMainQuestBatteries(table);
             });
-
-            updateMainQuestBatteries(table);
         }
 
         function getBatteryFillColor(ratio) {
@@ -2393,8 +2763,11 @@
         }
 
         // Smooth bar/chart sliding: ease start + ease finish (CSS --bar-ease)
-        // Replays whenever the bar becomes visible again while scrolling.
+        // When a section enters the viewport, all bars in that section slide together.
         const barSlideVisible = new WeakMap();
+        const barSlideSectionVisible = new WeakMap();
+        const barSlideSectionMembers = new WeakMap();
+        const barSlideElToSection = new WeakMap();
         let barSlideObserver = null;
 
         function prefersReducedMotion() {
@@ -2407,17 +2780,30 @@
             const value = el.dataset.barTarget;
             if (!value) return;
             if (prefersReducedMotion()) {
+                el.style.transition = '';
                 el.style[prop] = value;
                 el.dataset.barSlid = '1';
+                if (el.classList.contains('total-goal-fill-v')) {
+                    finishTotalGoalCurrentLabel(el);
+                }
                 return;
             }
+            // Instant collapse, then ease to target
+            el.style.transition = 'none';
             el.style[prop] = '0%';
             delete el.dataset.barSlid;
+            if (el.classList.contains('total-goal-fill-v')) {
+                resetTotalGoalCurrentLabel(el);
+            }
             void el.offsetWidth;
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
+                    el.style.transition = '';
                     el.style[prop] = value;
                     el.dataset.barSlid = '1';
+                    if (el.classList.contains('total-goal-fill-v')) {
+                        playTotalGoalCurrentLabel(el);
+                    }
                 });
             });
         }
@@ -2425,31 +2811,224 @@
         function resetBarSlide(el) {
             if (!el) return;
             const prop = el.dataset.barProp || 'width';
+            // Off-screen: snap back instantly (no slide-out animation)
+            el.style.transition = 'none';
             el.style[prop] = '0%';
+            void el.offsetWidth;
             delete el.dataset.barSlid;
+            if (el.classList.contains('total-goal-fill-v')) {
+                resetTotalGoalCurrentLabel(el);
+            }
+        }
+
+        function getBarDurationMs() {
+            const raw = getComputedStyle(document.documentElement)
+                .getPropertyValue('--bar-duration')
+                .trim();
+            if (!raw) return 2400;
+            if (raw.endsWith('ms')) return parseFloat(raw) || 2400;
+            return (parseFloat(raw) || 2.4) * 1000;
+        }
+
+        // Approximate CSS cubic-bezier(0.45, 0, 0.55, 1)
+        function barEase(t) {
+            const clamped = Math.max(0, Math.min(1, t));
+            // Sample cubic bezier Y given X via Newton refinement
+            const cx = 3 * 0.45;
+            const bx = 3 * (0.55 - 0.45) - cx;
+            const ax = 1 - cx - bx;
+            const cy = 0;
+            const by = 3 * (1 - 0) - cy;
+            const ay = 1 - cy - by;
+            function sampleX(tt) { return ((ax * tt + bx) * tt + cx) * tt; }
+            function sampleY(tt) { return ((ay * tt + by) * tt + cy) * tt; }
+            function slopeX(tt) { return (3 * ax * tt + 2 * bx) * tt + cx; }
+            let u = clamped;
+            for (let i = 0; i < 5; i++) {
+                const x = sampleX(u) - clamped;
+                const d = slopeX(u);
+                if (Math.abs(d) < 1e-6) break;
+                u -= x / d;
+            }
+            return sampleY(u);
+        }
+
+        const totalGoalLabelAnims = new WeakMap();
+
+        function cancelTotalGoalCurrentLabel(fill) {
+            const state = totalGoalLabelAnims.get(fill);
+            if (!state) return;
+            if (state.raf) cancelAnimationFrame(state.raf);
+            totalGoalLabelAnims.delete(fill);
+        }
+
+        function syncTotalGoalMarkers(fill, goal, phase) {
+            const markers = fill && fill._tgMarkers;
+            if (!markers || !markers.length) return;
+            const closest = new Set(getClosestTotalGoalParticipants(goal));
+            const finalResolved = !!fill._tgFinalResolved;
+            const mode = phase || 'done';
+
+            markers.forEach(function (m) {
+                const isClosest = closest.has(m.name);
+                m.info.classList.toggle('glowing', isClosest);
+
+                // Left the participant's wilayah when current goal reaches/passes zone upper bound
+                const leftZone = goal >= (m.zoneTo != null ? m.zoneTo : m.goal);
+
+                let shouldEliminate = false;
+                if (mode === 'reset' || goal <= 0) {
+                    // Start of slide: nobody eliminated yet
+                    shouldEliminate = false;
+                } else if (mode === 'slide') {
+                    // During slide: eliminate only after leaving their wilayah (not just past prediction)
+                    shouldEliminate = leftZone;
+                } else {
+                    // Slide finished
+                    if (leftZone) {
+                        // Left wilayah — stay eliminated (keep closest glowing)
+                        shouldEliminate = !isClosest;
+                    } else if (m.goal > goal) {
+                        // Still ahead of current goal: eliminate only if Final is finished
+                        shouldEliminate = finalResolved && !isClosest;
+                    } else {
+                        shouldEliminate = false;
+                    }
+                }
+                m.marker.classList.toggle('eliminated', shouldEliminate);
+            });
+        }
+
+        function resetTotalGoalCurrentLabel(fill) {
+            cancelTotalGoalCurrentLabel(fill);
+            const indicator = fill && fill._tgIndicator;
+            const countEl = fill && fill._tgCountEl;
+            if (indicator) {
+                indicator.style.transition = 'none';
+                indicator.style.top = '0px';
+            }
+            if (countEl) countEl.textContent = '0';
+            syncTotalGoalMarkers(fill, 0, 'reset');
+        }
+
+        function finishTotalGoalCurrentLabel(fill) {
+            cancelTotalGoalCurrentLabel(fill);
+            const indicator = fill && fill._tgIndicator;
+            const countEl = fill && fill._tgCountEl;
+            if (!indicator || !countEl) return;
+            const top = parseFloat(fill.dataset.tgTop || '0') || 0;
+            const to = parseInt(fill.dataset.tgCountTo || '0', 10) || 0;
+            indicator.style.transition = 'none';
+            indicator.style.top = top + 'px';
+            countEl.textContent = String(to);
+            syncTotalGoalMarkers(fill, to, 'done');
+        }
+
+        function playTotalGoalCurrentLabel(fill) {
+            const indicator = fill && fill._tgIndicator;
+            const countEl = fill && fill._tgCountEl;
+            if (!indicator || !countEl) return;
+
+            const toTop = parseFloat(fill.dataset.tgTop || '0') || 0;
+            const toCount = parseInt(fill.dataset.tgCountTo || '0', 10) || 0;
+            const duration = getBarDurationMs();
+
+            cancelTotalGoalCurrentLabel(fill);
+
+            if (prefersReducedMotion() || toTop <= 0 && toCount <= 0) {
+                finishTotalGoalCurrentLabel(fill);
+                return;
+            }
+
+            indicator.style.transition = 'none';
+            indicator.style.top = '0px';
+            countEl.textContent = '0';
+            syncTotalGoalMarkers(fill, 0, 'reset');
+            void indicator.offsetWidth;
+
+            let lastGlowGoal = -1;
+            const startedAt = performance.now();
+            function frame(now) {
+                const t = Math.min(1, (now - startedAt) / duration);
+                const e = barEase(t);
+                const animatedGoal = Math.round(toCount * e);
+                indicator.style.top = (toTop * e) + 'px';
+                countEl.textContent = String(animatedGoal);
+                if (animatedGoal !== lastGlowGoal) {
+                    lastGlowGoal = animatedGoal;
+                    syncTotalGoalMarkers(fill, animatedGoal, 'slide');
+                }
+                if (t < 1) {
+                    const raf = requestAnimationFrame(frame);
+                    totalGoalLabelAnims.set(fill, { raf: raf });
+                } else {
+                    indicator.style.top = toTop + 'px';
+                    countEl.textContent = String(toCount);
+                    syncTotalGoalMarkers(fill, toCount, 'done');
+                    totalGoalLabelAnims.delete(fill);
+                }
+            }
+            const raf = requestAnimationFrame(frame);
+            totalGoalLabelAnims.set(fill, { raf: raf });
+        }
+
+        function getBarSlideSectionEl(el) {
+            if (!el || !el.closest) return el;
+            return el.closest('#goldenboot-chart')
+                || el.closest('#total-goal-bar')
+                || el.closest('.total-goal-bar-container')
+                || el.closest('#main-quest-table-root')
+                || el.closest('#standings-points-chart')
+                || el.closest('.standings-section .standings-chart:not(#goldenboot-chart)')
+                || el.closest('.standings-chart')
+                || el.closest('.standings-table-wrapper')
+                || el;
+        }
+
+        function playBarSlideSection(section) {
+            const members = barSlideSectionMembers.get(section);
+            if (!members) return;
+            members.forEach(function (el) {
+                if (barSlideVisible.get(el)) return;
+                barSlideVisible.set(el, true);
+                playBarSlide(el);
+            });
+        }
+
+        function resetBarSlideSection(section) {
+            const members = barSlideSectionMembers.get(section);
+            if (!members) return;
+            members.forEach(function (el) {
+                if (!barSlideVisible.get(el)) return;
+                barSlideVisible.set(el, false);
+                resetBarSlide(el);
+            });
         }
 
         function getBarSlideObserver() {
             if (barSlideObserver) return barSlideObserver;
             if (!('IntersectionObserver' in window)) return null;
+            // Section-level: start all bars as soon as any part of the section enters the viewport
             barSlideObserver = new IntersectionObserver(function (entries) {
                 entries.forEach(function (entry) {
-                    const el = entry.target;
-                    const wasVisible = !!barSlideVisible.get(el);
+                    const section = entry.target;
+                    const wasVisible = !!barSlideSectionVisible.get(section);
+                    const show = entry.isIntersecting;
+                    const hide = !entry.isIntersecting;
 
-                    if (entry.isIntersecting) {
+                    if (show) {
                         if (!wasVisible) {
-                            barSlideVisible.set(el, true);
-                            playBarSlide(el);
+                            barSlideSectionVisible.set(section, true);
+                            playBarSlideSection(section);
                         }
-                    } else if (wasVisible) {
-                        barSlideVisible.set(el, false);
-                        resetBarSlide(el);
+                    } else if (hide && wasVisible) {
+                        barSlideSectionVisible.set(section, false);
+                        resetBarSlideSection(section);
                     }
                 });
             }, {
-                threshold: [0, 0.08, 0.2, 0.4],
-                rootMargin: '0px 0px -6% 0px',
+                threshold: 0,
+                rootMargin: '0px',
             });
             return barSlideObserver;
         }
@@ -2460,7 +3039,21 @@
                 playBarSlide(el);
                 return;
             }
-            obs.observe(el);
+            const section = getBarSlideSectionEl(el);
+            const prevSection = barSlideElToSection.get(el);
+            if (prevSection && prevSection !== section) {
+                const prevMembers = barSlideSectionMembers.get(prevSection);
+                if (prevMembers) prevMembers.delete(el);
+            }
+
+            let members = barSlideSectionMembers.get(section);
+            if (!members) {
+                members = new Set();
+                barSlideSectionMembers.set(section, members);
+            }
+            members.add(el);
+            barSlideElToSection.set(el, section);
+            obs.observe(section);
         }
 
         function slideDimension(el, prop, value) {
@@ -2477,14 +3070,22 @@
 
             observeBarSlide(el);
 
-            if (barSlideVisible.get(el)) {
-                // Already on screen: ease to the new target from current width/height
-                el.style[prop] = value;
-                el.dataset.barSlid = '1';
+            const section = barSlideElToSection.get(el);
+            const sectionOnScreen = !!(section && barSlideSectionVisible.get(section));
+
+            if (sectionOnScreen) {
+                // Section already on screen: play/replay this bar with the rest of the section feel
+                barSlideVisible.set(el, true);
+                playBarSlide(el);
             } else {
-                // Off-screen (or waiting for first observer tick): keep collapsed
+                // Section off-screen (or waiting for first observer tick): keep collapsed
+                el.style.transition = 'none';
                 el.style[prop] = '0%';
                 delete el.dataset.barSlid;
+                barSlideVisible.delete(el);
+                if (el.classList.contains('total-goal-fill-v')) {
+                    resetTotalGoalCurrentLabel(el);
+                }
             }
         }
 
@@ -2564,18 +3165,22 @@
                 barWrapper.className = 'goldenboot-bar-wrapper';
                 const bar = document.createElement('div');
                 bar.className = 'goldenboot-bar';
-                const pct = player.goals > 0 ? Math.max((player.goals / maxGoals) * 100, 15) : 15;
+                const pct = player.goals > 0
+                    ? Math.max((player.goals / maxGoals) * 100, 15)
+                    : 0;
+                // Player avatar on the right of the bar; goal label left of avatar (slides with bar)
                 const valueSpan = document.createElement('span');
                 valueSpan.className = 'goldenboot-value';
-                valueSpan.textContent = player.goals + ' Goal';
-                bar.appendChild(valueSpan);
-                // Player avatar on the right of the bar
+                valueSpan.textContent = player.goals === 0
+                    ? '0'
+                    : player.goals + (player.goals === 1 ? ' Goal' : ' Goals');
                 const playerImg = document.createElement('img');
                 playerImg.className = 'goldenboot-avatar';
                 playerImg.src = player.img;
                 playerImg.alt = player.name;
                 applyPlayerAvatarBlend(playerImg, player.img);
                 playerImg.onerror = function() { this.style.display = 'none'; };
+                bar.appendChild(valueSpan);
                 bar.appendChild(playerImg);
                 barWrapper.appendChild(bar);
 
@@ -2671,7 +3276,6 @@
             const currentGoal = calculateCurrentGoalFromBracket();
             const endValue = getTotalGoalBarEndValue(currentGoal);
             const finalResolved = isFinalResolved();
-            const closestNames = new Set(getClosestTotalGoalParticipants(currentGoal));
             const trackHeight = 500; // Total height of the track in px
 
             // Adjustable spacing offsets (in px from calculated position)
@@ -2738,13 +3342,6 @@
             fill.className = 'total-goal-fill-v';
             fill.style.height = '0%';
             track.appendChild(fill);
-            slideDimension(fill, 'height', currentPct + '%');
-
-            // Start label
-            const startLabel = document.createElement('span');
-            startLabel.className = 'total-goal-start-label';
-            startLabel.textContent = startValue;
-            track.appendChild(startLabel);
 
             // End label
             const endLabel = document.createElement('span');
@@ -2752,12 +3349,16 @@
             endLabel.textContent = endValue;
             track.appendChild(endLabel);
 
-            // Current goal indicator
+            // Current goal indicator (slides + counts with fill)
             const currentTop = ((currentGoal - startValue) / (endValue - startValue)) * trackHeight;
             const currentIndicator = document.createElement('div');
             currentIndicator.className = 'total-goal-current-indicator';
-            currentIndicator.style.top = currentTop + 'px';
-            currentIndicator.textContent = currentGoal;
+            currentIndicator.style.top = '0px';
+
+            const countEl = document.createElement('span');
+            countEl.className = 'total-goal-current-count';
+            countEl.textContent = '0';
+            currentIndicator.appendChild(countEl);
 
             const currentLine = document.createElement('div');
             currentIndicator.appendChild(currentLine);
@@ -2769,22 +3370,32 @@
 
             track.appendChild(currentIndicator);
 
-            // Sebelum Final: eliminasi progresif bila skor aktual melewati prediksi.
+            fill._tgIndicator = currentIndicator;
+            fill._tgCountEl = countEl;
+            fill._tgFinalResolved = finalResolved;
+            fill._tgMarkers = [];
+            fill.dataset.tgTop = String(currentTop);
+            fill.dataset.tgCountTo = String(currentGoal);
+
+            // Sebelum Final: eliminasi progresif bila skor aktual keluar dari wilayah peserta.
             // Setelah Final: hanya peserta terdekat (glowing) yang tersisa; sisanya eliminated.
+            // Glow bergantian mengikuti nilai current goal selama sliding.
             sorted.forEach((p, index) => {
+                const zoneFrom = index === 0
+                    ? startValue
+                    : (sorted[index - 1].goal + p.goal) / 2;
+                const zoneTo = index === sorted.length - 1
+                    ? endValue
+                    : (p.goal + sorted[index + 1].goal) / 2;
+
                 const pct = ((p.goal - startValue) / (endValue - startValue));
                 const baseTop = pct * trackHeight;
                 const offset = markerOffsets[p.name] || 0;
                 const finalTop = baseTop + offset;
-                const isClosest = closestNames.has(p.name);
-                const shouldEliminate = finalResolved
-                    ? !isClosest
-                    : currentGoal > p.goal && !isClosest;
 
                 const marker = document.createElement('div');
                 marker.className = 'total-goal-marker-v';
                 marker.style.top = finalTop + 'px';
-                if (shouldEliminate) marker.classList.add('eliminated');
 
                 // Index ganjil di kiri, selain itu di kanan
                 if (index % 2 !== 0) {
@@ -2799,16 +3410,14 @@
 
                 const info = document.createElement('div');
                 info.className = 'total-goal-marker-info';
-                info.style.borderColor = participantColors[p.name] || '#2a2a5a';
-
-                if (isClosest) {
-                    info.classList.add('glowing');
-                }
+                const color = participantColors[p.name] || '#555';
+                info.style.borderColor = color;
+                info.style.setProperty('--glow-color', color);
 
                 const avatar = document.createElement('img');
                 avatar.className = 'total-goal-marker-avatar-v';
                 applyParticipantAvatar(avatar, p.name);
-                avatar.style.borderColor = participantColors[p.name] || '#444';
+                avatar.style.borderColor = color;
 
                 const name = document.createElement('span');
                 name.className = 'total-goal-marker-name-v';
@@ -2817,7 +3426,7 @@
                 const value = document.createElement('span');
                 value.className = 'total-goal-marker-value-v';
                 value.textContent = p.goal;
-                value.style.color = participantColors[p.name] || '#f39c12';
+                value.style.color = color;
 
                 info.appendChild(avatar);
                 info.appendChild(name);
@@ -2825,7 +3434,18 @@
                 marker.appendChild(line);
                 marker.appendChild(info);
                 track.appendChild(marker);
+
+                fill._tgMarkers.push({
+                    name: p.name,
+                    goal: p.goal,
+                    zoneFrom: zoneFrom,
+                    zoneTo: zoneTo,
+                    marker: marker,
+                    info: info,
+                });
             });
+
+            slideDimension(fill, 'height', currentPct + '%');
 
             vertical.appendChild(track);
             container.appendChild(vertical);
@@ -3118,7 +3738,10 @@
                     { name: teamData[0].name, pts: team1Points },
                     { name: teamData[1].name, pts: team2Points },
                 ].forEach(({ name, pts }) => {
-                    (teamSupporters[name] || []).forEach(supporter => {
+                    const supportersMap = isKnockoutMatchup(matchup)
+                        ? teamSupportersKnockout
+                        : teamSupportersGroup;
+                    (supportersMap[name] || []).forEach(supporter => {
                         if (points[supporter] !== undefined) {
                             points[supporter] = roundStandingsPoints(points[supporter] + pts);
                         }
@@ -3171,12 +3794,15 @@
         }
 
         function formatStandingsPoints(value) {
-            return roundStandingsPoints(value).toFixed(2);
+            const n = roundStandingsPoints(value);
+            if (n === 0) return '0';
+            return n.toFixed(2);
         }
 
         function updateStandingsPoints() {
             const points = calculateStandingsPointsFromBracket();
-            const chart = document.querySelector('.standings-section > .standings-chart');
+            const chart = document.querySelector('#standings-points-chart')
+                || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
             if (!chart) return;
 
             chart.querySelectorAll('.chart-row').forEach(row => {
@@ -3191,7 +3817,8 @@
         function updateStandingsChart() {
             updateStandingsPoints();
 
-            const chart = document.querySelector('.standings-section > .standings-chart');
+            const chart = document.querySelector('#standings-points-chart')
+                || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
             if (!chart) return;
             const rows = Array.from(chart.querySelectorAll('.chart-row'));
             
@@ -3208,6 +3835,8 @@
             // Sort: points desc → goals scored (FT+ET) desc → goals conceded (FT+ET) asc → name
             rows.sort((a, b) => compareStandingsParticipants(a._name, b._name, pointsByName, goalStats));
 
+            const participantColors = (window.LEAGUE_DATA && window.LEAGUE_DATA.participantColors) || {};
+
             rows.forEach((row, index) => {
                 chart.appendChild(row);
                 row.classList.remove('top-1', 'rank-1', 'rank-2', 'rank-3', 'podium-place-1', 'podium-place-2', 'podium-place-3');
@@ -3215,21 +3844,26 @@
                 const rank = index + 1;
                 const rankEl = row.querySelector('.chart-rank');
                 const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
-                const glowColors = { 1: '#ffd700', 2: '#c0c0c0', 3: '#cd7f32' };
                 if (rankEl) rankEl.textContent = medals[rank] || String(rank);
                 if (rank <= 3) {
                     row.classList.add('rank-' + rank, 'podium-place-' + rank);
-                    row.style.setProperty('--glow-color', glowColors[rank]);
+                    const bar = row.querySelector('.chart-bar');
+                    const color = participantColors[row._name]
+                        || (bar && bar.style.background)
+                        || '#3498db';
+                    row.style.setProperty('--glow-color', color);
                 }
             });
 
             // Calculate max points for width scaling
             const maxPoints = Math.max(...rows.map(r => r._points), 1);
 
-            // Update widths
+            // Update widths (0 points → empty bar)
             rows.forEach(row => {
                 const bar = row.querySelector('.chart-bar');
-                const pct = Math.max((row._points / maxPoints) * 100, 8);
+                const pct = row._points > 0
+                    ? Math.max((row._points / maxPoints) * 100, 8)
+                    : 0;
                 slideDimension(bar, 'width', pct + '%');
             });
         }
@@ -3307,6 +3941,10 @@ window.syncLeagueDataFromDb = function syncLeagueDataFromDb() {
     const d = window.LEAGUE_DATA;
     if (!d) return;
     if (d.teamSupporters) teamSupporters = d.teamSupporters;
+    if (d.teamSupportersGroup) teamSupportersGroup = d.teamSupportersGroup;
+    else if (d.teamSupporters) teamSupportersGroup = d.teamSupporters;
+    if (d.teamSupportersKnockout) teamSupportersKnockout = d.teamSupportersKnockout;
+    else if (d.teamSupporters) teamSupportersKnockout = d.teamSupporters;
     if (d.participantAvatars) participantAvatars = d.participantAvatars;
     if (d.totalGoalData) totalGoalData = d.totalGoalData;
     if (d.sideQuestPodium) sideQuestPodium = d.sideQuestPodium;

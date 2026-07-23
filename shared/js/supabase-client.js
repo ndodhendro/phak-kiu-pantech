@@ -369,12 +369,74 @@ window.ArisanDB = (function () {
         return ordered;
     }
 
-    function deriveFromParticipantPicks(participants, teams) {
-        const teamSupporters = {};
+    function ensureMainQuestPotList(pots) {
+        if (!Array.isArray(pots) || !pots.length) return [{ teams: ['', ''] }];
+        return pots.map((pot) => {
+            const t = (pot && pot.teams) || [];
+            return { teams: [t[0] || '', t[1] || ''] };
+        });
+    }
+
+    function normalizeMainQuestPicks(mq, opts) {
+        const options = opts || {};
+        const raw = mq && typeof mq === 'object' ? mq : {};
+        if (raw.group || raw.knockout) {
+            return {
+                group: { pots: ensureMainQuestPotList(raw.group && raw.group.pots) },
+                knockout: { pots: ensureMainQuestPotList(raw.knockout && raw.knockout.pots) },
+            };
+        }
+        const legacy = ensureMainQuestPotList(raw.pots);
+        const empty = [{ teams: ['', ''] }];
+        const hasGroup = !!options.includeGroupStage;
+        const hasKo = options.includeKnockoutStage !== false;
+        if (hasGroup && !hasKo) {
+            return { group: { pots: legacy }, knockout: { pots: empty } };
+        }
+        if (!hasGroup && hasKo) {
+            return { group: { pots: empty }, knockout: { pots: legacy } };
+        }
+        return { group: { pots: legacy }, knockout: { pots: empty } };
+    }
+
+    function potsToTeamPairs(pots) {
+        return ensureMainQuestPotList(pots).map((pot) => {
+            const t = pot.teams || [];
+            return [t[0] || '', t[1] || ''];
+        });
+    }
+
+    function addSupportersFromPots(map, pots, participantName) {
+        (pots || []).forEach((pot) => {
+            (pot.teams || []).forEach((teamName) => {
+                if (!teamName) return;
+                if (!map[teamName]) map[teamName] = [];
+                if (!map[teamName].includes(participantName)) map[teamName].push(participantName);
+            });
+        });
+    }
+
+    function mergeSupporterMaps(a, b) {
+        const out = {};
+        [a || {}, b || {}].forEach((src) => {
+            Object.keys(src).forEach((team) => {
+                if (!out[team]) out[team] = [];
+                (src[team] || []).forEach((name) => {
+                    if (!out[team].includes(name)) out[team].push(name);
+                });
+            });
+        });
+        return out;
+    }
+
+    function deriveFromParticipantPicks(participants, teams, stageOpts) {
+        const teamSupportersGroup = {};
+        const teamSupportersKnockout = {};
         const sideQuestPodium = { champion: {}, runnerup: {}, third: {} };
         const goldenBootMap = {};
         const goldenGloveMap = {};
         const totalGoalData = [];
+        const opts = stageOpts || {};
 
         const flagForTeam = (teamName) => {
             const t = (teams || []).find(x => x.name === teamName);
@@ -383,14 +445,9 @@ window.ArisanDB = (function () {
 
         (participants || []).forEach(p => {
             const picks = p.picks || {};
-            const pots = (picks.mainQuest && picks.mainQuest.pots) || [];
-            pots.forEach(pot => {
-                (pot.teams || []).forEach(teamName => {
-                    if (!teamName) return;
-                    if (!teamSupporters[teamName]) teamSupporters[teamName] = [];
-                    if (!teamSupporters[teamName].includes(p.name)) teamSupporters[teamName].push(p.name);
-                });
-            });
+            const mq = normalizeMainQuestPicks(picks.mainQuest, opts);
+            addSupportersFromPots(teamSupportersGroup, mq.group.pots, p.name);
+            addSupportersFromPots(teamSupportersKnockout, mq.knockout.pots, p.name);
 
             const sq = picks.sideQuest || {};
             ['champion', 'runnerup', 'third'].forEach(place => {
@@ -450,8 +507,12 @@ window.ArisanDB = (function () {
             }
         });
 
+        const teamSupporters = mergeSupporterMaps(teamSupportersGroup, teamSupportersKnockout);
+
         return {
             teamSupporters,
+            teamSupportersGroup,
+            teamSupportersKnockout,
             sideQuestPodium,
             goldenBoot: Object.values(goldenBootMap),
             goldenGlove: Object.values(goldenGloveMap),
@@ -555,20 +616,31 @@ window.ArisanDB = (function () {
         });
 
         let teamSupporters;
+        let teamSupportersGroup = {};
+        let teamSupportersKnockout = {};
         let sideQuestPodium;
         let totalGoalData;
         let scorePredictions = {};
         let derivedAwards = null;
 
+        const stageOpts = {
+            includeGroupStage: !!settings.includeGroupStage,
+            includeKnockoutStage: settings.includeKnockoutStage !== false,
+        };
+
         if (hasParticipantPicks(bundle.participants)) {
-            const derived = deriveFromParticipantPicks(bundle.participants, teams);
+            const derived = deriveFromParticipantPicks(bundle.participants, teams, stageOpts);
             teamSupporters = derived.teamSupporters;
+            teamSupportersGroup = derived.teamSupportersGroup || {};
+            teamSupportersKnockout = derived.teamSupportersKnockout || {};
             sideQuestPodium = derived.sideQuestPodium;
             totalGoalData = derived.totalGoalData;
             scorePredictions = derived.scorePredictions || {};
             derivedAwards = { goldenBoot: derived.goldenBoot, goldenGlove: derived.goldenGlove };
         } else {
             teamSupporters = legacyTeamSupporters(bundle);
+            teamSupportersGroup = Object.assign({}, teamSupporters);
+            teamSupportersKnockout = Object.assign({}, teamSupporters);
             sideQuestPodium = legacySideQuestPodium(bundle);
             totalGoalData = [];
             (bundle.participants || []).forEach(p => {
@@ -582,19 +654,21 @@ window.ArisanDB = (function () {
         const participantsMainQuest = (bundle.participants || []).map(p => {
             const picks = (p.picks && p.picks.mainQuest)
                 ? p.picks
-                : picksFromLegacy(p.name, bundle);
-            const pots = (picks.mainQuest && picks.mainQuest.pots) || [{ teams: ['', ''] }];
+                : picksFromLegacy(p.name, bundle, stageOpts);
+            const mq = normalizeMainQuestPicks(picks.mainQuest, stageOpts);
             return {
                 name: p.name,
-                pots: pots.map(pot => {
-                    const t = pot.teams || [];
-                    return [t[0] || '', t[1] || ''];
-                }),
+                groupPots: potsToTeamPairs(mq.group.pots),
+                knockoutPots: potsToTeamPairs(mq.knockout.pots),
+                // legacy alias (group pots) for older consumers
+                pots: potsToTeamPairs(mq.group.pots),
             };
         });
 
         return {
             teamSupporters,
+            teamSupportersGroup,
+            teamSupportersKnockout,
             participantAvatars,
             participantColors,
             totalGoalData,
@@ -851,17 +925,26 @@ window.ArisanDB = (function () {
         await rest('DELETE', 'side_quests?league_id=eq.' + leagueId, undefined, 'return=minimal');
         await rest('DELETE', 'awards?league_id=eq.' + leagueId, undefined, 'return=minimal');
 
-        const participantRows = (setup.participants || []).map((p, i) => ({
-            league_id: leagueId,
-            name: p.name.trim(),
-            avatar_path: p.avatar_path || null,
-            color: p.color || null,
-            sort_order: i + 1,
-            total_goal_prediction: (p.picks && p.picks.sideQuest && p.picks.sideQuest.totalGoal != null)
-                ? p.picks.sideQuest.totalGoal
-                : (p.total_goal_prediction != null ? p.total_goal_prediction : null),
-            picks: p.picks || {},
-        }));
+        const stageOpts = {
+            includeGroupStage: !!setup.includeGroupStage,
+            includeKnockoutStage: setup.includeKnockoutStage !== false,
+        };
+
+        const participantRows = (setup.participants || []).map((p, i) => {
+            const picks = Object.assign({}, p.picks || {});
+            picks.mainQuest = normalizeMainQuestPicks(picks.mainQuest, stageOpts);
+            return {
+                league_id: leagueId,
+                name: p.name.trim(),
+                avatar_path: p.avatar_path || null,
+                color: p.color || null,
+                sort_order: i + 1,
+                total_goal_prediction: (picks.sideQuest && picks.sideQuest.totalGoal != null)
+                    ? picks.sideQuest.totalGoal
+                    : (p.total_goal_prediction != null ? p.total_goal_prediction : null),
+                picks,
+            };
+        });
 
         let insertedParticipants = [];
         if (participantRows.length) {
@@ -885,7 +968,11 @@ window.ArisanDB = (function () {
 
         const derived = deriveFromParticipantPicks(
             (setup.participants || []).map(p => ({ name: p.name.trim(), picks: p.picks })),
-            setup.teams || []
+            setup.teams || [],
+            {
+                includeGroupStage: !!setup.includeGroupStage,
+                includeKnockoutStage: setup.includeKnockoutStage !== false,
+            }
         );
 
         const mergedGoldenBoot = mergeDerivedAwardsWithExisting(
@@ -963,9 +1050,13 @@ window.ArisanDB = (function () {
         return { leagueId };
     }
 
-    function picksFromLegacy(participantName, bundle) {
+    function picksFromLegacy(participantName, bundle, stageOpts) {
+        const mq = normalizeMainQuestPicks(null, stageOpts || {
+            includeGroupStage: !!(bundle.league && bundle.league.settings && bundle.league.settings.includeGroupStage),
+            includeKnockoutStage: !(bundle.league && bundle.league.settings && bundle.league.settings.includeKnockoutStage === false),
+        });
         const picks = {
-            mainQuest: { pots: [{ teams: ['', ''] }] },
+            mainQuest: mq,
             sideQuest: {
                 champion: '', runnerup: '', third: '',
                 goldenBoot: { player_name: '', img: '', team: '' },
@@ -983,11 +1074,19 @@ window.ArisanDB = (function () {
             if (names.includes(participantName)) supportedTeams.push(t.name);
         });
         if (supportedTeams.length) {
-            picks.mainQuest.pots = [];
+            const potList = [];
             for (let i = 0; i < supportedTeams.length; i += 2) {
-                picks.mainQuest.pots.push({
+                potList.push({
                     teams: [supportedTeams[i] || '', supportedTeams[i + 1] || ''],
                 });
+            }
+            const opts = stageOpts || {};
+            if (opts.includeGroupStage && !opts.includeKnockoutStage) {
+                picks.mainQuest.group.pots = potList;
+            } else if (!opts.includeGroupStage && opts.includeKnockoutStage !== false) {
+                picks.mainQuest.knockout.pots = potList;
+            } else {
+                picks.mainQuest.group.pots = potList;
             }
         }
 
@@ -1028,6 +1127,10 @@ window.ArisanDB = (function () {
     function bundleToSetupForm(bundle) {
         const settings = normalizeSettings(bundle.league && bundle.league.settings);
         const usePicks = hasParticipantPicks(bundle.participants);
+        const stageOpts = {
+            includeGroupStage: !!settings.includeGroupStage,
+            includeKnockoutStage: settings.includeKnockoutStage !== false,
+        };
 
         const teams = orderTeamsBySettings(
             (bundle.teams || []).map(t => ({
@@ -1056,14 +1159,20 @@ window.ArisanDB = (function () {
                 year: bundle.league.year,
                 timezone: bundle.league.timezone || 'Asia/Jakarta',
             },
-            participants: (bundle.participants || []).map((p, i) => ({
-                name: p.name,
-                avatar_path: p.avatar_path || '',
-                color: p.color || '#3498db',
-                picks: usePicks && p.picks && Object.keys(p.picks).length
+            participants: (bundle.participants || []).map((p, i) => {
+                const rawPicks = usePicks && p.picks && Object.keys(p.picks).length
                     ? p.picks
-                    : picksFromLegacy(p.name, bundle),
-            })),
+                    : picksFromLegacy(p.name, bundle, stageOpts);
+                const picks = Object.assign({}, rawPicks, {
+                    mainQuest: normalizeMainQuestPicks(rawPicks.mainQuest, stageOpts),
+                });
+                return {
+                    name: p.name,
+                    avatar_path: p.avatar_path || '',
+                    color: p.color || '#3498db',
+                    picks,
+                };
+            }),
             teams,
             groupDefinitions: settings.groupDefinitions || [],
             groupFixtures: settings.groupFixtures || [],

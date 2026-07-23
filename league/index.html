@@ -39,52 +39,58 @@
     </div>
 
     <div class="bracket-wrapper">
-        <div class="group-stage" id="group-stage-root"></div>
-        <div class="bracket" id="bracket-root"></div>
+        <section class="league-panel group-stage" id="group-stage-root" aria-label="Group Stage"></section>
+        <section class="league-panel bracket" id="bracket-root" aria-label="Knockout Stage"></section>
     </div>
 
     <div class="standings-section">
-        <h2 class="table-section-title">📊 Arisan Standings Points</h2>
-        <div class="standings-chart"></div>
+        <section class="league-panel" aria-label="Arisan Standings Points">
+            <h2 class="table-section-title">📊 Arisan Standings Points</h2>
+            <div class="standings-chart" id="standings-points-chart"></div>
+        </section>
 
-        <h3 class="table-section-title">🎯 Main Quest</h3>
-        <div class="standings-table-wrapper" id="main-quest-table-root"></div>
+        <section class="league-panel" aria-label="Main Quest">
+            <h3 class="table-section-title">🎯 Main Quest</h3>
+            <div class="standings-table-wrapper" id="main-quest-table-root"></div>
+        </section>
 
-        <h3 class="table-section-title">⭐ Side Quest</h3>
-        <div class="podium-section">
-            <div class="podium-container">
-                <div class="podium-place podium-place-2">
-                    <div class="podium-label"><img src="https://png.pngtree.com/png-clipart/20250717/original/pngtree-silver-second-place-trophy-with-number-two-png-image_21318342.png" alt="Runner-Up" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"> Runner-Up</div>
-                    <div class="podium-teams" id="podium-runnerup"></div>
-                    <div class="podium-block">2nd</div>
-                </div>
-                <div class="podium-place podium-place-1">
-                    <div class="podium-label"><img id="podium-champion-trophy" class="podium-champion-trophy" data-league-trophy alt="Champion" decoding="async">Champion</div>
-                    <div class="podium-teams" id="podium-champion"></div>
-                    <div class="podium-block">1st</div>
-                </div>
-                <div class="podium-place podium-place-3" id="podium-third-wrap">
-                    <div class="podium-label"><img src="https://static.vecteezy.com/system/resources/previews/063/104/243/non_2x/bronze-medal-with-number-three-and-laurel-wreath-isolated-on-transparent-background-png.png" alt="Third Place" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"> Third Place</div>
-                    <div class="podium-teams" id="podium-3rd"></div>
-                    <div class="podium-block">3rd</div>
+        <section class="league-panel" aria-label="Side Quest Podium">
+            <h3 class="table-section-title">⭐ Side Quest</h3>
+            <div class="podium-section">
+                <div class="podium-container">
+                    <div class="podium-place podium-place-2">
+                        <div class="podium-label"><img src="https://png.pngtree.com/png-clipart/20250717/original/pngtree-silver-second-place-trophy-with-number-two-png-image_21318342.png" alt="Runner-Up" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"> Runner-Up</div>
+                        <div class="podium-teams" id="podium-runnerup"></div>
+                        <div class="podium-block">2nd</div>
+                    </div>
+                    <div class="podium-place podium-place-1">
+                        <div class="podium-label"><img id="podium-champion-trophy" class="podium-champion-trophy" data-league-trophy alt="Champion" decoding="async">Champion</div>
+                        <div class="podium-teams" id="podium-champion"></div>
+                        <div class="podium-block">1st</div>
+                    </div>
+                    <div class="podium-place podium-place-3" id="podium-third-wrap">
+                        <div class="podium-label"><img src="https://static.vecteezy.com/system/resources/previews/063/104/243/non_2x/bronze-medal-with-number-three-and-laurel-wreath-isolated-on-transparent-background-png.png" alt="Third Place" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"> Third Place</div>
+                        <div class="podium-teams" id="podium-3rd"></div>
+                        <div class="podium-block">3rd</div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="podium-section">
+        <section class="league-panel podium-section" aria-label="Golden Boot">
             <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://png.pngtree.com/png-clipart/20241006/original/pngtree-golden-boot-award-isolated-on-a-white-background-png-image_16219554.png" alt="Golden Boot" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Golden Boot</h4>
             <div class="standings-chart" id="goldenboot-chart"></div>
-        </div>
+        </section>
 
-        <div class="podium-section">
+        <section class="league-panel podium-section" aria-label="Golden Glove">
             <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://owexnrdvmragupmquwzr.supabase.co/storage/v1/object/public/arisan-config/assets/images/golden%20glove.png" alt="Golden Glove" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;"> Golden Glove</h4>
             <div class="podium-container goldenglove-podium" id="podium-goldenglove-container"></div>
-        </div>
+        </section>
 
-        <div class="podium-section">
+        <section class="league-panel podium-section" aria-label="Total Goal">
             <h4 style="text-align:center; color:#e94560; font-size:0.9rem; margin-bottom:15px;"><img alt="Total Goal" data-league-ball decoding="async" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Total Goal</h4>
             <div class="total-goal-bar-container" id="total-goal-bar"></div>
-        </div>
+        </section>
     </div>
 
     <audio id="bg-music" loop preload="auto"></audio>

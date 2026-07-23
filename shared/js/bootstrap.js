@@ -233,44 +233,18 @@ function escHtml(s) {
         .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
-function hasAnyMainQuestPotPick(rows) {
+function hasAnyMainQuestPotPick(rows, potKey) {
+    const key = potKey || 'pots';
     return (rows || []).some(row =>
-        (row.pots || []).some(pot =>
+        (row[key] || row.pots || []).some(pot =>
             (Array.isArray(pot) ? pot : []).some(name => String(name || '').trim())
         )
     );
 }
 
-function buildMainQuestTableFromParticipants() {
-    const d = window.LEAGUE_DATA;
-    const wrapper = document.getElementById('main-quest-table-root');
-    if (!d || !wrapper) return;
-
-    const heading = wrapper.previousElementSibling;
-    const rows = d.participantsMainQuest || [];
-    const showTable = hasAnyMainQuestPotPick(rows);
-
-    if (!showTable) {
-        wrapper.innerHTML = '';
-        wrapper.classList.add('hidden');
-        if (heading && heading.classList.contains('table-section-title')) {
-            heading.classList.add('hidden');
-        }
-        return;
-    }
-
-    wrapper.classList.remove('hidden');
-    if (heading && heading.classList.contains('table-section-title')) {
-        heading.classList.remove('hidden');
-    }
-
-    if (!rows.length) {
-        wrapper.innerHTML = '<p class="hint">No participant data yet.</p>';
-        return;
-    }
-
-    const maxPots = Math.max(...rows.map(r => r.pots.length), 1);
-    const avatars = d.participantAvatars || {};
+function buildOneMainQuestTableHtml(rows, potKey, avatars) {
+    const potsList = (row) => row[potKey] || row.pots || [];
+    const maxPots = Math.max(...rows.map(r => potsList(r).length), 1);
 
     let thead = '<tr><th>Participant</th>';
     for (let i = 0; i < maxPots; i++) {
@@ -288,7 +262,7 @@ function buildMainQuestTableFromParticipants() {
             escHtml(row.name) + '</strong></span></td>';
 
         for (let i = 0; i < maxPots; i++) {
-            const pot = row.pots[i] || ['', ''];
+            const pot = potsList(row)[i] || ['', ''];
             const potClass = 'pot' + (i < 8 ? i + 1 : 8) + ' ';
             tr += '<td class="' + potClass + 'mq-pot-cell">' + escHtml(pot[0]) + '</td>';
             tr += '<td class="' + potClass + 'mq-pot-cell">' + escHtml(pot[1]) + '</td>';
@@ -297,13 +271,72 @@ function buildMainQuestTableFromParticipants() {
         return tr;
     }).join('');
 
-    wrapper.innerHTML =
-        '<table class="standings-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+    return '<table class="standings-table"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+}
+
+function buildMainQuestTableFromParticipants() {
+    const d = window.LEAGUE_DATA;
+    const wrapper = document.getElementById('main-quest-table-root');
+    if (!d || !wrapper) return;
+
+    const heading = wrapper.previousElementSibling;
+    const rows = d.participantsMainQuest || [];
+    const showGroup = !!d.includeGroupStage && hasAnyMainQuestPotPick(rows, 'groupPots');
+    const showKnockout = d.includeKnockoutStage !== false && hasAnyMainQuestPotPick(rows, 'knockoutPots');
+    // Legacy flat pots fallback when dual keys empty but old `pots` filled
+    const showLegacy = !showGroup && !showKnockout && hasAnyMainQuestPotPick(rows, 'pots');
+    const showTable = showGroup || showKnockout || showLegacy;
+
+    if (!showTable) {
+        wrapper.innerHTML = '';
+        wrapper.classList.add('hidden');
+        if (heading && heading.classList.contains('table-section-title')) {
+            heading.classList.add('hidden');
+        }
+        const section = wrapper.closest('.league-panel');
+        if (section) section.classList.add('hidden');
+        return;
+    }
+
+    wrapper.classList.remove('hidden');
+    if (heading && heading.classList.contains('table-section-title')) {
+        heading.classList.remove('hidden');
+    }
+    const section = wrapper.closest('.league-panel');
+    if (section) section.classList.remove('hidden');
+
+    if (!rows.length) {
+        wrapper.innerHTML = '<p class="hint">No participant data yet.</p>';
+        return;
+    }
+
+    const avatars = d.participantAvatars || {};
+    let html = '';
+    if (showGroup) {
+        html += '<div class="mq-stage-block" data-mq-stage="group" id="main-quest-group-root">' +
+            '<h4 class="mq-stage-title">Group Stage</h4>' +
+            buildOneMainQuestTableHtml(rows, 'groupPots', avatars) +
+            '</div>';
+    }
+    if (showKnockout) {
+        html += '<div class="mq-stage-block" data-mq-stage="knockout" id="main-quest-knockout-root">' +
+            '<h4 class="mq-stage-title">Knockout Stage</h4>' +
+            buildOneMainQuestTableHtml(rows, 'knockoutPots', avatars) +
+            '</div>';
+    }
+    if (showLegacy) {
+        html += '<div class="mq-stage-block" data-mq-stage="legacy" id="main-quest-group-root">' +
+            buildOneMainQuestTableHtml(rows, 'pots', avatars) +
+            '</div>';
+    }
+
+    wrapper.innerHTML = html;
 }
 
 function buildStandingsChartFromParticipants() {
     const d = window.LEAGUE_DATA;
-    const chart = document.querySelector('.standings-section > .standings-chart');
+    const chart = document.querySelector('#standings-points-chart')
+        || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
     if (!d || !chart) return;
 
     const names = Object.keys(d.participantAvatars || {});
@@ -324,7 +357,8 @@ function buildStandingsChartFromParticipants() {
             '<div class="chart-bar" style="background:' + color + ';">' +
             '<span class="chart-value">0</span>' +
             participantAvatarImgHtml(avatar, name, 'chart-avatar') +
-            '</div></div></div>';
+            '</div></div>' +
+            '</div>';
     }).join('');
 }
 
@@ -359,8 +393,13 @@ function mountDynamicBracket() {
 
     if (groupRoot && hasGroup) {
         ArisanBracket.mountGroupStage(groupRoot, mountOpts);
+        const hasContent = !!(groupRoot.innerHTML && groupRoot.innerHTML.trim());
+        groupRoot.hidden = !hasContent;
+        groupRoot.classList.toggle('is-empty', !hasContent);
     } else if (groupRoot) {
         groupRoot.innerHTML = '';
+        groupRoot.hidden = true;
+        groupRoot.classList.add('is-empty');
     }
 
     if (bracketRoot && hasKnockout) {

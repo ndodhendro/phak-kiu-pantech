@@ -150,6 +150,8 @@
 
         let bracketFlowCycleTimer = null;
         let bracketFlowCycleMs = 5000;
+        let bracketFlowVisible = true;
+        let bracketFlowVisibilityIo = null;
         const BRACKET_FLOW_SPEED = 900; // px/s — same for borders & connectors
         const BRACKET_FLOW_ARRIVE = 0.88; // keyframe % when dash reaches path end
         const targetFlowArriveAt = new Map();
@@ -161,14 +163,26 @@
             return { bracket, flows, trophies };
         }
 
+        function pauseBracketLineFlow(svg) {
+            const { bracket, flows, trophies } = getBracketFlowTargets(svg);
+            flows.forEach((el) => el.classList.remove('is-flowing'));
+            trophies.forEach((el) => el.classList.remove('is-flowing'));
+            if (bracket) bracket.classList.add('anim-paused');
+        }
+
         function restartBracketLineFlow(svg) {
             if (!svg || !svg.isConnected) return;
-            const { flows, trophies } = getBracketFlowTargets(svg);
+            if (!bracketFlowVisible || document.hidden) {
+                pauseBracketLineFlow(svg);
+                return;
+            }
+            const { bracket, flows, trophies } = getBracketFlowTargets(svg);
+            if (bracket) bracket.classList.remove('anim-paused');
             flows.forEach((el) => el.classList.remove('is-flowing'));
             trophies.forEach((el) => el.classList.remove('is-flowing'));
             void svg.getBoundingClientRect();
             requestAnimationFrame(() => {
-                if (!svg.isConnected) return;
+                if (!svg.isConnected || !bracketFlowVisible || document.hidden) return;
                 flows.forEach((el) => el.classList.add('is-flowing'));
                 trophies.forEach((el) => el.classList.add('is-flowing'));
             });
@@ -179,17 +193,32 @@
                 clearInterval(bracketFlowCycleTimer);
                 bracketFlowCycleTimer = null;
             }
+            if (bracketFlowVisibilityIo) {
+                bracketFlowVisibilityIo.disconnect();
+                bracketFlowVisibilityIo = null;
+            }
             if (!svg) return;
-            bracketFlowCycleMs = Math.max(5000, Math.ceil(cycleMs || 5000));
-            const { flows, trophies } = getBracketFlowTargets(svg);
-            flows.forEach((el) => el.classList.add('is-flowing'));
-            trophies.forEach((el) => el.classList.add('is-flowing'));
+            // Longer idle between cascades → less continuous GPU work
+            bracketFlowCycleMs = Math.max(7000, Math.ceil((cycleMs || 5000) + 2000));
+            const bracket = svg.closest('.bracket') || document.querySelector('.bracket');
+            bracketFlowVisible = true;
+            if (bracket && typeof IntersectionObserver !== 'undefined') {
+                bracketFlowVisibilityIo = new IntersectionObserver((entries) => {
+                    const entry = entries[0];
+                    bracketFlowVisible = !!(entry && entry.isIntersecting);
+                    if (bracketFlowVisible) restartBracketLineFlow(svg);
+                    else pauseBracketLineFlow(svg);
+                }, { root: null, threshold: 0.08, rootMargin: '40px' });
+                bracketFlowVisibilityIo.observe(bracket);
+            }
+            restartBracketLineFlow(svg);
             bracketFlowCycleTimer = setInterval(() => {
                 if (!svg.isConnected) {
                     clearInterval(bracketFlowCycleTimer);
                     bracketFlowCycleTimer = null;
                     return;
                 }
+                if (!bracketFlowVisible || document.hidden) return;
                 restartBracketLineFlow(svg);
             }, bracketFlowCycleMs);
         }
@@ -559,7 +588,11 @@
             scheduleBracketLineFlow(svg, (cycleEndRef.value + 1.2) * 1000);
         }
 
-        window.addEventListener('resize', drawBracketLines);
+        let bracketLinesResizeTimer = null;
+        window.addEventListener('resize', () => {
+            if (bracketLinesResizeTimer) clearTimeout(bracketLinesResizeTimer);
+            bracketLinesResizeTimer = setTimeout(drawBracketLines, 180);
+        });
     
 
 /* --- */
@@ -1659,7 +1692,7 @@
         let pendingFinalCelebrationWinner = null;
         let finalCelebrationActive = false;
         let finalCelebrationRepeatTimer = null;
-        const FINAL_CELEBRATION_REPEAT_MS = 30 * 1000;
+        const FINAL_CELEBRATION_REPEAT_MS = 60 * 1000;
 
         function getCelebrationFlagSrc(flagSrc) {
             if (typeof ArisanCountries !== 'undefined' && ArisanCountries.getCelebrationFlagUrl) {
@@ -1804,11 +1837,7 @@
             overlay.appendChild(announcement);
 
             if (!reducedMotion) {
-                const canvas = document.createElement('canvas');
-                canvas.className = 'winner-fireworks';
-                overlay.appendChild(canvas);
-
-                const balloonCount = isMobile ? 12 : 20;
+                const balloonCount = isMobile ? 6 : 10;
                 const fragment = document.createDocumentFragment();
                 const itemPattern = [
                     'flag', 'participant', 'trophy', 'flag', 'ball',
@@ -1874,11 +1903,17 @@
 
                 overlay.appendChild(fragment);
                 document.body.appendChild(overlay);
-                startWinnerFireworks(canvas, isMobile ? 5500 : 7000);
+                // Fireworks only on desktop; shorter + lighter
+                if (!isMobile) {
+                    const canvas = document.createElement('canvas');
+                    canvas.className = 'winner-fireworks';
+                    overlay.appendChild(canvas);
+                    startWinnerFireworks(canvas, 2800);
+                }
                 window.setTimeout(() => {
                     overlay.remove();
                     finalCelebrationActive = false;
-                }, isMobile ? 8500 : 10000);
+                }, isMobile ? 7500 : 8500);
                 return;
             }
 
@@ -1915,7 +1950,7 @@
             function createBurst() {
                 const x = width * (0.15 + Math.random() * 0.7);
                 const y = height * (0.12 + Math.random() * 0.4);
-                const particleCount = width < 600 ? 14 : 20;
+                const particleCount = width < 600 ? 8 : 12;
                 const color = colors[(Math.random() * colors.length) | 0];
 
                 for (let i = 0; i < particleCount; i += 1) {
@@ -1935,11 +1970,15 @@
 
             function render(now) {
                 if (ended) return;
+                if (document.hidden) {
+                    rafId = requestAnimationFrame(render);
+                    return;
+                }
                 context.clearRect(0, 0, width, height);
 
                 if (now < startedAt + duration && now >= nextBurstAt) {
                     createBurst();
-                    nextBurstAt = now + 700 + Math.random() * 900;
+                    nextBurstAt = now + 1100 + Math.random() * 900;
                 }
 
                 for (let i = particles.length - 1; i >= 0; i -= 1) {
@@ -3930,6 +3969,25 @@
                 audio.play();
             }
         }
+
+        function syncAnimPausedForVisibility() {
+            document.documentElement.classList.toggle('anim-paused', document.hidden);
+        }
+        syncAnimPausedForVisibility();
+        document.addEventListener('visibilitychange', syncAnimPausedForVisibility);
+
+        // Pause standings glow loops while the chart is off-screen
+        (function bindStandingsAnimPause() {
+            if (!('IntersectionObserver' in window)) return;
+            const section = document.querySelector('.standings-section')
+                || document.querySelector('#standings-points-chart')?.closest('.league-panel');
+            if (!section) return;
+            const io = new IntersectionObserver((entries) => {
+                const visible = !!(entries[0] && entries[0].isIntersecting);
+                section.classList.toggle('anim-paused', !visible);
+            }, { threshold: 0.08, rootMargin: '40px' });
+            io.observe(section);
+        })();
 
         document.addEventListener('visibilitychange', updateMusicForPageFocus);
         window.addEventListener('blur', updateMusicForPageFocus);

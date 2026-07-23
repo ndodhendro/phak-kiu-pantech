@@ -9,8 +9,8 @@
             --bracket-matchup-width: 270px;
             --bracket-round-pad-x: 5px;
             --bracket-round-width: calc(var(--bracket-matchup-width) + (var(--bracket-round-pad-x) * 2));
-            --glow-rhythm: 2.5s;
-            --glow-rhythm-half: 1.25s;
+            --glow-rhythm: 4s;
+            --glow-rhythm-half: 2s;
             --glow-sync-delay: 0ms;
             /* Static 3D surfaces */
             --ui-3d-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
@@ -24,7 +24,7 @@
             );
             /* Smooth bar slide: soft start + soft finish */
             --bar-ease: cubic-bezier(0.45, 0, 0.55, 1);
-            --bar-duration: 2.4s;
+            --bar-duration: 1.35s;
         }
 
         /* Shared static 3D box look (shadow/bevel only — keep each component's fill color) */
@@ -431,6 +431,8 @@
         }
         .bracket-lines {
             z-index: 0;
+            contain: layout style;
+            pointer-events: none;
         }
         .bracket .bracket-line-flow {
             stroke: rgba(126, 200, 240, 0.85);
@@ -735,55 +737,41 @@
             animation-fill-mode: both;
             animation-delay: inherit;
         }
+        /* Opacity/transform only — avoid animated filter (expensive) */
         @keyframes trophyFlowGlow {
             0% {
-                filter: none;
+                opacity: 0;
                 box-shadow: none;
             }
             12% {
-                filter: drop-shadow(0 0 10px rgba(255, 215, 100, 0.85));
-                box-shadow:
-                    0 0 16px rgba(255, 200, 60, 0.55),
-                    0 0 32px rgba(255, 180, 40, 0.35);
-            }
-            45% {
-                filter: drop-shadow(0 0 14px rgba(255, 230, 140, 1));
-                box-shadow:
-                    0 0 22px rgba(255, 215, 80, 0.75),
-                    0 0 44px rgba(255, 190, 50, 0.45);
-            }
-            70% {
-                filter: drop-shadow(0 0 10px rgba(255, 215, 100, 0.7));
+                opacity: 1;
                 box-shadow:
                     0 0 14px rgba(255, 200, 60, 0.45),
-                    0 0 28px rgba(255, 180, 40, 0.28);
+                    0 0 28px rgba(255, 180, 40, 0.25);
+            }
+            45% {
+                opacity: 1;
+                box-shadow:
+                    0 0 18px rgba(255, 215, 80, 0.55),
+                    0 0 36px rgba(255, 190, 50, 0.3);
+            }
+            70% {
+                opacity: 0.85;
+                box-shadow:
+                    0 0 12px rgba(255, 200, 60, 0.35),
+                    0 0 22px rgba(255, 180, 40, 0.2);
             }
             100% {
-                filter: none;
+                opacity: 0;
                 box-shadow: none;
             }
         }
         @keyframes trophyFlowGlowImg {
-            0% {
-                filter: brightness(1) saturate(1);
-                transform: scale(1);
-            }
-            12% {
-                filter: brightness(1.15) saturate(1.2);
-                transform: scale(1.04);
-            }
-            45% {
-                filter: brightness(1.25) saturate(1.35);
-                transform: scale(1.08);
-            }
-            70% {
-                filter: brightness(1.12) saturate(1.15);
-                transform: scale(1.03);
-            }
-            100% {
-                filter: brightness(1) saturate(1);
-                transform: scale(1);
-            }
+            0% { transform: scale(1); opacity: 1; }
+            12% { transform: scale(1.04); opacity: 1; }
+            45% { transform: scale(1.07); opacity: 1; }
+            70% { transform: scale(1.03); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
         }
         @media (prefers-reduced-motion: reduce) {
             .round-trophy.bracket-flow-trophy.is-flowing,
@@ -792,7 +780,29 @@
                 filter: none;
                 box-shadow: none;
                 transform: none;
+                opacity: 1;
             }
+        }
+        /* Pause heavy loops when tab hidden or section off-screen */
+        html.anim-paused .bracket .bracket-line-flow.is-flowing,
+        html.anim-paused .round-trophy.bracket-flow-trophy.is-flowing,
+        html.anim-paused .round-trophy.bracket-flow-trophy.is-flowing img,
+        html.anim-paused .podium-place-1 .podium-team-card::after,
+        html.anim-paused .podium-place-2 .podium-team-card::after,
+        html.anim-paused .podium-place-3 .podium-team-card::after,
+        html.anim-paused .chart-row.rank-1 .chart-bar-wrapper::after,
+        html.anim-paused .chart-row.rank-2 .chart-bar-wrapper::after,
+        html.anim-paused .chart-row.rank-3 .chart-bar-wrapper::after,
+        html.anim-paused .matchup.today::after,
+        html.anim-paused .matchup.live::before,
+        html.anim-paused .matchup.waiting-admin::after,
+        .bracket.anim-paused .bracket-line-flow.is-flowing,
+        .bracket.anim-paused .round-trophy.bracket-flow-trophy.is-flowing,
+        .bracket.anim-paused .round-trophy.bracket-flow-trophy.is-flowing img,
+        .standings-section.anim-paused .chart-row.rank-1 .chart-bar-wrapper::after,
+        .standings-section.anim-paused .chart-row.rank-2 .chart-bar-wrapper::after,
+        .standings-section.anim-paused .chart-row.rank-3 .chart-bar-wrapper::after {
+            animation-play-state: paused !important;
         }
         .round-matches {
             display: flex;
@@ -1002,9 +1012,7 @@
             width: 0%;
             transition: width var(--bar-duration) var(--bar-ease);
             position: relative;
-            box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, 0.28),
-                inset 0 -2px 6px rgba(0, 0, 0, 0.18);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
         .chart-value {
             flex-shrink: 0;
@@ -1021,6 +1029,17 @@
         .standings-table-wrapper {
             overflow-x: auto;
             margin-top: 30px;
+        }
+        /* Main Quest: keep horizontal scroll, hide scrollbar */
+        #main-quest-table-root {
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        #main-quest-table-root::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
         }
         .standings-table {
             width: 100%;
@@ -1072,13 +1091,50 @@
         #main-quest-table-root .standings-table th {
             text-align: center;
         }
+        #main-quest-table-root .standings-table thead tr {
+            background: transparent;
+            box-shadow: none;
+        }
+        #main-quest-table-root .standings-table th.participant-col {
+            color: #fff;
+            background: transparent;
+            border-bottom-color: rgba(255, 255, 255, 0.2);
+        }
         #main-quest-table-root .standings-table td.participant-cell {
             min-width: 0;
             padding-right: 16px;
+            color: #fff;
+            background: transparent;
         }
         #main-quest-table-root .standings-table td.mq-pot-cell {
             min-width: 0;
             padding-right: 14px;
+        }
+        /* Divider between country A | country B — body cells only */
+        #main-quest-table-root .standings-table td.mq-pot-a {
+            border-right: 1px solid rgba(255, 255, 255, 0.22);
+        }
+        #main-quest-table-root .standings-table td.pot1.mq-pot-a {
+            border-right-color: rgba(220, 90, 95, 0.55);
+        }
+        #main-quest-table-root .standings-table td.pot2.mq-pot-a {
+            border-right-color: rgba(210, 145, 70, 0.55);
+        }
+        #main-quest-table-root .standings-table td.pot3.mq-pot-a {
+            border-right-color: rgba(210, 185, 75, 0.55);
+        }
+        #main-quest-table-root .standings-table td.pot4.mq-pot-a {
+            border-right-color: rgba(155, 100, 195, 0.55);
+        }
+        #main-quest-table-root .standings-table td.pot5.mq-pot-a {
+            border-right-color: rgba(65, 145, 205, 0.55);
+        }
+        #main-quest-table-root .standings-table td.pot6.mq-pot-a {
+            border-right-color: rgba(70, 175, 140, 0.55);
+        }
+        #main-quest-table-root .standings-table td.pot7.mq-pot-a,
+        #main-quest-table-root .standings-table td.pot8.mq-pot-a {
+            border-right-color: rgba(130, 140, 160, 0.55);
         }
         .standings-table tbody tr:hover {
             background: #1a1a3e;
@@ -1159,23 +1215,154 @@
             padding-bottom: 8px;
             border-bottom: 1px solid #2a2a5a;
         }
-        /* Main Quest pot rarity colors (pastel) */
-        .standings-table .pot1 { background: rgba(255, 138, 128, 0.28); color: #ffb4ae; }
-        .standings-table .pot2 { background: rgba(255, 183, 77, 0.28); color: #ffcc80; }
-        .standings-table .pot3 { background: rgba(255, 238, 88, 0.22); color: #fff59d; }
-        .standings-table .pot4 { background: rgba(186, 104, 200, 0.28); color: #ce93d8; }
-        .standings-table .pot5 { background: rgba(244, 143, 177, 0.28); color: #f8bbd0; }
-        .standings-table .pot6 { background: rgba(100, 181, 246, 0.28); color: #90caf9; }
-        .standings-table .pot7 { background: rgba(129, 199, 132, 0.28); color: #a5d6a7; }
-        .standings-table .pot8 { background: rgba(245, 245, 245, 0.14); color: #eeeeee; }
-        .standings-table th.pot1 { color: #ff8a80; }
-        .standings-table th.pot2 { color: #ffb74d; }
-        .standings-table th.pot3 { color: #ffee58; }
-        .standings-table th.pot4 { color: #ba68c8; }
-        .standings-table th.pot5 { color: #f06292; }
-        .standings-table th.pot6 { color: #64b5f6; }
-        .standings-table th.pot7 { color: #81c784; }
-        .standings-table th.pot8 { color: #e0e0e0; }
+        /* Main Quest pot colors — match KO rarity (Final→early) */
+        #main-quest-table-root .standings-table th.participant-col,
+        #main-quest-table-root .standings-table td.participant-cell {
+            color: #fff;
+            background: transparent;
+        }
+        #main-quest-table-root .standings-table td.participant-cell strong {
+            color: #fff;
+        }
+        /* Body cells: same tint family as headers (slightly softer) */
+        #main-quest-table-root .standings-table td.pot1 {
+            color: #f0a0a4;
+            background: rgba(220, 90, 95, 0.22);
+        }
+        #main-quest-table-root .standings-table td.pot2 {
+            color: #e8c090;
+            background: rgba(210, 145, 70, 0.22);
+        }
+        #main-quest-table-root .standings-table td.pot3 {
+            color: #e0d090;
+            background: rgba(210, 185, 75, 0.22);
+        }
+        #main-quest-table-root .standings-table td.pot4 {
+            color: #c8a8e4;
+            background: rgba(155, 100, 195, 0.22);
+        }
+        #main-quest-table-root .standings-table td.pot5 {
+            color: #8ec4e8;
+            background: rgba(65, 145, 205, 0.22);
+        }
+        #main-quest-table-root .standings-table td.pot6 {
+            color: #8ed8c0;
+            background: rgba(70, 175, 140, 0.22);
+        }
+        #main-quest-table-root .standings-table td.pot7,
+        #main-quest-table-root .standings-table td.pot8 {
+            color: #b0b8c8;
+            background: rgba(130, 140, 160, 0.22);
+        }
+        /* Pot 1 = merah (Final) */
+        #main-quest-table-root .standings-table th.pot1 {
+            color: #e8888c;
+            background: rgba(220, 90, 95, 0.28);
+            border-bottom-color: rgba(220, 90, 95, 0.65);
+        }
+        /* Pot 2 = orange-amber (3rd) */
+        #main-quest-table-root .standings-table th.pot2 {
+            color: #dcb070;
+            background: rgba(210, 145, 70, 0.28);
+            border-bottom-color: rgba(210, 145, 70, 0.65);
+        }
+        /* Pot 3 = kuning (SF) */
+        #main-quest-table-root .standings-table th.pot3 {
+            color: #d0c070;
+            background: rgba(210, 185, 75, 0.28);
+            border-bottom-color: rgba(210, 185, 75, 0.65);
+        }
+        /* Pot 4 = ungu (QF) */
+        #main-quest-table-root .standings-table th.pot4 {
+            color: #b490d4;
+            background: rgba(155, 100, 195, 0.28);
+            border-bottom-color: rgba(155, 100, 195, 0.65);
+        }
+        /* Pot 5 = biru (R16) */
+        #main-quest-table-root .standings-table th.pot5 {
+            color: #70b0dc;
+            background: rgba(65, 145, 205, 0.28);
+            border-bottom-color: rgba(65, 145, 205, 0.65);
+        }
+        /* Pot 6 = hijau (R32) */
+        #main-quest-table-root .standings-table th.pot6 {
+            color: #70c8a8;
+            background: rgba(70, 175, 140, 0.28);
+            border-bottom-color: rgba(70, 175, 140, 0.65);
+        }
+        /* Pot 7+ = steel-gray (early KO) */
+        #main-quest-table-root .standings-table th.pot7,
+        #main-quest-table-root .standings-table th.pot8 {
+            color: #98a0b0;
+            background: rgba(130, 140, 160, 0.28);
+            border-bottom-color: rgba(130, 140, 160, 0.65);
+        }
+        /* Legacy / global pot classes */
+        .standings-table td.pot1 {
+            color: #f0a0a4;
+            background: rgba(220, 90, 95, 0.22);
+        }
+        .standings-table td.pot2 {
+            color: #e8c090;
+            background: rgba(210, 145, 70, 0.22);
+        }
+        .standings-table td.pot3 {
+            color: #e0d090;
+            background: rgba(210, 185, 75, 0.22);
+        }
+        .standings-table td.pot4 {
+            color: #c8a8e4;
+            background: rgba(155, 100, 195, 0.22);
+        }
+        .standings-table td.pot5 {
+            color: #8ec4e8;
+            background: rgba(65, 145, 205, 0.22);
+        }
+        .standings-table td.pot6 {
+            color: #8ed8c0;
+            background: rgba(70, 175, 140, 0.22);
+        }
+        .standings-table td.pot7,
+        .standings-table td.pot8 {
+            color: #b0b8c8;
+            background: rgba(130, 140, 160, 0.22);
+        }
+        .standings-table th.pot1 {
+            color: #e8888c;
+            background: rgba(220, 90, 95, 0.28);
+            border-bottom-color: rgba(220, 90, 95, 0.65);
+        }
+        .standings-table th.pot2 {
+            color: #dcb070;
+            background: rgba(210, 145, 70, 0.28);
+            border-bottom-color: rgba(210, 145, 70, 0.65);
+        }
+        .standings-table th.pot3 {
+            color: #d0c070;
+            background: rgba(210, 185, 75, 0.28);
+            border-bottom-color: rgba(210, 185, 75, 0.65);
+        }
+        .standings-table th.pot4 {
+            color: #b490d4;
+            background: rgba(155, 100, 195, 0.28);
+            border-bottom-color: rgba(155, 100, 195, 0.65);
+        }
+        .standings-table th.pot5 {
+            color: #70b0dc;
+            background: rgba(65, 145, 205, 0.28);
+            border-bottom-color: rgba(65, 145, 205, 0.65);
+        }
+        .standings-table th.pot6 {
+            color: #70c8a8;
+            background: rgba(70, 175, 140, 0.28);
+            border-bottom-color: rgba(70, 175, 140, 0.65);
+        }
+        .standings-table th.pot7,
+        .standings-table th.pot8 {
+            color: #98a0b0;
+            background: rgba(130, 140, 160, 0.28);
+            border-bottom-color: rgba(130, 140, 160, 0.65);
+        }
         /* Qualified / Eliminated markers */
         .standings-table td.qualified {
             position: relative;
@@ -1526,7 +1713,6 @@
             pointer-events: none;
             animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
             animation-delay: var(--glow-sync-delay);
-            will-change: opacity;
         }
         .podium-place-1 .podium-team-card::after {
             box-shadow: 0 0 14px rgba(255, 215, 0, 0.7), 0 0 28px rgba(255, 215, 0, 0.3);
@@ -2669,6 +2855,17 @@
                 overflow-x: scroll;
                 -webkit-overflow-scrolling: touch;
             }
+            #main-quest-table-root {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            #main-quest-table-root::-webkit-scrollbar {
+                display: none;
+                width: 0;
+                height: 0;
+            }
             .standings-table {
                 font-size: 0.65rem;
                 min-width: 600px;
@@ -3003,8 +3200,7 @@
             left: var(--balloon-left);
             bottom: calc(-1 * var(--balloon-size) - 80px);
             width: var(--balloon-size);
-            will-change: transform, opacity;
-            contain: layout style;
+            contain: layout style paint;
             animation: winnerBalloonRise var(--balloon-duration) linear var(--balloon-delay) both;
         }
         .winner-balloon-body {

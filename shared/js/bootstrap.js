@@ -246,7 +246,7 @@ function buildOneMainQuestTableHtml(rows, potKey, avatars) {
     const potsList = (row) => row[potKey] || row.pots || [];
     const maxPots = Math.max(...rows.map(r => potsList(r).length), 1);
 
-    let thead = '<tr><th>Participant</th>';
+    let thead = '<tr><th class="participant-col">Participant</th>';
     for (let i = 0; i < maxPots; i++) {
         const potClass = 'pot' + (i < 8 ? i + 1 : 8);
         thead += '<th class="' + potClass + '" colspan="2">Pot ' + (i + 1) + '</th>';
@@ -263,9 +263,9 @@ function buildOneMainQuestTableHtml(rows, potKey, avatars) {
 
         for (let i = 0; i < maxPots; i++) {
             const pot = potsList(row)[i] || ['', ''];
-            const potClass = 'pot' + (i < 8 ? i + 1 : 8) + ' ';
-            tr += '<td class="' + potClass + 'mq-pot-cell">' + escHtml(pot[0]) + '</td>';
-            tr += '<td class="' + potClass + 'mq-pot-cell">' + escHtml(pot[1]) + '</td>';
+            const potClass = 'pot' + (i < 8 ? i + 1 : 8);
+            tr += '<td class="' + potClass + ' mq-pot-cell mq-pot-a">' + escHtml(pot[0]) + '</td>';
+            tr += '<td class="' + potClass + ' mq-pot-cell mq-pot-b">' + escHtml(pot[1]) + '</td>';
         }
         tr += '</tr>';
         return tr;

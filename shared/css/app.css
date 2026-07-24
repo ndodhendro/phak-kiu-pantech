@@ -1519,24 +1519,18 @@
         .score-predict-panel,
         .podium-supporters-panel,
         .goldenboot-supporters-panel {
-            display: grid;
-            grid-template-rows: 0fr;
-            transition: grid-template-rows 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1));
+            display: block;
+            height: 0;
+            overflow: hidden;
             background: #12122a;
             border-top: 1px solid transparent;
-        }
-        .supporters-panel > .panel-slide-inner,
-        .score-predict-panel > .panel-slide-inner,
-        .podium-supporters-panel > .panel-slide-inner,
-        .goldenboot-supporters-panel > .panel-slide-inner {
-            overflow: hidden;
-            min-height: 0;
+            transition: height 0.22s ease-out;
+            contain: layout;
         }
         .supporters-panel.show,
         .score-predict-panel.show,
         .podium-supporters-panel.show,
         .goldenboot-supporters-panel.show {
-            grid-template-rows: 1fr;
             border-top-color: #2a2a5a;
         }
         .supporters-panel .panel-slide-inner,
@@ -1546,16 +1540,7 @@
             flex-wrap: wrap;
             gap: 8px;
             justify-content: center;
-            padding: 0 8px;
-            opacity: 0;
-            transition: padding 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1)),
-                opacity 0.22s ease;
-        }
-        .supporters-panel.show .panel-slide-inner,
-        .podium-supporters-panel.show .panel-slide-inner,
-        .goldenboot-supporters-panel.show .panel-slide-inner {
             padding: 6px 8px;
-            opacity: 1;
         }
         .supporter-item {
             display: flex;
@@ -1598,24 +1583,36 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            padding: 0 10px;
-            opacity: 0;
-            transition: padding 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1)),
-                opacity 0.22s ease;
-        }
-        .score-predict-panel.show .panel-slide-inner {
             padding: 8px 10px;
-            opacity: 1;
+        }
+        @media (hover: none) and (pointer: coarse) {
+            .supporters-panel,
+            .score-predict-panel,
+            .podium-supporters-panel,
+            .goldenboot-supporters-panel {
+                transition-duration: 0.18s;
+            }
+            .panel-sliding .team-flag,
+            .panel-sliding .flag-wave,
+            .panel-sliding .team-flag::after,
+            .panel-sliding .flag-wave::after,
+            .panel-sliding.matchup.today::after,
+            .panel-sliding.matchup.live::before,
+            .panel-sliding.matchup.live,
+            .panel-sliding.matchup.live .matchup-date,
+            .panel-sliding.matchup.live .wave-bars span,
+            .panel-sliding.matchup.waiting-admin::after,
+            .panel-sliding .podium-team-card::after,
+            .panel-sliding.goldenboot-card::after,
+            .panel-sliding .player-podium-card::after {
+                animation-play-state: paused !important;
+            }
         }
         @media (prefers-reduced-motion: reduce) {
             .supporters-panel,
             .score-predict-panel,
             .podium-supporters-panel,
-            .goldenboot-supporters-panel,
-            .supporters-panel .panel-slide-inner,
-            .score-predict-panel .panel-slide-inner,
-            .podium-supporters-panel .panel-slide-inner,
-            .goldenboot-supporters-panel .panel-slide-inner {
+            .goldenboot-supporters-panel {
                 transition: none;
             }
         }

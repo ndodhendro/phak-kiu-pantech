@@ -474,28 +474,88 @@
             return inner;
         }
 
+        function prefersReducedMotion() {
+            return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        }
+
+        function getPanelSlideDurationMs(panel) {
+            if (prefersReducedMotion()) return 0;
+            const styles = window.getComputedStyle(panel);
+            const raw = styles.transitionDuration || '0s';
+            const first = String(raw).split(',')[0].trim();
+            const value = parseFloat(first);
+            if (!value) return 0;
+            return first.endsWith('ms') ? value : value * 1000;
+        }
+
+        function getSlideHost(panel) {
+            return panel.closest(
+                '.matchup, .podium-team-card, .player-podium-card, .goldenboot-card, .goldenboot-row'
+            );
+        }
+
         function toggleSlidePanel(panel, wantOpen) {
             const open = wantOpen == null ? !panel.classList.contains('show') : !!wantOpen;
-            panel.classList.toggle('show', open);
+            const inner = panel.querySelector(':scope > .panel-slide-inner') || panel;
+            const reduce = prefersReducedMotion();
+            const host = getSlideHost(panel);
+            if (host) host.classList.add('panel-sliding');
+
+            if (open) {
+                panel.classList.add('show');
+                if (reduce) {
+                    panel.style.height = 'auto';
+                    if (host) host.classList.remove('panel-sliding');
+                    return open;
+                }
+                panel.style.height = '0px';
+                // Force reflow so the browser registers the start height.
+                void panel.offsetHeight;
+                panel.style.height = inner.scrollHeight + 'px';
+            } else {
+                if (reduce) {
+                    panel.classList.remove('show');
+                    panel.style.height = '0px';
+                    if (host) host.classList.remove('panel-sliding');
+                    return open;
+                }
+                const current = panel.scrollHeight;
+                panel.style.height = current + 'px';
+                void panel.offsetHeight;
+                panel.classList.remove('show');
+                panel.style.height = '0px';
+            }
             return open;
         }
 
         function afterPanelSlide(panel, callback) {
             if (typeof callback !== 'function') return;
             let done = false;
+            const host = getSlideHost(panel);
             const finish = function () {
                 if (done) return;
                 done = true;
                 panel.removeEventListener('transitionend', onEnd);
+                if (panel.classList.contains('show')) {
+                    panel.style.height = 'auto';
+                }
+                panel.style.removeProperty('will-change');
+                if (host) host.classList.remove('panel-sliding');
                 callback();
             };
             const onEnd = function (e) {
                 if (e.target !== panel) return;
-                if (e.propertyName && e.propertyName !== 'grid-template-rows') return;
+                if (e.propertyName && e.propertyName !== 'height') return;
                 finish();
             };
+            const duration = getPanelSlideDurationMs(panel);
+            if (duration <= 0) {
+                finish();
+                return;
+            }
+            panel.style.willChange = 'height';
             panel.addEventListener('transitionend', onEnd);
-            setTimeout(finish, 360);
+            setTimeout(finish, duration + 40);
         }
 
         function bindSupportersToggle(btn, panel, count, afterToggle) {

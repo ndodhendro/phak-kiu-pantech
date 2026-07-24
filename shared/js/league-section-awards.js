@@ -711,6 +711,8 @@ Core.applyTotalGoalBonus = function applyTotalGoalBonus(points) {
     const currentGoal = typeof Core.calculateCurrentGoalFromBracket === 'function'
         ? Core.calculateCurrentGoalFromBracket()
         : 0;
+    // No provisional points before any goals are scored (tournament not started)
+    if (currentGoal <= 0) return;
 
     Core.awardSideQuestPoints(
         points,

@@ -129,11 +129,13 @@ Core.calculateStandingsPointsFromBracket = function calculateStandingsPointsFrom
     // Exact score predictions — awarded as soon as each match is finished (FT)
     Core.applyScorePredictBonus(points);
 
-    // Bonus awards lain — hanya setelah Final selesai
+    // Provisional while tournament is live (no points until scoring has started)
+    Core.applyGoldenBootBonus(points);   // requires max goals > 0
+    Core.applyTotalGoalBonus(points);    // requires current goal > 0
+
+    // Golden Glove — only after Final (winner is end-of-tournament)
     if (Core.isFinalResolved()) {
-        Core.applyGoldenBootBonus(points);
         Core.applyGoldenGloveBonus(points);
-        Core.applyTotalGoalBonus(points);
     }
 
     return points;

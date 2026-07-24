@@ -3783,7 +3783,7 @@
             top: auto;
             left: auto;
             right: max(12px, env(safe-area-inset-right));
-            bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+            bottom: calc(78px + env(safe-area-inset-bottom, 0px));
             width: 34px;
             height: 34px;
             font-size: 0.95rem;

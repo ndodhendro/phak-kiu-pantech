@@ -70,6 +70,7 @@ Core.toggleMusic = function toggleMusic() {
             btn.classList.add('playing');
         }
         Core.isMuted = false;
+        Core.pausedByFocusLoss = false;
     } else {
         Core.audio.pause();
         if (btn) {
@@ -81,19 +82,30 @@ Core.toggleMusic = function toggleMusic() {
         Core.pausedByFocusLoss = false;
     }
 };
-Core.updateMusicForPageFocus = function updateMusicForPageFocus() {
+Core.updateMusicForPageFocus = function updateMusicForPageFocus(ev) {
     if (!Core.audio || !Core.hasEntered || Core.isMuted) return;
 
-    var pageInactive = document.hidden || !document.hasFocus();
+    var type = ev && ev.type;
+    var pageHidden = document.visibilityState === 'hidden' || document.hidden;
+    // Tab switch / app blur must always pause. Do not use hasFocus() here —
+    // it can still be true during blur and incorrectly resume playback.
+    var shouldPause = pageHidden || type === 'blur';
 
-    if (pageInactive) {
+    if (shouldPause) {
         if (!Core.audio.paused) {
             Core.pausedByFocusLoss = true;
-            Core.audio.pause();
+            try { Core.audio.pause(); } catch (e) {}
         }
-    } else if (Core.pausedByFocusLoss) {
+        return;
+    }
+
+    // Resume only when the page is visible again (focus / visibilitychange).
+    if (Core.pausedByFocusLoss && !pageHidden) {
         Core.pausedByFocusLoss = false;
-        Core.audio.play();
+        var playPromise = Core.audio.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(function () {});
+        }
     }
 };
 Core.syncAnimPausedForVisibility = function syncAnimPausedForVisibility() {
@@ -132,6 +144,20 @@ Core.observeAnimPauseTargets = function observeAnimPauseTargets(root) {
         section.classList.toggle('anim-paused', !visible);
     }, { threshold: 0.08, rootMargin: '40px' });
     io.observe(section);
+})();
+
+;(function bindMusicAndAnimFocus() {
+    document.addEventListener('visibilitychange', function () {
+        Core.syncAnimPausedForVisibility();
+        Core.updateMusicForPageFocus({ type: 'visibilitychange' });
+    });
+    window.addEventListener('blur', function () {
+        Core.updateMusicForPageFocus({ type: 'blur' });
+    });
+    window.addEventListener('focus', function () {
+        Core.updateMusicForPageFocus({ type: 'focus' });
+    });
+    Core.syncAnimPausedForVisibility();
 })();
 
 })(window.ArisanLeagueApp);

@@ -2670,7 +2670,7 @@ window.ArisanSetupForm = (function () {
         const sq = (p.picks && p.picks.sideQuest) || defaultPicks(form.includeThirdPlace).sideQuest;
         const entity = form.competitionType === 'country' ? 'Country' : 'Club';
         const thirdBlock = form.includeThirdPlace
-            ? renderSideQuestTeamSelect('Third place', 'data-sq="third"', sq.third)
+            ? renderSideQuestTeamSelect('3rd place', 'data-sq="third"', sq.third)
             : '';
 
         return '<div class="sub-section">' +

@@ -194,6 +194,14 @@
             background: rgba(255, 255, 255, 0.02);
             padding: 18px 16px;
             margin: 0;
+            content-visibility: auto;
+            contain-intrinsic-size: auto 420px;
+        }
+        .league-panel.group-stage {
+            contain-intrinsic-size: auto 640px;
+        }
+        .league-panel.bracket {
+            contain-intrinsic-size: auto 900px;
         }
         .standings-section > .league-panel {
             margin-top: 0;
@@ -742,7 +750,7 @@
             .round-trophy::before { opacity: 0.65; }
             .round-trophy::after { opacity: 0; }
         }
-        /* Pause heavy loops when tab hidden or section off-screen */
+        /* Pause heavy loops when tab hidden, section off-screen, or card off-viewport */
         html.anim-paused .podium-place-1 .podium-team-card::after,
         html.anim-paused .podium-place-2 .podium-team-card::after,
         html.anim-paused .podium-place-3 .podium-team-card::after,
@@ -770,7 +778,31 @@
         html.anim-paused .flag-wave::after,
         .standings-section.anim-paused .chart-row.rank-1 .chart-bar-wrapper::after,
         .standings-section.anim-paused .chart-row.rank-2 .chart-bar-wrapper::after,
-        .standings-section.anim-paused .chart-row.rank-3 .chart-bar-wrapper::after {
+        .standings-section.anim-paused .chart-row.rank-3 .chart-bar-wrapper::after,
+        .anim-paused .team-flag,
+        .anim-paused .flag-wave,
+        .anim-paused .team-flag::after,
+        .anim-paused .flag-wave::after,
+        .anim-paused.matchup.today::after,
+        .anim-paused.matchup.live::before,
+        .anim-paused.matchup.live,
+        .anim-paused.matchup.live .matchup-date,
+        .anim-paused.matchup.live .wave-bars span,
+        .anim-paused.matchup.waiting-admin::after,
+        .anim-paused .matchup-soon-badge,
+        .anim-paused .matchup-waiting-badge,
+        .anim-paused.podium-team-card::after,
+        .anim-paused.player-podium-card::after,
+        .anim-paused.goldenboot-card::after,
+        .anim-paused .goldenboot-card::after,
+        .anim-paused .goldenboot-bar-wrapper::after,
+        .anim-paused.chart-row.rank-1 .chart-bar-wrapper::after,
+        .anim-paused.chart-row.rank-2 .chart-bar-wrapper::after,
+        .anim-paused.chart-row.rank-3 .chart-bar-wrapper::after,
+        .anim-paused.total-goal-marker-info.glowing::after,
+        .anim-paused.round-trophy::before,
+        .anim-paused.round-trophy::after,
+        .anim-paused.round-trophy img {
             animation-play-state: paused !important;
         }
         .round-matches {
@@ -1515,22 +1547,33 @@
             background: rgba(255,255,255,0.1);
             color: #fff;
         }
+        .supporters-drop {
+            display: block;
+            width: 100%;
+        }
         .supporters-panel,
         .score-predict-panel,
         .podium-supporters-panel,
         .goldenboot-supporters-panel {
-            display: block;
-            height: 0;
-            overflow: hidden;
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1));
             background: #12122a;
             border-top: 1px solid transparent;
-            transition: height 0.22s ease-out;
-            contain: layout;
+            overflow-anchor: none;
+        }
+        .supporters-panel > .panel-slide-inner,
+        .score-predict-panel > .panel-slide-inner,
+        .podium-supporters-panel > .panel-slide-inner,
+        .goldenboot-supporters-panel > .panel-slide-inner {
+            overflow: hidden;
+            min-height: 0;
         }
         .supporters-panel.show,
         .score-predict-panel.show,
         .podium-supporters-panel.show,
         .goldenboot-supporters-panel.show {
+            grid-template-rows: 1fr;
             border-top-color: #2a2a5a;
         }
         .supporters-panel .panel-slide-inner,
@@ -1540,7 +1583,16 @@
             flex-wrap: wrap;
             gap: 8px;
             justify-content: center;
+            padding: 0 8px;
+            opacity: 0;
+            transition: padding 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1)),
+                opacity 0.22s ease;
+        }
+        .supporters-panel.show .panel-slide-inner,
+        .podium-supporters-panel.show .panel-slide-inner,
+        .goldenboot-supporters-panel.show .panel-slide-inner {
             padding: 6px 8px;
+            opacity: 1;
         }
         .supporter-item {
             display: flex;
@@ -1583,36 +1635,24 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            padding: 8px 10px;
+            padding: 0 10px;
+            opacity: 0;
+            transition: padding 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1)),
+                opacity 0.22s ease;
         }
-        @media (hover: none) and (pointer: coarse) {
-            .supporters-panel,
-            .score-predict-panel,
-            .podium-supporters-panel,
-            .goldenboot-supporters-panel {
-                transition-duration: 0.18s;
-            }
-            .panel-sliding .team-flag,
-            .panel-sliding .flag-wave,
-            .panel-sliding .team-flag::after,
-            .panel-sliding .flag-wave::after,
-            .panel-sliding.matchup.today::after,
-            .panel-sliding.matchup.live::before,
-            .panel-sliding.matchup.live,
-            .panel-sliding.matchup.live .matchup-date,
-            .panel-sliding.matchup.live .wave-bars span,
-            .panel-sliding.matchup.waiting-admin::after,
-            .panel-sliding .podium-team-card::after,
-            .panel-sliding.goldenboot-card::after,
-            .panel-sliding .player-podium-card::after {
-                animation-play-state: paused !important;
-            }
+        .score-predict-panel.show .panel-slide-inner {
+            padding: 8px 10px;
+            opacity: 1;
         }
         @media (prefers-reduced-motion: reduce) {
             .supporters-panel,
             .score-predict-panel,
             .podium-supporters-panel,
-            .goldenboot-supporters-panel {
+            .goldenboot-supporters-panel,
+            .supporters-panel .panel-slide-inner,
+            .score-predict-panel .panel-slide-inner,
+            .podium-supporters-panel .panel-slide-inner,
+            .goldenboot-supporters-panel .panel-slide-inner {
                 transition: none;
             }
         }
@@ -1715,7 +1755,7 @@
         }
         .podium-container {
             display: flex;
-            align-items: flex-end;
+            align-items: stretch;
             justify-content: center;
             gap: 12px;
             margin-bottom: 30px;
@@ -1895,6 +1935,7 @@
         }
         .podium-block {
             position: relative;
+            margin-top: auto;
             border-radius: 10px 10px 6px 6px;
             width: 100%;
             display: flex;

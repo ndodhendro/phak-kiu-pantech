@@ -82,7 +82,7 @@ function sqlJson(obj) {
 }
 
 const LABEL_ROUND_MAP = [
-  ['Perebutan Juara 3', 'Third Place'],
+  ['Perebutan Juara 3', '3rd Place'],
   ['Semifinal', 'Semi-final'],
   ['Perempat Final', 'Quarter-final'],
   ['16 Besar', 'R16'],

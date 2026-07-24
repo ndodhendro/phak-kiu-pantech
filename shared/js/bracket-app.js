@@ -474,100 +474,108 @@
             return inner;
         }
 
-        function prefersReducedMotion() {
-            return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        function createSupportersDrop(btn, panel) {
+            const drop = document.createElement('div');
+            drop.className = 'supporters-drop';
+            drop.appendChild(btn);
+            drop.appendChild(panel);
+            return drop;
         }
 
-        function getPanelSlideDurationMs(panel) {
-            if (prefersReducedMotion()) return 0;
-            const styles = window.getComputedStyle(panel);
-            const raw = styles.transitionDuration || '0s';
-            const first = String(raw).split(',')[0].trim();
-            const value = parseFloat(first);
-            if (!value) return 0;
-            return first.endsWith('ms') ? value : value * 1000;
+        function appendSupporterItems(inner, supporters) {
+            (supporters || []).forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'supporter-item';
+                const img = document.createElement('img');
+                img.className = 'supporter-avatar';
+                applyParticipantAvatar(img, s);
+                const label = document.createElement('span');
+                label.className = 'supporter-name';
+                label.textContent = getInitials(s);
+                item.appendChild(img);
+                item.appendChild(label);
+                inner.appendChild(item);
+            });
         }
 
-        function getSlideHost(panel) {
-            return panel.closest(
-                '.matchup, .podium-team-card, .player-podium-card, .goldenboot-card, .goldenboot-row'
-            );
+        function ensureSupportersPanelFilled(panel, supporters) {
+            if (!panel || panel.dataset.filled === '1') return;
+            panel.dataset.filled = '1';
+            let inner = panel.querySelector(':scope > .panel-slide-inner');
+            if (!inner) {
+                inner = createPanelSlideInner();
+                panel.appendChild(inner);
+            } else {
+                inner.replaceChildren();
+            }
+            appendSupporterItems(inner, supporters);
         }
 
         function toggleSlidePanel(panel, wantOpen) {
             const open = wantOpen == null ? !panel.classList.contains('show') : !!wantOpen;
-            const inner = panel.querySelector(':scope > .panel-slide-inner') || panel;
-            const reduce = prefersReducedMotion();
-            const host = getSlideHost(panel);
-            if (host) host.classList.add('panel-sliding');
-
-            if (open) {
-                panel.classList.add('show');
-                if (reduce) {
-                    panel.style.height = 'auto';
-                    if (host) host.classList.remove('panel-sliding');
-                    return open;
-                }
-                panel.style.height = '0px';
-                // Force reflow so the browser registers the start height.
-                void panel.offsetHeight;
-                panel.style.height = inner.scrollHeight + 'px';
-            } else {
-                if (reduce) {
-                    panel.classList.remove('show');
-                    panel.style.height = '0px';
-                    if (host) host.classList.remove('panel-sliding');
-                    return open;
-                }
-                const current = panel.scrollHeight;
-                panel.style.height = current + 'px';
-                void panel.offsetHeight;
-                panel.classList.remove('show');
-                panel.style.height = '0px';
-            }
+            panel.classList.toggle('show', open);
             return open;
+        }
+
+        /** Keep the toggle label fixed on screen while the list expands/collapses downward. */
+        function pinElementScreenY(el) {
+            if (!el || typeof el.getBoundingClientRect !== 'function') {
+                return function () {};
+            }
+            const y0 = el.getBoundingClientRect().top;
+            let raf = 0;
+            let active = true;
+            const tick = function () {
+                if (!active) return;
+                const y1 = el.getBoundingClientRect().top;
+                const delta = y1 - y0;
+                if (Math.abs(delta) > 0.5) {
+                    window.scrollBy(0, delta);
+                }
+                raf = requestAnimationFrame(tick);
+            };
+            raf = requestAnimationFrame(tick);
+            return function stopPin() {
+                active = false;
+                if (raf) cancelAnimationFrame(raf);
+                const y1 = el.getBoundingClientRect().top;
+                const delta = y1 - y0;
+                if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
+            };
         }
 
         function afterPanelSlide(panel, callback) {
             if (typeof callback !== 'function') return;
             let done = false;
-            const host = getSlideHost(panel);
             const finish = function () {
                 if (done) return;
                 done = true;
                 panel.removeEventListener('transitionend', onEnd);
-                if (panel.classList.contains('show')) {
-                    panel.style.height = 'auto';
-                }
-                panel.style.removeProperty('will-change');
-                if (host) host.classList.remove('panel-sliding');
                 callback();
             };
             const onEnd = function (e) {
                 if (e.target !== panel) return;
-                if (e.propertyName && e.propertyName !== 'height') return;
+                if (e.propertyName && e.propertyName !== 'grid-template-rows') return;
                 finish();
             };
-            const duration = getPanelSlideDurationMs(panel);
-            if (duration <= 0) {
-                finish();
-                return;
-            }
-            panel.style.willChange = 'height';
             panel.addEventListener('transitionend', onEnd);
-            setTimeout(finish, duration + 40);
+            setTimeout(finish, 360);
         }
 
-        function bindSupportersToggle(btn, panel, count, afterToggle) {
+        function bindSupportersToggle(btn, panel, count, afterToggle, fillOnOpen) {
             const closedLabel = formatSupportersLabel(count);
             btn.textContent = closedLabel;
             btn.onclick = function(e) {
                 if (e) e.stopPropagation();
                 if (panel.dataset.slideBusy === '1') return;
                 panel.dataset.slideBusy = '1';
+                const willOpen = !panel.classList.contains('show');
+                if (willOpen && typeof fillOnOpen === 'function') fillOnOpen();
+                const stopPin = pinElementScreenY(btn);
                 const isVisible = toggleSlidePanel(panel);
                 btn.textContent = isVisible ? 'Hide' : closedLabel;
                 afterPanelSlide(panel, function () {
+                    stopPin();
                     panel.dataset.slideBusy = '';
                     if (typeof afterToggle === 'function') afterToggle(isVisible);
                 });
@@ -597,34 +605,26 @@
                     const panel = document.createElement('div');
                     panel.className = 'supporters-panel';
                     panel.id = 'sp-' + teamName.replace(/[^a-zA-Z0-9]/g, '') + '-' + Math.random().toString(36).substr(2, 4);
-                    const inner = createPanelSlideInner();
-
-                    supporters.forEach(s => {
-                        const item = document.createElement('div');
-                        item.className = 'supporter-item';
-                        const img = document.createElement('img');
-                        img.className = 'supporter-avatar';
-                        applyParticipantAvatar(img, s);
-                        const label = document.createElement('span');
-                        label.className = 'supporter-name';
-                        label.textContent = getInitials(s);
-                        item.appendChild(img);
-                        item.appendChild(label);
-                        inner.appendChild(item);
-                    });
-                    panel.appendChild(inner);
+                    panel.appendChild(createPanelSlideInner());
 
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'supporters-toggle';
-                    bindSupportersToggle(btn, panel, supporters.length, function() {
-                        if (isKnockoutMatchup(matchup) && typeof drawBracketLines === 'function') {
-                            setTimeout(drawBracketLines, 50);
+                    bindSupportersToggle(
+                        btn,
+                        panel,
+                        supporters.length,
+                        function() {
+                            if (isKnockoutMatchup(matchup) && typeof drawBracketLines === 'function') {
+                                drawBracketLines();
+                            }
+                        },
+                        function() {
+                            ensureSupportersPanelFilled(panel, supporters);
                         }
-                    });
+                    );
 
-                    teamEl.insertAdjacentElement('afterend', panel);
-                    teamEl.insertAdjacentElement('afterend', btn);
+                    teamEl.insertAdjacentElement('afterend', createSupportersDrop(btn, panel));
                 });
             });
         }
@@ -645,6 +645,64 @@
                 return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
                     sensitivity: 'base',
                 });
+            });
+        }
+
+        function fillScorePredictPanel(panel, matchup, sortedPreds, hasResult, actualA, actualB, teamA, teamB) {
+            if (!panel || panel.dataset.filled === '1') return;
+            panel.dataset.filled = '1';
+            let inner = panel.querySelector(':scope > .panel-slide-inner');
+            if (!inner) {
+                inner = createPanelSlideInner();
+                panel.appendChild(inner);
+            } else {
+                inner.replaceChildren();
+            }
+
+            sortedPreds.forEach(pred => {
+                const item = document.createElement('div');
+                item.className = 'score-predict-item';
+                const exact = hasResult && pred.a === actualA && pred.b === actualB;
+                if (hasResult) item.classList.add(exact ? 'correct' : 'wrong');
+
+                const img = document.createElement('img');
+                img.className = 'score-predict-avatar';
+                applyParticipantAvatar(img, pred.name);
+
+                const meta = document.createElement('div');
+                meta.className = 'score-predict-meta';
+
+                const left = document.createElement('div');
+                left.className = 'score-predict-left';
+                const nameEl = document.createElement('span');
+                nameEl.className = 'score-predict-name';
+                nameEl.textContent = pred.name;
+                left.appendChild(nameEl);
+
+                const right = document.createElement('div');
+                right.className = 'score-predict-right';
+                const scoreEl = document.createElement('span');
+                scoreEl.className = 'score-predict-score';
+                scoreEl.textContent = pred.a + ' - ' + pred.b;
+                scoreEl.title = teamA + ' ' + pred.a + ' - ' + pred.b + ' ' + teamB;
+                right.appendChild(scoreEl);
+
+                if (hasResult) {
+                    const badge = document.createElement('span');
+                    badge.className = 'score-predict-badge' + (exact ? ' is-hit' : ' is-miss');
+                    badge.setAttribute('aria-label', exact ? 'Hit' : 'Miss');
+                    badge.title = exact ? 'Hit' : 'Miss';
+                    badge.innerHTML = exact
+                        ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 11.4 2.8 8l1.1-1.1 2.3 2.3 5-5.1L12.3 5.2z"/></svg>'
+                        : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.1 3.2 3.2 4.1 7.1 8l-3.9 3.9.9.9L8 8.9l3.9 3.9.9-.9L8.9 8l3.9-3.9-.9-.9L8 7.1z"/></svg>';
+                    right.appendChild(badge);
+                }
+
+                meta.appendChild(left);
+                meta.appendChild(right);
+                item.appendChild(img);
+                item.appendChild(meta);
+                inner.appendChild(item);
             });
         }
 
@@ -677,54 +735,7 @@
 
                 const panel = document.createElement('div');
                 panel.className = 'score-predict-panel';
-                const inner = createPanelSlideInner();
-
-                sortedPreds.forEach(pred => {
-                    const item = document.createElement('div');
-                    item.className = 'score-predict-item';
-                    const exact = hasResult && pred.a === actualA && pred.b === actualB;
-                    if (hasResult) item.classList.add(exact ? 'correct' : 'wrong');
-
-                    const img = document.createElement('img');
-                    img.className = 'score-predict-avatar';
-                    applyParticipantAvatar(img, pred.name);
-
-                    const meta = document.createElement('div');
-                    meta.className = 'score-predict-meta';
-
-                    const left = document.createElement('div');
-                    left.className = 'score-predict-left';
-                    const nameEl = document.createElement('span');
-                    nameEl.className = 'score-predict-name';
-                    nameEl.textContent = pred.name;
-                    left.appendChild(nameEl);
-
-                    const right = document.createElement('div');
-                    right.className = 'score-predict-right';
-                    const scoreEl = document.createElement('span');
-                    scoreEl.className = 'score-predict-score';
-                    scoreEl.textContent = pred.a + ' - ' + pred.b;
-                    scoreEl.title = teamA + ' ' + pred.a + ' - ' + pred.b + ' ' + teamB;
-                    right.appendChild(scoreEl);
-
-                    if (hasResult) {
-                        const badge = document.createElement('span');
-                        badge.className = 'score-predict-badge' + (exact ? ' is-hit' : ' is-miss');
-                        badge.setAttribute('aria-label', exact ? 'Hit' : 'Miss');
-                        badge.title = exact ? 'Hit' : 'Miss';
-                        badge.innerHTML = exact
-                            ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 11.4 2.8 8l1.1-1.1 2.3 2.3 5-5.1L12.3 5.2z"/></svg>'
-                            : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.1 3.2 3.2 4.1 7.1 8l-3.9 3.9.9.9L8 8.9l3.9 3.9.9-.9L8.9 8l3.9-3.9-.9-.9L8 7.1z"/></svg>';
-                        right.appendChild(badge);
-                    }
-
-                    meta.appendChild(left);
-                    meta.appendChild(right);
-                    item.appendChild(img);
-                    item.appendChild(meta);
-                    inner.appendChild(item);
-                });
-                panel.appendChild(inner);
+                panel.appendChild(createPanelSlideInner());
 
                 const btn = document.createElement('button');
                 btn.type = 'button';
@@ -735,9 +746,17 @@
                     e.stopPropagation();
                     if (panel.dataset.slideBusy === '1') return;
                     panel.dataset.slideBusy = '1';
+                    const willOpen = !panel.classList.contains('show');
+                    if (willOpen) {
+                        fillScorePredictPanel(
+                            panel, matchup, sortedPreds, hasResult, actualA, actualB, teamA, teamB
+                        );
+                    }
+                    const stopPin = pinElementScreenY(btn);
                     const open = toggleSlidePanel(panel);
                     btn.textContent = open ? 'Hide' : closedLabel;
                     afterPanelSlide(panel, function () {
+                        stopPin();
                         panel.dataset.slideBusy = '';
                         if (isKnockoutMatchup(matchup) && typeof drawBracketLines === 'function') {
                             drawBracketLines();
@@ -745,9 +764,7 @@
                     });
                 });
 
-                // Always at bottom of the card (after both teams' supporter toggles).
-                matchup.appendChild(btn);
-                matchup.appendChild(panel);
+                matchup.appendChild(createSupportersDrop(btn, panel));
             });
         }
 
@@ -1515,7 +1532,7 @@
                     const winnerEl = resolveMatchWinnerTeamEl(thirdMatch, 'third-0');
                     if (winnerEl) {
                         const loserEl = Array.from(teams).find(teamEl => teamEl !== winnerEl);
-                        appendTeamPlaceBadge(winnerEl, FINAL_PLACE_IMAGES.third, 'Third Place', 'third');
+                        appendTeamPlaceBadge(winnerEl, FINAL_PLACE_IMAGES.third, '3rd Place', 'third');
                         // Slot kosong agar skor 4th rank sejajar dengan 3rd
                         appendTeamPlaceBadge(loserEl, null, '', '');
                     }
@@ -1540,7 +1557,7 @@
                 appendTeamPlaceBadge(winnerEl, getTrophyImageUrl(), 'Champion', 'champion');
                 appendTeamPlaceBadge(loserEl, FINAL_PLACE_IMAGES.runnerup, 'Runner-Up', 'runnerup');
             } else if (kind === 'third') {
-                appendTeamPlaceBadge(winnerEl, FINAL_PLACE_IMAGES.third, 'Third Place', 'third');
+                appendTeamPlaceBadge(winnerEl, FINAL_PLACE_IMAGES.third, '3rd Place', 'third');
                 appendTeamPlaceBadge(loserEl, null, '', '');
             }
         }
@@ -2214,7 +2231,7 @@
                     info.eliminated = !podiumTeamMatchesResult(name, info, thirdWinner);
                     return;
                 }
-                // Sudah lolos Final → tidak glowing di Third Place
+                // Sudah lolos Final → tidak glowing di 3rd Place
                 if (isPodiumTeamFinalist(name, info)) {
                     info.eliminated = true;
                     return;
@@ -2420,27 +2437,19 @@
 
                 const panel = document.createElement('div');
                 panel.className = 'podium-supporters-panel';
-                const inner = createPanelSlideInner();
+                panel.appendChild(createPanelSlideInner());
 
-                (info.supporters || []).forEach(s => {
-                    const item = document.createElement('div');
-                    item.className = 'supporter-item';
-                    const img = document.createElement('img');
-                    img.className = 'supporter-avatar';
-                    applyParticipantAvatar(img, s);
-                    const label = document.createElement('span');
-                    label.className = 'supporter-name';
-                    label.textContent = getInitials(s);
-                    item.appendChild(img);
-                    item.appendChild(label);
-                    inner.appendChild(item);
-                });
-                panel.appendChild(inner);
+                bindSupportersToggle(
+                    btn,
+                    panel,
+                    (info.supporters || []).length,
+                    null,
+                    function() {
+                        ensureSupportersPanelFilled(panel, info.supporters || []);
+                    }
+                );
 
-                bindSupportersToggle(btn, panel, (info.supporters || []).length);
-
-                card.appendChild(btn);
-                card.appendChild(panel);
+                card.appendChild(createSupportersDrop(btn, panel));
                 parent.appendChild(card);
             }
 
@@ -2459,6 +2468,7 @@
                     others.forEach(([team, info]) => appendPodiumCard(othersRow, team, info));
                     container.appendChild(othersRow);
                 }
+                if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets(container);
                 return;
             }
 
@@ -2468,6 +2478,7 @@
                 appendPodiumCard(row, team, info);
             });
             container.appendChild(row);
+            if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets(container);
         }
 
         // Total Goal Data (prediksi peserta — fix dari awal, tidak perlu di-update)
@@ -2595,27 +2606,19 @@
 
             const panel = document.createElement('div');
             panel.className = 'podium-supporters-panel';
-            const inner = createPanelSlideInner();
+            panel.appendChild(createPanelSlideInner());
 
-            (player.supporters || []).forEach(s => {
-                const item = document.createElement('div');
-                item.className = 'supporter-item';
-                const img = document.createElement('img');
-                img.className = 'supporter-avatar';
-                applyParticipantAvatar(img, s);
-                const label = document.createElement('span');
-                label.className = 'supporter-name';
-                label.textContent = getInitials(s);
-                item.appendChild(img);
-                item.appendChild(label);
-                inner.appendChild(item);
-            });
-            panel.appendChild(inner);
+            bindSupportersToggle(
+                btn,
+                panel,
+                (player.supporters || []).length,
+                null,
+                function() {
+                    ensureSupportersPanelFilled(panel, player.supporters || []);
+                }
+            );
 
-            bindSupportersToggle(btn, panel, (player.supporters || []).length);
-
-            card.appendChild(btn);
-            card.appendChild(panel);
+            card.appendChild(createSupportersDrop(btn, panel));
             place.appendChild(card);
             return place;
         }
@@ -2644,6 +2647,7 @@
                     });
                     container.appendChild(othersRow);
                 }
+                if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets(container);
                 return;
             }
 
@@ -2654,12 +2658,14 @@
                     row.appendChild(createPlayerPodiumPlace(player, icon));
                 });
                 container.appendChild(row);
+                if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets(container);
                 return;
             }
 
             sorted.forEach(player => {
                 container.appendChild(createPlayerPodiumPlace(player, icon));
             });
+            if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets(container);
         }
 
         // Smooth bar/chart sliding: ease start + ease finish (CSS --bar-ease)
@@ -3037,27 +3043,19 @@
                 // Supporters panel
                 const panel = document.createElement('div');
                 panel.className = 'goldenboot-supporters-panel';
-                const inner = createPanelSlideInner();
+                panel.appendChild(createPanelSlideInner());
 
-                player.supporters.forEach(s => {
-                    const item = document.createElement('div');
-                    item.className = 'supporter-item';
-                    const img = document.createElement('img');
-                    img.className = 'supporter-avatar';
-                    applyParticipantAvatar(img, s);
-                    const sLabel = document.createElement('span');
-                    sLabel.className = 'supporter-name';
-                    sLabel.textContent = getInitials(s);
-                    item.appendChild(img);
-                    item.appendChild(sLabel);
-                    inner.appendChild(item);
-                });
-                panel.appendChild(inner);
+                bindSupportersToggle(
+                    btn,
+                    panel,
+                    (player.supporters || []).length,
+                    null,
+                    function() {
+                        ensureSupportersPanelFilled(panel, player.supporters || []);
+                    }
+                );
 
-                bindSupportersToggle(btn, panel, (player.supporters || []).length);
-
-                card.appendChild(btn);
-                card.appendChild(panel);
+                card.appendChild(createSupportersDrop(btn, panel));
 
                 // Bar wrapper + bar
                 const barWrapper = document.createElement('div');
@@ -3089,9 +3087,10 @@
                 container.appendChild(row);
                 slideDimension(bar, 'width', pct + '%');
             });
+            if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets(container);
         }
 
-        // Perebutan juara 3: hanya untuk Side Quest Third Place (bukan Main Quest / current goal)
+        // Perebutan juara 3: hanya untuk Side Quest 3rd Place (bukan Main Quest / current goal)
         const THIRD_PLACE_MATCH_ID = 'third-0';
 
         function isThirdPlaceMatchup(matchup) {
@@ -3348,6 +3347,7 @@
 
             vertical.appendChild(track);
             container.appendChild(vertical);
+            if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets(container);
         }
 
         // Standings points memakai skor Full Time saja (abaikan ET & penalti)
@@ -3648,7 +3648,7 @@
                 });
             });
 
-            // Bonus Side Quest (Champion / Runner-Up / Third Place) — Third Place dari perebutan juara 3 saja
+            // Bonus Side Quest (Champion / Runner-Up / 3rd Place) — 3rd Place dari perebutan juara 3 saja
             applyFinalSideQuestBonuses(points);
 
             // Exact score predictions — awarded as soon as each match is finished (FT)
@@ -3765,6 +3765,7 @@
                     : 0;
                 slideDimension(bar, 'width', pct + '%');
             });
+            if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets(chart);
         }
     
 
@@ -3875,7 +3876,44 @@
         syncAnimPausedForVisibility();
         document.addEventListener('visibilitychange', syncAnimPausedForVisibility);
 
-        // Pause standings glow loops while the chart is off-screen
+        // Pause flag/glow loops on cards outside the viewport
+        const animPauseObserved = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+        let animPauseObserver = null;
+        const ANIM_PAUSE_SELECTOR = [
+            '.matchup',
+            '.podium-team-card',
+            '.player-podium-card',
+            '.goldenboot-row',
+            '.chart-row',
+            '.round-trophy',
+            '.total-goal-marker-info',
+        ].join(', ');
+
+        function observeAnimPauseTargets(root) {
+            if (!('IntersectionObserver' in window)) return;
+            if (!animPauseObserver) {
+                animPauseObserver = new IntersectionObserver((entries) => {
+                    entries.forEach((entry) => {
+                        entry.target.classList.toggle('anim-paused', !entry.isIntersecting);
+                    });
+                }, { root: null, rootMargin: '100px 0px', threshold: 0 });
+            }
+            const scope = root && root.querySelectorAll ? root : document;
+            scope.querySelectorAll(ANIM_PAUSE_SELECTOR).forEach((el) => {
+                if (animPauseObserved) {
+                    if (animPauseObserved.has(el)) return;
+                    animPauseObserved.add(el);
+                } else if (el.dataset.animPauseObserved === '1') {
+                    return;
+                } else {
+                    el.dataset.animPauseObserved = '1';
+                }
+                el.classList.add('anim-paused');
+                animPauseObserver.observe(el);
+            });
+        }
+
+        // Keep section-level pause for standings (covers rows before/while observed)
         (function bindStandingsAnimPause() {
             if (!('IntersectionObserver' in window)) return;
             const section = document.querySelector('.standings-section')

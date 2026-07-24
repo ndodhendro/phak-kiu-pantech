@@ -790,7 +790,7 @@ from public.leagues l join public.communities c on c.id = l.community_id
 where c.slug = 'hash-pku' and l.slug = 'wc-2026';
 
 insert into public.matches (league_id, match_key, label, status, scores, winner)
-select l.id, 'third-0', 'Third Place', 'finished', '{"ft":["4","6"],"et":["0","0"]}'::jsonb, 1
+select l.id, 'third-0', '3rd Place', 'finished', '{"ft":["4","6"],"et":["0","0"]}'::jsonb, 1
 from public.leagues l join public.communities c on c.id = l.community_id
 where c.slug = 'hash-pku' and l.slug = 'wc-2026';
 

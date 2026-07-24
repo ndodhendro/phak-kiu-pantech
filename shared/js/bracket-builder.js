@@ -378,7 +378,7 @@ window.ArisanBracket = (function () {
 
             if (includeThirdPlace) {
                 html += '<div class="round round-3rd">' +
-                    '<div class="round-header">Third Place</div>' +
+                    '<div class="round-header">3rd Place</div>' +
                     '<div class="round-matches">' +
                     buildSlotHtml('third-0', null, null, competitionType, twoLeg) +
                     '</div></div>';
@@ -412,7 +412,7 @@ window.ArisanBracket = (function () {
 
         if (includeThirdPlace) {
             html += '<div class="round round-3rd">' +
-                '<div class="round-header">Third Place</div>' +
+                '<div class="round-header">3rd Place</div>' +
                 '<div class="round-matches">' +
                 buildSlotHtml('third-0', null, null, competitionType, twoLeg) +
                 '</div></div>';
@@ -858,7 +858,7 @@ window.ArisanBracket = (function () {
                     );
                 }
                 catalog.push(...catalogEntriesForTie(
-                    'third-0', 'Third Place',
+                    'third-0', '3rd Place',
                     thirdA && thirdA.name, thirdB && thirdB.name, twoLeg
                 ));
             }
@@ -919,7 +919,7 @@ window.ArisanBracket = (function () {
             }
             catalog.push(...catalogEntriesForTie(
                 'third-0',
-                'Third Place',
+                '3rd Place',
                 thirdA && thirdA.name,
                 thirdB && thirdB.name,
                 twoLeg
@@ -1054,7 +1054,7 @@ window.ArisanBracket = (function () {
     }
 
     /**
-     * Generate knockout schedule for all catalog matches (incl. two-leg legs & third place).
+     * Generate knockout schedule for all catalog matches (incl. two-leg legs & 3rd place).
      * opts: teams, includeThirdPlace, twoLegKnockout, startMs, staggerHours, daysBetweenRounds, daysBetweenLegs
      */
     function generateMatchSchedule(opts) {

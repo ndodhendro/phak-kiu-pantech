@@ -457,9 +457,13 @@ function startApp() {
         buildPodiumCards('podium-3rd', sideQuestPodium.third);
         buildGoldenBootChart();
         buildPlayerPodium('podium-goldenglove-container', ADMIN_CONFIG.goldenGlove || [], '🧤');
+        if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets();
     }, 250);
 
     setTimeout(updateStandingsChart, 100);
+    setTimeout(function () {
+        if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets();
+    }, 450);
 }
 
 (async function bootstrap() {

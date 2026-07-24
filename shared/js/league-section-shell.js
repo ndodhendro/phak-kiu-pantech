@@ -53,25 +53,55 @@ Core.enterSite = function enterSite() {
             }, 450);
     // Mulai musik
     if (Core.audio) {
-        Core.audio.play();
+        Core.playBackgroundMusic();
         var btn = document.getElementById('music-toggle');
         if (btn) btn.classList.add('playing');
     }
+};
+/** Invalidate in-flight audio.play() promises (common mobile resume bug). */
+Core.bumpMusicPlayGeneration = function bumpMusicPlayGeneration() {
+    Core.musicPlayGen = (Core.musicPlayGen || 0) + 1;
+    return Core.musicPlayGen;
+};
+Core.playBackgroundMusic = function playBackgroundMusic() {
+    if (!Core.audio || Core.isMuted) return;
+    Core.pausedByFocusLoss = false;
+    var gen = Core.bumpMusicPlayGeneration();
+    var playPromise = Core.audio.play();
+    if (playPromise && typeof playPromise.then === 'function') {
+        playPromise.then(function () {
+            // Late play() resolve on mobile can restart audio after we already paused.
+            if (gen !== Core.musicPlayGen) return;
+            if (Core.isMuted || Core.pausedByFocusLoss || document.hidden ||
+                document.visibilityState === 'hidden') {
+                try { Core.audio.pause(); } catch (e) {}
+            }
+        }).catch(function () {});
+    }
+};
+Core.pauseBackgroundMusicForFocus = function pauseBackgroundMusicForFocus() {
+    if (!Core.audio) return;
+    Core.bumpMusicPlayGeneration();
+    if (!Core.audio.paused || !Core.pausedByFocusLoss) {
+        // Mark for resume even if the OS already paused the element.
+        if (!Core.isMuted) Core.pausedByFocusLoss = true;
+    }
+    try { Core.audio.pause(); } catch (e) {}
 };
 Core.toggleMusic = function toggleMusic() {
     if (!Core.audio) return;
     var btn = document.getElementById('music-toggle');
 
     if (Core.isMuted) {
-        Core.audio.play();
+        Core.isMuted = false;
+        Core.playBackgroundMusic();
         if (btn) {
             btn.textContent = '🔊';
             btn.classList.remove('muted');
             btn.classList.add('playing');
         }
-        Core.isMuted = false;
-        Core.pausedByFocusLoss = false;
     } else {
+        Core.bumpMusicPlayGeneration();
         Core.audio.pause();
         if (btn) {
             btn.textContent = '🔇';
@@ -82,30 +112,23 @@ Core.toggleMusic = function toggleMusic() {
         Core.pausedByFocusLoss = false;
     }
 };
+Core.isPageMusicInactive = function isPageMusicInactive(ev) {
+    var type = ev && ev.type;
+    if (document.visibilityState === 'hidden' || document.hidden) return true;
+    if (type === 'blur' || type === 'pagehide' || type === 'freeze') return true;
+    return false;
+};
 Core.updateMusicForPageFocus = function updateMusicForPageFocus(ev) {
     if (!Core.audio || !Core.hasEntered || Core.isMuted) return;
 
-    var type = ev && ev.type;
-    var pageHidden = document.visibilityState === 'hidden' || document.hidden;
-    // Tab switch / app blur must always pause. Do not use hasFocus() here —
-    // it can still be true during blur and incorrectly resume playback.
-    var shouldPause = pageHidden || type === 'blur';
-
-    if (shouldPause) {
-        if (!Core.audio.paused) {
-            Core.pausedByFocusLoss = true;
-            try { Core.audio.pause(); } catch (e) {}
-        }
+    if (Core.isPageMusicInactive(ev)) {
+        Core.pauseBackgroundMusicForFocus();
         return;
     }
 
-    // Resume only when the page is visible again (focus / visibilitychange).
-    if (Core.pausedByFocusLoss && !pageHidden) {
-        Core.pausedByFocusLoss = false;
-        var playPromise = Core.audio.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch(function () {});
-        }
+    // Resume only when the page is visible again.
+    if (Core.pausedByFocusLoss) {
+        Core.playBackgroundMusic();
     }
 };
 Core.syncAnimPausedForVisibility = function syncAnimPausedForVisibility() {
@@ -147,15 +170,52 @@ Core.observeAnimPauseTargets = function observeAnimPauseTargets(root) {
 })();
 
 ;(function bindMusicAndAnimFocus() {
-    document.addEventListener('visibilitychange', function () {
+    function onHide() {
         Core.syncAnimPausedForVisibility();
         Core.updateMusicForPageFocus({ type: 'visibilitychange' });
+        // Mobile browsers (esp. iOS/Android Chrome) sometimes ignore the first pause
+        // or resume via a late play() promise — re-assert while still hidden.
+        [0, 120, 400, 1000].forEach(function (ms) {
+            setTimeout(function () {
+                if (!Core.audio || !Core.hasEntered || Core.isMuted) return;
+                if (document.visibilityState === 'hidden' || document.hidden) {
+                    Core.pauseBackgroundMusicForFocus();
+                }
+            }, ms);
+        });
+    }
+
+    function onShow(type) {
+        Core.syncAnimPausedForVisibility();
+        Core.updateMusicForPageFocus({ type: type || 'focus' });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden' || document.hidden) onHide();
+        else onShow('visibilitychange');
     });
+    window.addEventListener('pagehide', function () {
+        Core.updateMusicForPageFocus({ type: 'pagehide' });
+    });
+    window.addEventListener('pageshow', function () {
+        onShow('pageshow');
+    });
+    window.addEventListener('freeze', function () {
+        Core.updateMusicForPageFocus({ type: 'freeze' });
+    }, true);
+    window.addEventListener('resume', function () {
+        onShow('resume');
+    }, true);
     window.addEventListener('blur', function () {
         Core.updateMusicForPageFocus({ type: 'blur' });
     });
     window.addEventListener('focus', function () {
-        Core.updateMusicForPageFocus({ type: 'focus' });
+        onShow('focus');
+    });
+    // iOS Safari legacy alias
+    document.addEventListener('webkitvisibilitychange', function () {
+        if (document.visibilityState === 'hidden' || document.hidden) onHide();
+        else onShow('visibilitychange');
     });
     Core.syncAnimPausedForVisibility();
 })();

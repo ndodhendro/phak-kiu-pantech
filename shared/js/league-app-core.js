@@ -990,6 +990,8 @@ Core.hasEntered = false;
 
 Core.pausedByFocusLoss = false;
 
+Core.musicPlayGen = 0;
+
 Core.audio = document.getElementById('bg-music');
 
 // Block background scroll/gestures until Enter

@@ -278,7 +278,11 @@
                 });
                 armCelebrationScheduler();
                 if (C.audio) {
-                    C.audio.play();
+                    if (typeof C.playBackgroundMusic === 'function') {
+                        C.playBackgroundMusic();
+                    } else {
+                        C.audio.play();
+                    }
                     var btn = document.getElementById('music-toggle');
                     if (btn) btn.classList.add('playing');
                 }

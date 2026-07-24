@@ -124,6 +124,65 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
+        /* League detail: horizontal icon-only bar (sections + home/match) */
+        .floating-nav--league {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 999px;
+            max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+            max-height: none;
+            overflow-x: auto;
+            overflow-y: hidden;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+        .floating-nav-views,
+        .floating-nav-actions {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .floating-nav-actions {
+            padding-top: 0;
+            padding-left: 8px;
+            border-top: none;
+            border-left: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .float-btn--icon {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            padding: 0;
+            gap: 0;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        .float-btn--icon[hidden] {
+            display: none !important;
+        }
+        body.league-views-ready {
+            padding-right: 0;
+            padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+        }
+        .league-view-panels {
+            width: 100%;
+        }
+        .league-view[hidden] {
+            display: none !important;
+        }
+        .bracket-wrapper--single {
+            padding-top: 12px;
+        }
+        .standings-section--view {
+            padding-bottom: 24px;
+        }
         .floating-credit {
             position: fixed;
             bottom: max(16px, env(safe-area-inset-bottom));
@@ -3163,6 +3222,23 @@
                 left: max(10px, env(safe-area-inset-left));
                 bottom: max(72px, calc(env(safe-area-inset-bottom) + 56px));
             }
+            .floating-nav--league {
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+                padding: 6px 8px;
+                gap: 6px;
+            }
+            .float-btn--icon {
+                width: 40px;
+                height: 40px;
+                min-width: 40px;
+                font-size: 1.05rem;
+            }
+            body.league-views-ready {
+                padding-right: 0;
+                padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+            }
         }
 
         @media (max-width: 480px) {
@@ -3636,6 +3712,11 @@
             box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
             backdrop-filter: blur(8px);
             animation: pulseHint 1.5s ease-in-out infinite;
+        }
+        body.league-views-ready #music-toggle {
+            top: max(14px, env(safe-area-inset-top));
+            bottom: auto;
+            right: max(10px, env(safe-area-inset-right));
         }
         @keyframes pulseHint {
             0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3); }

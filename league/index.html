@@ -38,59 +38,90 @@
         <img alt="League trophy" class="logo" data-league-trophy decoding="async">
     </div>
 
-    <div class="bracket-wrapper">
-        <section class="league-panel group-stage" id="group-stage-root" aria-label="Group Stage"></section>
-        <section class="league-panel bracket" id="bracket-root" aria-label="Knockout Stage"></section>
-    </div>
-
-    <div class="standings-section">
-        <section class="league-panel" aria-label="Arisan Standings Points">
-            <h2 class="table-section-title">📊 Arisan Standings Points</h2>
-            <div class="standings-chart" id="standings-points-chart"></div>
-        </section>
-
-        <section class="league-panel" aria-label="Main Quest">
-            <h3 class="table-section-title">🎯 Main Quest</h3>
-            <div class="standings-table-wrapper" id="main-quest-table-root"></div>
-        </section>
-
-        <section class="league-panel" aria-label="Side Quest Podium">
-            <h3 class="table-section-title">⭐ Side Quest</h3>
-            <div class="podium-section">
-                <div class="podium-container">
-                    <div class="podium-place podium-place-2">
-                        <div class="podium-label"><span class="podium-label-emoji" aria-hidden="true">🥇</span> Runner-Up</div>
-                        <div class="podium-teams" id="podium-runnerup"></div>
-                        <div class="podium-block">2nd</div>
-                    </div>
-                    <div class="podium-place podium-place-1">
-                        <div class="podium-label"><img id="podium-champion-trophy" class="podium-champion-trophy" data-league-trophy alt="Champion" decoding="async">Champion</div>
-                        <div class="podium-teams" id="podium-champion"></div>
-                        <div class="podium-block">1st</div>
-                    </div>
-                    <div class="podium-place podium-place-3" id="podium-third-wrap">
-                        <div class="podium-label"><span class="podium-label-emoji" aria-hidden="true">👏</span> 3rd Place</div>
-                        <div class="podium-teams" id="podium-3rd"></div>
-                        <div class="podium-block">3rd</div>
-                    </div>
-                </div>
+    <div class="league-view-panels">
+        <div class="league-view" data-league-view-panel="group" hidden>
+            <div class="bracket-wrapper bracket-wrapper--single">
+                <section class="league-panel group-stage" id="group-stage-root" aria-label="Group Stage"></section>
             </div>
-        </section>
+        </div>
 
-        <section class="league-panel podium-section" aria-label="Golden Boot">
-            <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://png.pngtree.com/png-clipart/20241006/original/pngtree-golden-boot-award-isolated-on-a-white-background-png-image_16219554.png" alt="Golden Boot" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Golden Boot</h4>
-            <div class="standings-chart" id="goldenboot-chart"></div>
-        </section>
+        <div class="league-view" data-league-view-panel="ko" hidden>
+            <div class="bracket-wrapper bracket-wrapper--single">
+                <section class="league-panel bracket" id="bracket-root" aria-label="Knockout Stage"></section>
+            </div>
+        </div>
 
-        <section class="league-panel podium-section" aria-label="Golden Glove">
-            <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://owexnrdvmragupmquwzr.supabase.co/storage/v1/object/public/arisan-config/assets/images/golden%20glove.png" alt="Golden Glove" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;"> Golden Glove</h4>
-            <div class="podium-container goldenglove-podium" id="podium-goldenglove-container"></div>
-        </section>
+        <div class="league-view" data-league-view-panel="standings" hidden>
+            <div class="standings-section standings-section--view">
+                <section class="league-panel" aria-label="Arisan Standings Points">
+                    <h2 class="table-section-title">📊 Arisan Standings Points</h2>
+                    <div class="standings-chart" id="standings-points-chart"></div>
+                </section>
+            </div>
+        </div>
 
-        <section class="league-panel podium-section" aria-label="Total Goal">
-            <h4 style="text-align:center; color:#e94560; font-size:0.9rem; margin-bottom:15px;"><img alt="Total Goal" data-league-ball decoding="async" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Total Goal</h4>
-            <div class="total-goal-bar-container" id="total-goal-bar"></div>
-        </section>
+        <div class="league-view" data-league-view-panel="main-quest" hidden>
+            <div class="standings-section standings-section--view">
+                <section class="league-panel" aria-label="Main Quest">
+                    <h3 class="table-section-title">🎯 Main Quest</h3>
+                    <div class="standings-table-wrapper" id="main-quest-table-root"></div>
+                </section>
+            </div>
+        </div>
+
+        <div class="league-view" data-league-view-panel="podium" hidden>
+            <div class="standings-section standings-section--view">
+                <section class="league-panel" aria-label="Side Quest Podium">
+                    <h3 class="table-section-title">⭐ Side Quest</h3>
+                    <div class="podium-section">
+                        <div class="podium-container">
+                            <div class="podium-place podium-place-2">
+                                <div class="podium-label"><span class="podium-label-emoji" aria-hidden="true">🥈</span> Runner-Up</div>
+                                <div class="podium-teams" id="podium-runnerup"></div>
+                                <div class="podium-block">2nd</div>
+                            </div>
+                            <div class="podium-place podium-place-1">
+                                <div class="podium-label"><img id="podium-champion-trophy" class="podium-champion-trophy" data-league-trophy alt="Champion" decoding="async">Champion</div>
+                                <div class="podium-teams" id="podium-champion"></div>
+                                <div class="podium-block">1st</div>
+                            </div>
+                            <div class="podium-place podium-place-3" id="podium-third-wrap">
+                                <div class="podium-label"><span class="podium-label-emoji" aria-hidden="true">👏</span> 3rd Place</div>
+                                <div class="podium-teams" id="podium-3rd"></div>
+                                <div class="podium-block">3rd</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="league-view" data-league-view-panel="golden-boot" hidden>
+            <div class="standings-section standings-section--view">
+                <section class="league-panel podium-section" aria-label="Golden Boot">
+                    <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://png.pngtree.com/png-clipart/20241006/original/pngtree-golden-boot-award-isolated-on-a-white-background-png-image_16219554.png" alt="Golden Boot" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Golden Boot</h4>
+                    <div class="standings-chart" id="goldenboot-chart"></div>
+                </section>
+            </div>
+        </div>
+
+        <div class="league-view" data-league-view-panel="golden-glove" hidden>
+            <div class="standings-section standings-section--view">
+                <section class="league-panel podium-section" aria-label="Golden Glove">
+                    <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://owexnrdvmragupmquwzr.supabase.co/storage/v1/object/public/arisan-config/assets/images/golden%20glove.png" alt="Golden Glove" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;"> Golden Glove</h4>
+                    <div class="podium-container goldenglove-podium" id="podium-goldenglove-container"></div>
+                </section>
+            </div>
+        </div>
+
+        <div class="league-view" data-league-view-panel="total-goal" hidden>
+            <div class="standings-section standings-section--view">
+                <section class="league-panel podium-section" aria-label="Total Goal">
+                    <h4 style="text-align:center; color:#e94560; font-size:0.9rem; margin-bottom:15px;"><img alt="Total Goal" data-league-ball decoding="async" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Total Goal</h4>
+                    <div class="total-goal-bar-container" id="total-goal-bar"></div>
+                </section>
+            </div>
+        </div>
     </div>
 
     <audio id="bg-music" loop preload="auto"></audio>
@@ -99,9 +130,21 @@
         🔊
     </button>
 
-    <nav class="floating-nav" aria-label="Main navigation">
-        <a href="#" class="float-btn" id="home-link">🏠 Home</a>
-        <a href="#" class="float-btn" id="match-admin-link">⚽ Update Match</a>
+    <nav class="floating-nav floating-nav--league" aria-label="League sections">
+        <div class="floating-nav-views" role="group" aria-label="Sections">
+            <a href="#" class="float-btn float-btn--icon" data-league-view="group" title="Group Stage" aria-label="Group Stage">🏟️</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="ko" title="Knockout Stage" aria-label="Knockout Stage">🏆</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="standings" title="Standings Points" aria-label="Standings Points">📊</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="main-quest" title="Main Quest" aria-label="Main Quest">🎯</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="podium" title="Podium" aria-label="Champion, Runner-Up, Third Place">🥇</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="golden-boot" title="Golden Boot" aria-label="Golden Boot">👟</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="golden-glove" title="Golden Glove" aria-label="Golden Glove">🧤</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="total-goal" title="Total Goal" aria-label="Total Goal">⚽</a>
+        </div>
+        <div class="floating-nav-actions" role="group" aria-label="App">
+            <a href="#" class="float-btn float-btn--icon" id="home-link" title="Home" aria-label="Home">🏠</a>
+            <a href="#" class="float-btn float-btn--icon" id="match-admin-link" title="Update Match" aria-label="Update Match">📝</a>
+        </div>
     </nav>
     <footer class="floating-credit" aria-label="Credits">Made by <strong>Ndod Pantech</strong></footer>
     </div>
@@ -156,6 +199,7 @@
     <script src="../shared/js/league-section-standings.js"></script>
     <script src="../shared/js/league-section-shell.js"></script>
     <script src="../shared/js/league-app.js"></script>
+    <script src="../shared/js/league-views.js"></script>
     <script src="../shared/js/bootstrap.js"></script>
 </body>
 </html>

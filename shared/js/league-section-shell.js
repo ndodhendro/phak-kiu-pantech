@@ -44,7 +44,13 @@ Core.enterSite = function enterSite() {
     requestAnimationFrame(function () {
         window.scrollTo(0, 0);
     });
-    window.setTimeout(Core.playFinalWinnerCelebration, 450);
+            window.setTimeout(function () {
+                if (window.ArisanLeagueViews && typeof ArisanLeagueViews.armCelebrationScheduler === 'function') {
+                    ArisanLeagueViews.armCelebrationScheduler();
+                } else if (typeof Core.playFinalWinnerCelebration === 'function') {
+                    Core.playFinalWinnerCelebration();
+                }
+            }, 450);
     // Mulai musik
     if (Core.audio) {
         Core.audio.play();

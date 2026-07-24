@@ -578,7 +578,7 @@ Core.finalCelebrationActive = false;
 
 Core.finalCelebrationRepeatTimer = null;
 
-Core.FINAL_CELEBRATION_REPEAT_MS = 60 * 1000;
+Core.FINAL_CELEBRATION_REPEAT_MS = 30 * 1000;
 
 Core.getCelebrationFlagSrc = function getCelebrationFlagSrc(flagSrc) {
     if (typeof ArisanCountries !== 'undefined' && ArisanCountries.getCelebrationFlagUrl) {

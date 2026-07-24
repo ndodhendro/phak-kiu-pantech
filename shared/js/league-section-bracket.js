@@ -1011,11 +1011,10 @@ Core.playFinalWinnerCelebration = function playFinalWinnerCelebration() {
     if (Core.finalCelebrationActive || !Core.pendingFinalCelebrationWinner || document.hidden) return;
     Core.finalCelebrationActive = true;
 
-    if (!Core.finalCelebrationRepeatTimer) {
-        Core.finalCelebrationRepeatTimer = window.setInterval(
-            Core.playFinalWinnerCelebration,
-            Core.FINAL_CELEBRATION_REPEAT_MS
-        );
+    // Repeat schedule is owned by ArisanLeagueViews (session timestamp, 30s).
+    if (Core.finalCelebrationRepeatTimer) {
+        clearInterval(Core.finalCelebrationRepeatTimer);
+        Core.finalCelebrationRepeatTimer = null;
     }
 
     const winner = Core.pendingFinalCelebrationWinner;

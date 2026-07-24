@@ -362,24 +362,10 @@ function buildStandingsChartFromParticipants() {
     }).join('');
 }
 
-function mountDynamicBracket() {
-    const bracketRoot = document.getElementById('bracket-root') || document.querySelector('.bracket');
-    const groupRoot = document.getElementById('group-stage-root') || document.querySelector('.group-stage');
+function getBracketMountOpts() {
     const d = window.LEAGUE_DATA;
-    if (!d || typeof ArisanBracket === 'undefined') return;
-
-    const hasGroup = !!d.includeGroupStage;
-    const hasKnockout = d.includeKnockoutStage !== false;
-    const knockoutTeams = (Array.isArray(d.knockoutSeeds) && d.knockoutSeeds.length)
-        ? d.knockoutSeeds.map(t => ({
-            name: t && t.name ? String(t.name).trim() : '',
-            flag: (t && t.flag) || '',
-        }))
-        : (hasGroup ? [] : (d.teams || []));
-
-    if (!hasGroup && !knockoutTeams.length && !(d.teams || []).length) return;
-
-    const mountOpts = {
+    if (!d) return null;
+    return {
         teams: d.teams || [],
         competitionType: d.competitionType || 'country',
         includeThirdPlace: d.includeThirdPlace !== false,
@@ -391,80 +377,255 @@ function mountDynamicBracket() {
         matchSchedule: d.matchSchedule || {},
         leagueYear: d.year,
     };
+}
 
-    if (groupRoot && hasGroup) {
-        ArisanBracket.mountGroupStage(groupRoot, mountOpts);
-        const hasContent = !!(groupRoot.innerHTML && groupRoot.innerHTML.trim());
-        groupRoot.hidden = !hasContent;
-        groupRoot.classList.toggle('is-empty', !hasContent);
-    } else if (groupRoot) {
-        groupRoot.innerHTML = '';
-        groupRoot.hidden = true;
-        groupRoot.classList.add('is-empty');
+function getKnockoutTeamsForMount() {
+    const d = window.LEAGUE_DATA;
+    if (!d) return [];
+    const hasGroup = !!d.includeGroupStage;
+    if (Array.isArray(d.knockoutSeeds) && d.knockoutSeeds.length) {
+        return d.knockoutSeeds.map(t => ({
+            name: t && t.name ? String(t.name).trim() : '',
+            flag: (t && t.flag) || '',
+        }));
     }
+    return hasGroup ? [] : (d.teams || []);
+}
 
-    if (bracketRoot && hasKnockout) {
-        if (knockoutTeams.length >= 2) {
-            ArisanBracket.mountBracket(bracketRoot, Object.assign({}, mountOpts, { teams: knockoutTeams }));
-        } else if (hasGroup) {
-            bracketRoot.innerHTML = '<p class="bracket-error">Set knockout bracket pairs in league setup. TBD is allowed until group winners are known.</p>';
-        } else if ((d.teams || []).length >= 2) {
-            ArisanBracket.mountBracket(bracketRoot, mountOpts);
-        } else {
-            bracketRoot.innerHTML = '<p class="bracket-error">At least 2 knockout slots are required.</p>';
-        }
-    } else if (bracketRoot) {
-        bracketRoot.innerHTML = '';
-    }
-
-    if (d.matchSchedule && typeof ArisanBracket.applyMatchSchedules === 'function') {
+function applyMatchSchedulesIfAny() {
+    const d = window.LEAGUE_DATA;
+    if (d && d.matchSchedule && typeof ArisanBracket !== 'undefined' &&
+        typeof ArisanBracket.applyMatchSchedules === 'function') {
         ArisanBracket.applyMatchSchedules(d.matchSchedule, d.year);
     }
 }
 
-function startApp() {
-    mountDynamicBracket();
+function mountGroupStageOnly() {
+    const groupRoot = document.getElementById('group-stage-root') || document.querySelector('.group-stage');
+    const d = window.LEAGUE_DATA;
+    const mountOpts = getBracketMountOpts();
+    if (!groupRoot || !d || !mountOpts || typeof ArisanBracket === 'undefined') return;
+    if (!d.includeGroupStage) {
+        groupRoot.innerHTML = '';
+        groupRoot.hidden = true;
+        groupRoot.classList.add('is-empty');
+        return;
+    }
+    ArisanBracket.mountGroupStage(groupRoot, mountOpts);
+    const hasContent = !!(groupRoot.innerHTML && groupRoot.innerHTML.trim());
+    groupRoot.hidden = !hasContent;
+    groupRoot.classList.toggle('is-empty', !hasContent);
+    applyMatchSchedulesIfAny();
+}
 
+function mountKnockoutStageOnly() {
+    const bracketRoot = document.getElementById('bracket-root') || document.querySelector('.bracket');
+    const d = window.LEAGUE_DATA;
+    const mountOpts = getBracketMountOpts();
+    if (!bracketRoot || !d || !mountOpts || typeof ArisanBracket === 'undefined') return;
+
+    const hasGroup = !!d.includeGroupStage;
+    const hasKnockout = d.includeKnockoutStage !== false;
+    const knockoutTeams = getKnockoutTeamsForMount();
+
+    if (!hasKnockout) {
+        bracketRoot.innerHTML = '';
+        return;
+    }
+    if (knockoutTeams.length >= 2) {
+        ArisanBracket.mountBracket(bracketRoot, Object.assign({}, mountOpts, { teams: knockoutTeams }));
+    } else if (hasGroup) {
+        bracketRoot.innerHTML = '<p class="bracket-error">Set knockout bracket pairs in league setup. TBD is allowed until group winners are known.</p>';
+    } else if ((d.teams || []).length >= 2) {
+        ArisanBracket.mountBracket(bracketRoot, mountOpts);
+    } else {
+        bracketRoot.innerHTML = '<p class="bracket-error">At least 2 knockout slots are required.</p>';
+    }
+    applyMatchSchedulesIfAny();
+}
+
+/** @deprecated Prefer mountGroupStageOnly / mountKnockoutStageOnly per view */
+function mountDynamicBracket() {
+    mountGroupStageOnly();
+    mountKnockoutStageOnly();
+}
+
+function ensureMatchStagesHydrated(opts) {
+    opts = opts || {};
+    const d = window.LEAGUE_DATA;
+    if (!d) return;
+
+    let touched = false;
+    if (opts.group && d.includeGroupStage) {
+        const groupRoot = document.getElementById('group-stage-root');
+        if (groupRoot && !groupRoot.dataset.stageHydrated) {
+            mountGroupStageOnly();
+            groupRoot.dataset.stageHydrated = '1';
+            touched = true;
+            if (window.ArisanLeagueViews) ArisanLeagueViews.markHydrated('group');
+        }
+    }
+    if (opts.ko && d.includeKnockoutStage !== false) {
+        const bracketRoot = document.getElementById('bracket-root');
+        if (bracketRoot && !bracketRoot.dataset.stageHydrated) {
+            mountKnockoutStageOnly();
+            bracketRoot.dataset.stageHydrated = '1';
+            touched = true;
+            if (window.ArisanLeagueViews) ArisanLeagueViews.markHydrated('ko');
+        }
+    }
+    if (!touched) return;
+
+    if (typeof applyAdminConfig === 'function') applyAdminConfig();
+    if (typeof advanceBracketWinners === 'function') advanceBracketWinners();
+    if (typeof markConfirmedTeamNames === 'function') markConfirmedTeamNames();
+    if (typeof applyFinishedMatchBadges === 'function') applyFinishedMatchBadges();
+    if (typeof applyFinalPlacementBadges === 'function') applyFinalPlacementBadges();
+    if (typeof scheduleFinalWinnerCelebration === 'function') scheduleFinalWinnerCelebration();
+}
+
+function refreshMatchViewUi(includeLines) {
+    if (typeof applyAdminConfig === 'function') applyAdminConfig();
+    if (typeof advanceBracketWinners === 'function') advanceBracketWinners();
+    if (typeof updateMatchupScheduleStatus === 'function') updateMatchupScheduleStatus();
+    if (typeof markConfirmedTeamNames === 'function') markConfirmedTeamNames();
+    if (typeof applyFinishedMatchBadges === 'function') applyFinishedMatchBadges();
+    if (typeof applyFinalPlacementBadges === 'function') applyFinalPlacementBadges();
+    if (typeof applyPodiumBadgePreviewDemo === 'function') applyPodiumBadgePreviewDemo();
+    if (typeof initLiveMatchupLinks === 'function') initLiveMatchupLinks();
+    if (typeof scheduleFinalWinnerCelebration === 'function') scheduleFinalWinnerCelebration();
+
+    setTimeout(function () {
+        if (typeof injectSupporters === 'function') injectSupporters();
+    }, 200);
+    setTimeout(function () {
+        if (typeof injectScorePredictions === 'function') injectScorePredictions();
+    }, 220);
+    if (includeLines) {
+        setTimeout(function () {
+            if (typeof drawBracketLines === 'function') drawBracketLines();
+        }, 100);
+        setTimeout(function () {
+            if (typeof drawBracketLines === 'function') drawBracketLines();
+        }, 300);
+    }
+}
+
+function activateLeagueView(viewId, meta) {
+    const first = !meta || meta.first !== false;
+
+    if (viewId === 'group') {
+        const groupRoot = document.getElementById('group-stage-root');
+        if (first || !groupRoot || !groupRoot.dataset.stageHydrated) {
+            mountGroupStageOnly();
+            if (groupRoot) groupRoot.dataset.stageHydrated = '1';
+        }
+        refreshMatchViewUi(false);
+    } else if (viewId === 'ko') {
+        const bracketRoot = document.getElementById('bracket-root');
+        if (first || !bracketRoot || !bracketRoot.dataset.stageHydrated) {
+            mountKnockoutStageOnly();
+            if (bracketRoot) bracketRoot.dataset.stageHydrated = '1';
+        }
+        refreshMatchViewUi(true);
+    } else if (viewId === 'standings') {
+        ensureMatchStagesHydrated({ group: true, ko: true });
+        if (first) {
+            buildStandingsChartFromParticipants();
+        }
+        if (typeof updateStandingsChart === 'function') {
+            setTimeout(updateStandingsChart, 80);
+        }
+        if (typeof observeAnimPauseTargets === 'function') {
+            setTimeout(observeAnimPauseTargets, 200);
+        }
+    } else if (viewId === 'main-quest') {
+        ensureMatchStagesHydrated({ group: true, ko: true });
+        if (first) {
+            buildMainQuestTableFromParticipants();
+        }
+        if (typeof updateMainQuestEliminatedStatus === 'function') updateMainQuestEliminatedStatus();
+        if (typeof observeAnimPauseTargets === 'function') {
+            setTimeout(observeAnimPauseTargets, 200);
+        }
+    } else if (viewId === 'podium') {
+        ensureMatchStagesHydrated({ ko: true });
+        if (typeof updateSideQuestEliminatedStatus === 'function') updateSideQuestEliminatedStatus();
+        if (typeof buildPodiumCards === 'function') {
+            buildPodiumCards('podium-champion', sideQuestPodium.champion);
+            buildPodiumCards('podium-runnerup', sideQuestPodium.runnerup);
+            buildPodiumCards('podium-3rd', sideQuestPodium.third);
+        }
+        if (typeof observeAnimPauseTargets === 'function') {
+            setTimeout(observeAnimPauseTargets, 200);
+        }
+    } else if (viewId === 'golden-boot') {
+        if (typeof buildGoldenBootChart === 'function') buildGoldenBootChart();
+        if (typeof observeAnimPauseTargets === 'function') {
+            setTimeout(observeAnimPauseTargets, 200);
+        }
+    } else if (viewId === 'golden-glove') {
+        if (typeof buildPlayerPodium === 'function') {
+            buildPlayerPodium('podium-goldenglove-container', (ADMIN_CONFIG && ADMIN_CONFIG.goldenGlove) || [], '🧤');
+        }
+        if (typeof observeAnimPauseTargets === 'function') {
+            setTimeout(observeAnimPauseTargets, 200);
+        }
+    } else if (viewId === 'total-goal') {
+        ensureMatchStagesHydrated({ group: true, ko: true });
+        if (typeof applyAdminConfig === 'function') applyAdminConfig();
+        else if (typeof buildTotalGoalBar === 'function') buildTotalGoalBar();
+        if (typeof observeAnimPauseTargets === 'function') {
+            setTimeout(observeAnimPauseTargets, 200);
+        }
+    }
+
+    if (typeof scheduleFinalWinnerCelebration === 'function') {
+        scheduleFinalWinnerCelebration();
+    }
+}
+
+function startApp() {
     if (typeof window.syncLeagueDataFromDb === 'function') {
         window.syncLeagueDataFromDb();
     }
     applyBrandingFromLeagueData();
-    buildStandingsChartFromParticipants();
-    buildMainQuestTableFromParticipants();
 
     if (typeof initGlowSync === 'function') initGlowSync();
-    applyAdminConfig();
-    advanceBracketWinners();
-    updateMatchupScheduleStatus();
-    markConfirmedTeamNames();
-    applyFinishedMatchBadges();
-    applyFinalPlacementBadges();
-    applyPodiumBadgePreviewDemo();
-    scheduleFinalWinnerCelebration();
-    initLiveMatchupLinks();
-    setInterval(updateMatchupScheduleStatus, 60 * 1000);
-    setInterval(updateSoonCountdowns, 1000);
 
-    setTimeout(drawBracketLines, 100);
-    setTimeout(injectSupporters, 200);
-    setTimeout(injectScorePredictions, 220);
-    setTimeout(drawBracketLines, 300);
+    // Match-status timers only when a match view is visible (saves mobile CPU).
+    setInterval(function () {
+        const view = window.ArisanLeagueViews && ArisanLeagueViews.getView();
+        if (view !== 'group' && view !== 'ko') return;
+        if (typeof updateMatchupScheduleStatus === 'function') updateMatchupScheduleStatus();
+    }, 60 * 1000);
+    setInterval(function () {
+        const view = window.ArisanLeagueViews && ArisanLeagueViews.getView();
+        if (view !== 'group' && view !== 'ko') return;
+        if (typeof updateSoonCountdowns === 'function') updateSoonCountdowns();
+    }, 1000);
 
-    setTimeout(function () {
-        updateSideQuestEliminatedStatus();
-        updateMainQuestEliminatedStatus();
-        buildPodiumCards('podium-champion', sideQuestPodium.champion);
-        buildPodiumCards('podium-runnerup', sideQuestPodium.runnerup);
-        buildPodiumCards('podium-3rd', sideQuestPodium.third);
-        buildGoldenBootChart();
-        buildPlayerPodium('podium-goldenglove-container', ADMIN_CONFIG.goldenGlove || [], '🧤');
-        if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets();
-    }, 250);
+    if (window.ArisanLeagueViews && typeof ArisanLeagueViews.init === 'function') {
+        if (typeof ArisanLeagueViews.syncNavAvailability === 'function') {
+            ArisanLeagueViews.syncNavAvailability();
+        }
+        ArisanLeagueViews.init({ activate: activateLeagueView });
+    } else {
+        // Fallback: legacy single-page mount
+        mountDynamicBracket();
+        activateLeagueView('group', { first: true });
+        activateLeagueView('ko', { first: true });
+        activateLeagueView('standings', { first: true });
+        activateLeagueView('main-quest', { first: true });
+        activateLeagueView('podium', { first: true });
+        activateLeagueView('golden-boot', { first: true });
+        activateLeagueView('golden-glove', { first: true });
+        activateLeagueView('total-goal', { first: true });
+    }
 
-    setTimeout(updateStandingsChart, 100);
-    setTimeout(function () {
-        if (typeof observeAnimPauseTargets === 'function') observeAnimPauseTargets();
-    }, 450);
+    if (typeof scheduleFinalWinnerCelebration === 'function') {
+        scheduleFinalWinnerCelebration();
+    }
 }
 
 (async function bootstrap() {

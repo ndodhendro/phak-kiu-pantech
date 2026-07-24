@@ -296,6 +296,7 @@ window.ArisanDB = (function () {
             groupDefinitions: normalizeGroupDefinitions(s.groupDefinitions),
             groupFixtures: normalizeGroupFixtures(s.groupFixtures),
             matchSchedule: (s.matchSchedule && typeof s.matchSchedule === 'object') ? s.matchSchedule : {},
+            fixtureSideSwaps: normalizeFixtureSideSwaps(s.fixtureSideSwaps),
             scheduleStartDate: s.scheduleStartDate || '',
             scheduleKickoff: s.scheduleKickoff || '19:00',
             iconImageUrl: s.iconImageUrl || '',
@@ -303,6 +304,24 @@ window.ArisanDB = (function () {
             ballImageUrl: s.ballImageUrl || '',
             backgroundMusicUrl: s.backgroundMusicUrl || '',
         };
+    }
+
+    function normalizeFixtureSideSwaps(raw) {
+        const out = {};
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+        Object.keys(raw).forEach(id => {
+            const key = String(id || '').trim();
+            if (key && raw[id]) out[key] = true;
+        });
+        return out;
+    }
+
+    function applyFixtureSideSwapsToGroupFixtures(fixtures, swaps) {
+        const map = normalizeFixtureSideSwaps(swaps);
+        return (fixtures || []).map((f, i) => {
+            if (!map['group-' + i]) return f;
+            return Object.assign({}, f, { a: f.b, b: f.a });
+        });
     }
 
     function normalizeKnockoutSeeds(raw) {
@@ -685,6 +704,7 @@ window.ArisanDB = (function () {
             twoLegKnockout: settings.twoLegKnockout,
             groupDefinitions: settings.groupDefinitions || [],
             groupFixtures: settings.groupFixtures || [],
+            fixtureSideSwaps: settings.fixtureSideSwaps || {},
             knockoutSeeds: settings.knockoutSeeds || [],
             derivedAwards,
             title: bundle.league.title,
@@ -865,6 +885,8 @@ window.ArisanDB = (function () {
                 }
             });
         }
+        const fixtureSideSwaps = normalizeFixtureSideSwaps(setup.fixtureSideSwaps);
+        groupFixtures = applyFixtureSideSwapsToGroupFixtures(groupFixtures, fixtureSideSwaps);
 
         const uniqueTeamRows = [];
         const seenTeamNames = new Set();
@@ -896,6 +918,7 @@ window.ArisanDB = (function () {
                 : [],
             groupDefinitions,
             groupFixtures,
+            fixtureSideSwaps,
             matchSchedule: setup.matchSchedule || {},
             scheduleStartDate: setup.scheduleStartDate || '',
             scheduleKickoff: setup.scheduleKickoff || '19:00',
@@ -1176,6 +1199,7 @@ window.ArisanDB = (function () {
             teams,
             groupDefinitions: settings.groupDefinitions || [],
             groupFixtures: settings.groupFixtures || [],
+            fixtureSideSwaps: settings.fixtureSideSwaps || {},
             knockoutSeeds: settings.knockoutSeeds || [],
         };
     }

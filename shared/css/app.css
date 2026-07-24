@@ -197,11 +197,11 @@
             content-visibility: auto;
             contain-intrinsic-size: auto 420px;
         }
-        .league-panel.group-stage {
-            contain-intrinsic-size: auto 640px;
-        }
+        .league-panel.group-stage,
         .league-panel.bracket {
-            contain-intrinsic-size: auto 900px;
+            /* sticky round/group headers need no content-visibility containment */
+            content-visibility: visible;
+            contain-intrinsic-size: none;
         }
         .standings-section > .league-panel {
             margin-top: 0;
@@ -213,9 +213,10 @@
         }
         .league-panel.group-stage,
         .league-panel.bracket {
-            /* keep horizontal scroll inside the rounded panel */
+            /* keep horizontal scroll inside the rounded panel;
+               overflow-y: clip avoids creating a vertical scrollport so sticky headers can freeze on page scroll */
             overflow-x: auto;
-            overflow-y: visible;
+            overflow-y: clip;
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
@@ -247,7 +248,7 @@
             min-width: 0;
             margin-right: 0;
             overflow-x: auto;
-            overflow-y: visible;
+            overflow-y: clip;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
             -ms-overflow-style: none;
@@ -283,8 +284,12 @@
             max-width: var(--bracket-round-width);
             padding: 0 var(--bracket-round-pad-x);
             box-sizing: border-box;
+            position: relative;
+            z-index: 1;
         }
         .group-column-header {
+            position: relative;
+            z-index: 8;
             text-align: center;
             font-size: 0.78rem;
             font-weight: 700;
@@ -294,6 +299,12 @@
             padding: 6px 8px;
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #12122a;
+            box-shadow: 0 10px 16px -10px rgba(0, 0, 0, 0.65);
+            will-change: transform;
+        }
+        .group-column-header.is-stuck {
+            box-shadow: 0 10px 18px -6px rgba(0, 0, 0, 0.75);
         }
         .group-column .round-matches,
         .round-group.group-stage-flat .group-matches-grid {
@@ -379,7 +390,11 @@
         }
         .round-group .group-column[class*="group-tone-"] .group-column-header {
             color: var(--g-text);
-            background: rgba(var(--g-rgb), 0.22);
+            background: linear-gradient(
+                180deg,
+                rgba(15, 15, 35, 0.98) 0%,
+                rgba(var(--g-rgb), 0.28) 100%
+            );
             border: 1px solid rgba(var(--g-rgb), 0.42);
         }
         .round-group .group-column[class*="group-tone-"] .matchup-meta-label {
@@ -427,7 +442,7 @@
             max-width: 100%;
             min-width: 0;
             overflow-x: auto;
-            overflow-y: visible;
+            overflow-y: clip;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
             -ms-overflow-style: none;
@@ -452,18 +467,24 @@
             box-sizing: border-box;
             position: relative;
             z-index: 1;
-            content-visibility: auto;
-            contain-intrinsic-size: auto 480px;
         }
         .round-header {
+            position: relative;
+            z-index: 8;
             text-align: center;
             font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 10px;
-            padding-bottom: 6px;
+            padding: 8px 4px 6px;
             border-bottom: 2px solid #e94560;
+            background: #0f0f23;
+            box-shadow: 0 10px 16px -10px rgba(0, 0, 0, 0.65);
+            will-change: transform;
+        }
+        .round-header.is-stuck {
+            box-shadow: 0 10px 18px -6px rgba(0, 0, 0, 0.75);
         }
         /* Round colors */
         /* Round colors — kotak matchup & matchup-date mengikuti warna header */
@@ -543,6 +564,11 @@
         .round-final .round-header {
             color: var(--r-text);
             border-bottom-color: var(--r-strong);
+            background: linear-gradient(
+                180deg,
+                #0f0f23 0%,
+                rgba(var(--r-rgb), 0.18) 100%
+            );
         }
         .round-ko .matchup,
         .round-r32 .matchup,
@@ -1700,6 +1726,33 @@
             flex-shrink: 0;
             margin-left: auto;
             text-align: right;
+        }
+        .score-predict-flag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 12px;
+            flex-shrink: 0;
+            border-radius: 2px;
+            overflow: hidden;
+            background: #2a2a5a;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .score-predict-flag img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .score-predict-flag.is-empty {
+            width: auto;
+            min-width: 16px;
+            padding: 0 3px;
+            font-size: 0.5rem;
+            font-weight: 700;
+            color: #aaa;
+            letter-spacing: 0.02em;
         }
         .score-predict-name {
             display: block;

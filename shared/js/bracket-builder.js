@@ -254,6 +254,22 @@ window.ArisanBracket = (function () {
         return TBD_FLAG;
     }
 
+    function getFixtureSideSwaps(opts) {
+        if (opts && opts.fixtureSideSwaps && typeof opts.fixtureSideSwaps === 'object') {
+            return opts.fixtureSideSwaps;
+        }
+        if (typeof window !== 'undefined' && window.LEAGUE_DATA && window.LEAGUE_DATA.fixtureSideSwaps) {
+            return window.LEAGUE_DATA.fixtureSideSwaps;
+        }
+        return {};
+    }
+
+    function orderMatchSides(matchId, sideA, sideB, opts) {
+        const swaps = getFixtureSideSwaps(opts);
+        if (matchId && swaps[String(matchId)]) return [sideB, sideA];
+        return [sideA, sideB];
+    }
+
     function teamCellHtml(team, competitionType) {
         if (!team || !team.name) {
             return '<div class="team">' +
@@ -268,14 +284,15 @@ window.ArisanBracket = (function () {
     }
 
     function matchupHtml(matchId, teamA, teamB, competitionType, legLabel) {
+        const ordered = orderMatchSides(matchId, teamA, teamB);
         const legHint = legLabel
             ? '<div class="matchup-leg-label">' + esc(legLabel) + '</div>'
             : '';
         return '<div class="matchup tbd" data-match-id="' + esc(matchId) + '">' +
             legHint +
             '<div class="matchup-date"></div>' +
-            teamCellHtml(teamA, competitionType) +
-            teamCellHtml(teamB, competitionType) +
+            teamCellHtml(ordered[0], competitionType) +
+            teamCellHtml(ordered[1], competitionType) +
             '</div>';
     }
 
@@ -333,14 +350,38 @@ window.ArisanBracket = (function () {
     }
 
     function catalogEntriesForTie(tieId, roundLabel, teamA, teamB, twoLeg) {
-        const a = teamA || 'TBD';
-        const b = teamB || 'TBD';
+        const ordered = orderMatchSides(tieId, teamA || 'TBD', teamB || 'TBD');
+        const a = ordered[0] || 'TBD';
+        const b = ordered[1] || 'TBD';
         if (!twoLeg) {
-            return [{ id: tieId, label: roundLabel + ' — ' + a + ' vs ' + b }];
+            return [{
+                id: tieId,
+                label: roundLabel + ' — ' + a + ' vs ' + b,
+                teamA: a,
+                teamB: b,
+                group: '',
+                leg: 0,
+            }];
         }
         return [
-            { id: legMatchId(tieId, 1), tieId, leg: 1, label: roundLabel + ' — ' + a + ' vs ' + b + ' (Leg 1)' },
-            { id: legMatchId(tieId, 2), tieId, leg: 2, label: roundLabel + ' — ' + b + ' vs ' + a + ' (Leg 2)' },
+            {
+                id: legMatchId(tieId, 1),
+                tieId,
+                leg: 1,
+                label: roundLabel + ' — ' + a + ' vs ' + b + ' (Leg 1)',
+                teamA: a,
+                teamB: b,
+                group: '',
+            },
+            {
+                id: legMatchId(tieId, 2),
+                tieId,
+                leg: 2,
+                label: roundLabel + ' — ' + b + ' vs ' + a + ' (Leg 2)',
+                teamA: b,
+                teamB: a,
+                group: '',
+            },
         ];
     }
 
@@ -574,16 +615,27 @@ window.ArisanBracket = (function () {
         });
 
         if (fixtures.length) {
+            const swaps = getFixtureSideSwaps(opts);
             return fixtures.map((f, index) => {
                 const aName = String((f && (f.a || f.teamA)) || '').trim();
                 const bName = String((f && (f.b || f.teamB)) || '').trim();
+                const matchId = 'group-' + index;
+                let displayA = aName;
+                let displayB = bName;
+                if (swaps[matchId]) {
+                    displayA = bName;
+                    displayB = aName;
+                }
                 const explicit = String((f && (f.group || f.groupLabel)) || '').trim();
                 return {
                     index,
                     explicitGroup: explicit,
+                    // Canonical fixture sides (ignore home/away swap) for stable schedule keys
+                    sideA: aName,
+                    sideB: bName,
                     pair: [
-                        byName.get(aName) || (aName ? { name: aName, flag: '' } : null),
-                        byName.get(bName) || (bName ? { name: bName, flag: '' } : null),
+                        byName.get(displayA) || (displayA ? { name: displayA, flag: '' } : null),
+                        byName.get(displayB) || (displayB ? { name: displayB, flag: '' } : null),
                     ],
                 };
             });
@@ -741,6 +793,10 @@ window.ArisanBracket = (function () {
                 catalog.push({
                     id: 'group-' + entry.index,
                     label: prefix + ' — ' + (pair[0]?.name || 'TBD') + ' vs ' + (pair[1]?.name || 'TBD'),
+                    teamA: entry.sideA || (pair[0] && pair[0].name) || '',
+                    teamB: entry.sideB || (pair[1] && pair[1].name) || '',
+                    group: part.label || entry.explicitGroup || '',
+                    leg: 0,
                 });
             });
         });
@@ -969,11 +1025,86 @@ window.ArisanBracket = (function () {
     function mountBracket(container, opts) {
         if (!container) return;
         container.innerHTML = buildBracketHtml(opts);
+        bindStageStickyHeaders(container);
     }
 
     function mountGroupStage(container, opts) {
         if (!container) return;
         container.innerHTML = buildGroupStageHtml(opts);
+        bindStageStickyHeaders(container);
+    }
+
+    /**
+     * Freeze round/group headers while the page scrolls.
+     * Native position:sticky fails here because stage panels use overflow-x:auto
+     * for horizontal swipe — so we simulate sticky with translateY instead.
+     */
+    function bindStageStickyHeaders(root) {
+        if (!root || typeof window === 'undefined') return;
+        if (typeof root._stickyHeadersCleanup === 'function') {
+            root._stickyHeadersCleanup();
+            root._stickyHeadersCleanup = null;
+        }
+
+        const headers = Array.from(
+            root.querySelectorAll('.round-header, .group-column-header')
+        );
+        if (!headers.length) return;
+
+        let ticking = false;
+        function update() {
+            ticking = false;
+            headers.forEach((header) => {
+                const parent = header.parentElement;
+                if (!parent) return;
+                const parentRect = parent.getBoundingClientRect();
+                const headerH = header.offsetHeight || 0;
+                const maxY = Math.max(0, parent.offsetHeight - headerH);
+                let y = 0;
+                if (parentRect.top < 0) {
+                    y = Math.min(-parentRect.top, maxY);
+                }
+                if (y > 0.5) {
+                    header.style.transform = 'translateY(' + Math.round(y) + 'px)';
+                    header.classList.add('is-stuck');
+                } else {
+                    header.style.transform = '';
+                    header.classList.remove('is-stuck');
+                }
+            });
+        }
+
+        function onScrollOrResize() {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(update);
+        }
+
+        window.addEventListener('scroll', onScrollOrResize, { passive: true });
+        window.addEventListener('resize', onScrollOrResize, { passive: true });
+        root.addEventListener('scroll', onScrollOrResize, { passive: true });
+
+        let ro = null;
+        if (typeof ResizeObserver !== 'undefined') {
+            ro = new ResizeObserver(onScrollOrResize);
+            ro.observe(root);
+            headers.forEach((h) => {
+                if (h.parentElement) ro.observe(h.parentElement);
+            });
+        }
+
+        root._stickyHeadersCleanup = function () {
+            window.removeEventListener('scroll', onScrollOrResize);
+            window.removeEventListener('resize', onScrollOrResize);
+            root.removeEventListener('scroll', onScrollOrResize);
+            if (ro) ro.disconnect();
+            headers.forEach((header) => {
+                header.style.transform = '';
+                header.classList.remove('is-stuck');
+            });
+        };
+
+        update();
     }
 
     const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1177,6 +1308,7 @@ window.ArisanBracket = (function () {
         buildMatchCatalog,
         mountBracket,
         mountGroupStage,
+        bindStageStickyHeaders,
         resolveTeamFlagUrl,
         getRoundPlan,
         getFlexibleKnockoutPlan,

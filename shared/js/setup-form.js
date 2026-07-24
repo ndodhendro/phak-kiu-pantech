@@ -176,6 +176,7 @@ window.ArisanSetupForm = (function () {
         groupFixtures: [],
         participants: [],
         matchSchedule: {},
+        fixtureSideSwaps: {},
         scheduleStartDate: '',
         scheduleKickoff: '19:00',
         iconImageUrl: '',
@@ -466,6 +467,8 @@ window.ArisanSetupForm = (function () {
         const groupFixtures = (defs.length && ArisanBracket.fixturesFromGroupDefinitions)
             ? ArisanBracket.fixturesFromGroupDefinitions(defs)
             : (form.groupFixtures || []);
+        // Build without applying index-based swaps so team-pair keys stay stable when
+        // fixture indexes shift (swaps are stored/looked up by pair key in the form).
         const catalog = ArisanBracket.buildMatchCatalog({
             teams: catalogTeams,
             groupDefinitions: defs,
@@ -475,11 +478,221 @@ window.ArisanSetupForm = (function () {
             includeKnockoutStage: form.includeKnockoutStage,
             includeThirdPlace: form.includeThirdPlace,
             twoLegKnockout: form.twoLegKnockout,
+            fixtureSideSwaps: {},
+        }).map(e => {
+            const pk = catalogPairKey(e);
+            const swapped = !!(form.fixtureSideSwaps && form.fixtureSideSwaps[pk]);
+            if (!swapped) return e;
+            return Object.assign({}, e, {
+                label: swapVsLabel(e.label),
+            });
         });
-        return sortScheduleCatalogAscending(catalog);
+        promoteLegacyIdKeysToPairKeys(catalog);
+        return sortScheduleCatalogForSetup(catalog);
     }
 
-    /** Match 1, Match 2, … by round then index (ascending). */
+    function swapVsLabel(label) {
+        const raw = String(label || '');
+        const m = raw.match(/^(.* — )(.+?) vs (.+?)( \(Leg [12]\))?$/);
+        if (!m) return raw;
+        return m[1] + m[3] + ' vs ' + m[2] + (m[4] || '');
+    }
+
+    /**
+     * Stable identity for a catalog match: named team pair (+ group/leg), else match id.
+     * Team order is ignored so home/away swaps do not break the key.
+     */
+    function catalogPairKey(entry) {
+        if (!entry) return '';
+        const a = String(entry.teamA || '').trim();
+        const b = String(entry.teamB || '').trim();
+        const aOk = a && a.toUpperCase() !== 'TBD';
+        const bOk = b && b.toUpperCase() !== 'TBD';
+        const leg = entry.leg ? Number(entry.leg) : 0;
+        if (aOk && bOk) {
+            const la = a.toLowerCase();
+            const lb = b.toLowerCase();
+            const [x, y] = la < lb ? [la, lb] : [lb, la];
+            const g = String(entry.group || '').trim().toLowerCase();
+            return 'teams:' + (g ? g + ':' : '') + x + '|' + y + (leg ? ':L' + leg : '');
+        }
+        return 'id:' + String(entry.id || '');
+    }
+
+    function isPairBindingKey(k) {
+        return /^teams:/.test(String(k || '')) || /^id:/.test(String(k || ''));
+    }
+
+    /**
+     * Convert legacy matchSchedule / swaps / predictions keyed by group-0, r16-0, …
+     * into stable team-pair keys. Safe while catalog ids still match those keys
+     * (on load). Afterwards the form only reads/writes pair keys, so adding teams
+     * cannot attach a schedule to the wrong fixture index.
+     */
+    function promoteLegacyIdKeysToPairKeys(catalog) {
+        const idToPk = new Map();
+        (catalog || []).forEach(e => idToPk.set(e.id, catalogPairKey(e)));
+
+        function promote(obj) {
+            if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return {};
+            let needs = false;
+            Object.keys(obj).forEach(k => {
+                if (!isPairBindingKey(k)) needs = true;
+            });
+            if (!needs) return obj;
+
+            const next = {};
+            Object.keys(obj).forEach(k => {
+                const val = obj[k];
+                if (isPairBindingKey(k)) {
+                    if (!Object.prototype.hasOwnProperty.call(next, k)) next[k] = val;
+                    return;
+                }
+                const pk = idToPk.get(k);
+                if (!pk) return;
+                if (!Object.prototype.hasOwnProperty.call(next, pk)) next[pk] = val;
+            });
+            return next;
+        }
+
+        form.matchSchedule = promote(form.matchSchedule);
+        form.fixtureSideSwaps = promote(form.fixtureSideSwaps);
+        form.participants.forEach(p => {
+            const map = ensureScorePredictPicks(p);
+            p.picks.sideQuest.scorePredict = promote(map);
+        });
+    }
+
+    /** Project pair-keyed form maps back to match ids for DB / league page. */
+    function projectPairBindingsToMatchIds(catalog) {
+        const matchSchedule = {};
+        const fixtureSideSwaps = {};
+        (catalog || []).forEach(e => {
+            const pk = catalogPairKey(e);
+            const sched = form.matchSchedule && (form.matchSchedule[pk] || form.matchSchedule[e.id]);
+            if (sched) matchSchedule[e.id] = sched;
+            if (form.fixtureSideSwaps && (form.fixtureSideSwaps[pk] || form.fixtureSideSwaps[e.id])) {
+                fixtureSideSwaps[e.id] = true;
+            }
+        });
+        return { matchSchedule, fixtureSideSwaps };
+    }
+
+    function scheduleTextForEntry(entry) {
+        if (!entry) return '';
+        const pk = catalogPairKey(entry);
+        return (form.matchSchedule && (form.matchSchedule[pk] || form.matchSchedule[entry.id])) || '';
+    }
+
+    function resetScheduleCatalogSnapshot() {
+        // No-op: pair-key storage does not need a catalog snapshot.
+    }
+
+    function projectScorePredictToMatchIds(catalog, scoreMap) {
+        const out = {};
+        const pkToId = new Map();
+        (catalog || []).forEach(e => pkToId.set(catalogPairKey(e), e.id));
+        Object.keys(scoreMap || {}).forEach(k => {
+            const val = scoreMap[k];
+            if (!val) return;
+            if (isPairBindingKey(k)) {
+                const id = pkToId.get(k);
+                if (id) out[id] = val;
+                return;
+            }
+            if ((catalog || []).some(e => e.id === k)) out[k] = val;
+        });
+        return out;
+    }
+
+    function getPayload() {
+        collectScheduleFromDom();
+        pruneMatchSchedule();
+        collectTeamPointsFromDom();
+        syncTeamPointsWithTeamList();
+        collectScorePredictionsFromDom();
+
+        const catalog = getScheduleCatalog();
+        pruneScorePredictionsToCatalog(catalog.map(e => catalogPairKey(e)));
+        const projected = projectPairBindingsToMatchIds(catalog);
+
+        const pointConfig = normalizePointConfig(form.pointConfig);
+        if (!form.includeThirdPlace) pointConfig.sideQuest.third = 0;
+
+        let groupDefinitions = [];
+        let groupFixtures = [];
+        if (form.includeGroupStage) {
+            groupDefinitions = (form.groupDefinitions || []).map((g, i) => ({
+                label: (g.label || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
+                teams: (g.teams || []).map(t => (t.name || '').trim()).filter(Boolean),
+            })).filter(g => g.teams.length);
+            groupFixtures = (typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions)
+                ? ArisanBracket.fixturesFromGroupDefinitions(groupDefinitions)
+                : [];
+            const swaps = projected.fixtureSideSwaps || {};
+            groupFixtures = groupFixtures.map((f, i) => {
+                if (!swaps['group-' + i]) return f;
+                return Object.assign({}, f, { a: f.b, b: f.a });
+            });
+        }
+
+        const byKey = new Map();
+        function pushTeam(t) {
+            const name = normalizeSeedName(t.name);
+            if (!name) return;
+            const key = name.toLowerCase();
+            if (!byKey.has(key)) byKey.set(key, { name, flag: t.flag || '' });
+            else if (t.flag && !byKey.get(key).flag) byKey.get(key).flag = t.flag;
+        }
+        if (form.includeGroupStage) uniqueTeamsFromGroups(form.groupDefinitions).forEach(pushTeam);
+        const knockoutSeeds = form.includeKnockoutStage
+            ? form.teams.map(t => ({
+                name: normalizeSeedName(t.name),
+                flag: normalizeSeedName(t.name) ? (t.flag || '') : '',
+            }))
+            : [];
+        knockoutSeeds.forEach(pushTeam);
+        const teams = Array.from(byKey.values());
+
+        return {
+            competitionType: form.competitionType,
+            includeGroupStage: form.includeGroupStage,
+            includeKnockoutStage: form.includeKnockoutStage,
+            includeThirdPlace: form.includeThirdPlace,
+            twoLegKnockout: form.twoLegKnockout,
+            pointConfig,
+            matchSchedule: projected.matchSchedule,
+            fixtureSideSwaps: projected.fixtureSideSwaps,
+            scheduleStartDate: form.scheduleStartDate || '',
+            scheduleKickoff: form.scheduleKickoff || '19:00',
+            iconImageUrl: form.iconImageUrl || '',
+            trophyImageUrl: form.trophyImageUrl || '',
+            ballImageUrl: form.ballImageUrl || '',
+            backgroundMusicUrl: form.backgroundMusicUrl || '',
+            teams,
+            knockoutSeeds,
+            groupDefinitions,
+            groupFixtures,
+            participants: form.participants
+                .filter(p => p.name && p.name.trim())
+                .map((p) => {
+                    const copy = Object.assign({}, p, {
+                        picks: Object.assign({}, p.picks || defaultPicks(form.includeThirdPlace)),
+                    });
+                    copy.picks.mainQuest = normalizeMainQuestPicks(copy.picks.mainQuest, {
+                        includeGroupStage: form.includeGroupStage,
+                        includeKnockoutStage: form.includeKnockoutStage,
+                    });
+                    if (copy.picks.sideQuest && copy.picks.sideQuest.scorePredict) {
+                        copy.picks.sideQuest.scorePredict = projectScorePredictToMatchIds(
+                            catalog,
+                            copy.picks.sideQuest.scorePredict
+                        );
+                    }
+                    return copy;
+                }),
+        };
+    }
     function sortScheduleCatalogAscending(catalog) {
         const roundOrder = { group: 0, r32: 1, r16: 2, qf: 3, sf: 4, third: 5, final: 6 };
         function parts(id) {
@@ -518,6 +731,58 @@ window.ArisanSetupForm = (function () {
         });
     }
 
+    function matchScheduleSortMsForEntry(entry) {
+        const text = scheduleTextForEntry(entry);
+        if (!text) return null;
+        const parts = scheduleTextToParts(text);
+        if (!parts.date) return null;
+        const dm = String(parts.date).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const tm = String(parts.time || '00:00').match(/^(\d{1,2}):(\d{2})/);
+        if (!dm || !tm) return null;
+        return Date.UTC(
+            parseInt(dm[1], 10),
+            parseInt(dm[2], 10) - 1,
+            parseInt(dm[3], 10),
+            parseInt(tm[1], 10) - 7,
+            parseInt(tm[2], 10)
+        );
+    }
+
+    /**
+     * Setup schedule list order:
+     * 1) matches without a schedule (stable by round/index)
+     * 2) scheduled matches by closeness to now (nearest date first)
+     */
+    function sortScheduleCatalogForSetup(catalog) {
+        const ordered = sortScheduleCatalogAscending(catalog);
+        const indexOf = new Map(ordered.map((e, i) => [e.id, i]));
+        const now = Date.now();
+
+        return ordered.slice().sort((a, b) => {
+            const msA = matchScheduleSortMsForEntry(a);
+            const msB = matchScheduleSortMsForEntry(b);
+            const hasA = msA != null && Number.isFinite(msA);
+            const hasB = msB != null && Number.isFinite(msB);
+            if (hasA !== hasB) return hasA ? 1 : -1; // unscheduled first
+            if (!hasA && !hasB) {
+                return (indexOf.get(a.id) || 0) - (indexOf.get(b.id) || 0);
+            }
+            const distA = Math.abs(msA - now);
+            const distB = Math.abs(msB - now);
+            if (distA !== distB) return distA - distB;
+            if (msA !== msB) return msA - msB;
+            return (indexOf.get(a.id) || 0) - (indexOf.get(b.id) || 0);
+        });
+    }
+
+    /** Re-render schedule + score predictions after save so newly set dates reorder. */
+    function reorderScheduleSectionsAfterSave() {
+        collectScheduleFromDom();
+        collectScorePredictionsFromDom();
+        renderScheduleSection({ skipCollect: true });
+        renderScorePredictionsSection({ skipCollect: true });
+    }
+
     /** Pull date/time values from the schedule UI into form.matchSchedule. */
     function collectScheduleFromDom() {
         const preview = document.getElementById('schedule-preview');
@@ -530,10 +795,10 @@ window.ArisanSetupForm = (function () {
         // Incomplete teams / empty catalog must NOT wipe schedules — that was wiping
         // playoff times whenever a team name was briefly incomplete during edit.
         if (!catalog.length) return;
-        const valid = new Set(catalog.map(c => c.id));
+        const valid = new Set(catalog.map(c => catalogPairKey(c)));
         const next = {};
-        Object.keys(form.matchSchedule || {}).forEach(id => {
-            if (valid.has(id) && form.matchSchedule[id]) next[id] = form.matchSchedule[id];
+        Object.keys(form.matchSchedule || {}).forEach(k => {
+            if (valid.has(k) && form.matchSchedule[k]) next[k] = form.matchSchedule[k];
         });
         form.matchSchedule = next;
     }
@@ -628,15 +893,15 @@ window.ArisanSetupForm = (function () {
     }
 
     function syncScheduleFromRow(row) {
-        const id = row && row.dataset.matchId;
-        if (!id) return;
+        const key = row && (row.dataset.pairKey || row.dataset.matchId);
+        if (!key) return;
         const dateEl = row.querySelector('[data-schedule-date]');
         const dateVal = dateEl && dateEl.value ? dateEl.value.trim() : '';
         const timeVal = getScheduleTimeFromRow(row);
         const text = dateVal ? partsToScheduleText(dateVal, timeVal) : '';
         if (!form.matchSchedule) form.matchSchedule = {};
-        if (text) form.matchSchedule[id] = text;
-        else delete form.matchSchedule[id];
+        if (text) form.matchSchedule[key] = text;
+        else delete form.matchSchedule[key];
     }
 
     function renderScheduleSection(opts) {
@@ -658,6 +923,7 @@ window.ArisanSetupForm = (function () {
 
         pruneMatchSchedule();
         const catalog = getScheduleCatalog();
+        pruneFixtureSideSwaps(catalog.map(e => catalogPairKey(e)));
         if (!catalog.length) {
             preview.innerHTML = '<p class="hint">Add teams to see match schedule.</p>';
             return;
@@ -675,16 +941,26 @@ window.ArisanSetupForm = (function () {
             const stageLabel = form.includeGroupStage && form.includeKnockoutStage
                 ? 'group and knockout matches'
                 : form.includeGroupStage ? 'group stage matches' : 'knockout matches';
-            scheduleHint.textContent = 'Set kickoff date and time in 24-hour format (WIB) for each ' + stageLabel + '. Leave date blank if not scheduled yet.';
+            scheduleHint.textContent = 'Set kickoff date and time in 24-hour format (WIB) for each ' +
+                stageLabel + '. Leave date blank if not scheduled yet. Use Swap to reverse home/away order (e.g. to match the official schedule). ' +
+                'List order: unscheduled first, then scheduled by nearest date. Order refreshes after Save.';
         }
 
+        const swaps = form.fixtureSideSwaps || {};
         preview.innerHTML = '<ul class="schedule-preview-list">' +
             catalog.map(entry => {
-                const parts = scheduleTextToParts(form.matchSchedule[entry.id] || '');
+                const pk = catalogPairKey(entry);
+                const parts = scheduleTextToParts(scheduleTextForEntry(entry));
                 const timeValue = parts.time || getDefaultScheduleKickoff();
-                return '<li class="schedule-edit-row" data-match-id="' + esc(entry.id) + '">' +
+                const swapped = !!swaps[pk];
+                return '<li class="schedule-edit-row" data-match-id="' + esc(entry.id) +
+                    '" data-pair-key="' + esc(pk) + '">' +
+                    '<div class="schedule-match-main">' +
                     '<strong>' + esc(entry.label) + '</strong>' +
+                    (swapped ? '<span class="schedule-swapped-badge">Swapped</span>' : '') +
+                    '</div>' +
                     '<div class="schedule-edit-inputs">' +
+                    '<button type="button" class="btn btn-secondary btn-sm schedule-swap-btn" data-action="swap-sides" title="Swap home/away order" aria-label="Swap home and away for ' + esc(entry.label) + '">⇄ Swap</button>' +
                     '<input type="date" data-schedule-date value="' + esc(parts.date) + '" aria-label="Date">' +
                     scheduleTimeInputsHtml(timeValue) +
                     '</div></li>';
@@ -697,7 +973,76 @@ window.ArisanSetupForm = (function () {
                 inp.addEventListener('change', onChange);
                 inp.addEventListener('input', onChange);
             });
+            row.querySelector('[data-action="swap-sides"]')?.addEventListener('click', () => {
+                toggleFixtureSideSwap(row.dataset.pairKey || row.dataset.matchId);
+            });
         });
+    }
+
+    function pruneFixtureSideSwaps(catalogKeys) {
+        if (!form.fixtureSideSwaps || typeof form.fixtureSideSwaps !== 'object') {
+            form.fixtureSideSwaps = {};
+            return;
+        }
+        const valid = new Set(catalogKeys || []);
+        Object.keys(form.fixtureSideSwaps).forEach(id => {
+            if (!valid.has(id)) delete form.fixtureSideSwaps[id];
+        });
+    }
+
+    function swapScorePredictionsForMatch(bindingKey) {
+        if (!bindingKey) return;
+        form.participants.forEach(p => {
+            const map = ensureScorePredictPicks(p);
+            const pred = map[bindingKey];
+            if (!pred || typeof pred !== 'object') return;
+            const tmp = pred.a;
+            pred.a = pred.b;
+            pred.b = tmp;
+        });
+    }
+
+    function updateScheduleRowAfterSwap(bindingKey) {
+        const key = String(bindingKey || '').trim();
+        const row = Array.from(
+            document.querySelectorAll('#schedule-preview .schedule-edit-row')
+        ).find(el => (el.dataset.pairKey || el.dataset.matchId) === key);
+        if (!row) {
+            renderScheduleSection({ skipCollect: true });
+            return;
+        }
+        const entry = getScheduleCatalog().find(e => catalogPairKey(e) === key);
+        if (!entry) {
+            renderScheduleSection({ skipCollect: true });
+            return;
+        }
+        const main = row.querySelector('.schedule-match-main');
+        if (!main) {
+            renderScheduleSection({ skipCollect: true });
+            return;
+        }
+        const swapped = !!(form.fixtureSideSwaps && form.fixtureSideSwaps[key]);
+        main.innerHTML = '<strong>' + esc(entry.label) + '</strong>' +
+            (swapped ? '<span class="schedule-swapped-badge">Swapped</span>' : '');
+    }
+
+    function toggleFixtureSideSwap(bindingKey) {
+        const id = String(bindingKey || '').trim();
+        if (!id) return;
+        collectScheduleFromDom();
+        collectScorePredictionsFromDom();
+        if (!form.fixtureSideSwaps || typeof form.fixtureSideSwaps !== 'object') {
+            form.fixtureSideSwaps = {};
+        }
+        if (form.fixtureSideSwaps[id]) delete form.fixtureSideSwaps[id];
+        else form.fixtureSideSwaps[id] = true;
+        swapScorePredictionsForMatch(id);
+
+        const scrollY = window.scrollY || window.pageYOffset || 0;
+        updateScheduleRowAfterSwap(id);
+        renderScorePredictionsSection({ skipCollect: true });
+        window.scrollTo(0, scrollY);
+        requestAnimationFrame(() => window.scrollTo(0, scrollY));
     }
 
     function esc(s) {
@@ -1943,7 +2288,12 @@ window.ArisanSetupForm = (function () {
         bindPreviewControls(el);
         updateCounts();
         if (form.pointConfig.mainQuestMode === 'fifa') renderMainQuestTeamPoints();
-        renderScorePredictionsSection();
+        // Collect while the schedule DOM still matches the previous catalog, then remap
+        // index-based ids onto team pairs and re-render.
+        collectScheduleFromDom();
+        collectScorePredictionsFromDom();
+        renderScheduleSection({ skipCollect: true });
+        renderScorePredictionsSection({ skipCollect: true });
     }
 
     function setClubLookupStatus(nameInp, state, message) {
@@ -2861,8 +3211,8 @@ window.ArisanSetupForm = (function () {
         });
     }
 
-    function pruneScorePredictionsToCatalog(catalogIds) {
-        const valid = new Set(catalogIds || []);
+    function pruneScorePredictionsToCatalog(catalogKeys) {
+        const valid = new Set(catalogKeys || []);
         form.participants.forEach(p => {
             const map = ensureScorePredictPicks(p);
             Object.keys(map).forEach(id => {
@@ -2871,11 +3221,12 @@ window.ArisanSetupForm = (function () {
         });
     }
 
-    function renderScorePredictionsSection() {
+    function renderScorePredictionsSection(opts) {
         const root = document.getElementById('score-predictions-root');
         if (!root) return;
 
-        collectScorePredictionsFromDom();
+        const skipCollect = !!(opts && opts.skipCollect);
+        if (!skipCollect) collectScorePredictionsFromDom();
 
         const catalog = getScheduleCatalog();
         const participants = form.participants.filter(p => (p.name || '').trim());
@@ -2888,7 +3239,7 @@ window.ArisanSetupForm = (function () {
             return;
         }
 
-        pruneScorePredictionsToCatalog(catalog.map(e => e.id));
+        pruneScorePredictionsToCatalog(catalog.map(e => catalogPairKey(e)));
 
         let html = '<div class="score-predict-wrap"><table class="score-predict-table"><thead><tr>' +
             '<th>Match</th>' +
@@ -2896,16 +3247,17 @@ window.ArisanSetupForm = (function () {
             '</tr></thead><tbody>';
 
         catalog.forEach(entry => {
+            const pk = catalogPairKey(entry);
             html += '<tr><td class="sp-match-label" title="' + esc(entry.label) + '">' + esc(entry.label) + '</td>';
             form.participants.forEach((p, pi) => {
                 if (!(p.name || '').trim()) return;
                 const map = ensureScorePredictPicks(p);
-                const pred = map[entry.id] || {};
+                const pred = map[pk] || {};
                 const aVal = pred.a != null ? String(pred.a) : '';
                 const bVal = pred.b != null ? String(pred.b) : '';
                 const hasPred = aVal !== '' || bVal !== '';
                 html += '<td><div class="score-predict-inputs' + (hasPred ? '' : ' is-empty') +
-                    '" data-sp-match="' + esc(entry.id) +
+                    '" data-sp-match="' + esc(pk) +
                     '" data-sp-participant="' + pi + '">' +
                     '<input type="number" min="0" step="1" data-sp="a" value="' + esc(aVal) +
                     '" aria-label="' + esc(p.name) + ' home score for ' + esc(entry.label) + '">' +
@@ -3073,6 +3425,7 @@ window.ArisanSetupForm = (function () {
     }
 
     function newBlankLeague() {
+        resetScheduleCatalogSnapshot();
         form = {
             competitionType: 'country',
             includeGroupStage: false,
@@ -3085,6 +3438,7 @@ window.ArisanSetupForm = (function () {
             groupFixtures: [],
             participants: [],
             matchSchedule: {},
+            fixtureSideSwaps: {},
             scheduleStartDate: '',
             scheduleKickoff: '19:00',
             iconImageUrl: '',
@@ -3137,6 +3491,7 @@ window.ArisanSetupForm = (function () {
     }
 
     function loadFromSetupData(data) {
+        resetScheduleCatalogSnapshot();
         form.competitionType = data.competitionType || 'country';
         form.includeGroupStage = !!data.includeGroupStage;
         form.includeKnockoutStage = data.includeKnockoutStage !== false;
@@ -3144,6 +3499,9 @@ window.ArisanSetupForm = (function () {
         form.twoLegKnockout = !!data.twoLegKnockout;
         form.pointConfig = normalizePointConfig(data.pointConfig);
         form.matchSchedule = data.matchSchedule || {};
+        form.fixtureSideSwaps = (data.fixtureSideSwaps && typeof data.fixtureSideSwaps === 'object')
+            ? Object.assign({}, data.fixtureSideSwaps)
+            : {};
         form.scheduleStartDate = data.scheduleStartDate || '';
         form.scheduleKickoff = data.scheduleKickoff || '19:00';
         form.iconImageUrl = data.iconImageUrl || '';
@@ -3211,80 +3569,6 @@ window.ArisanSetupForm = (function () {
         renderAll({ skipCollect: true });
         // Load league data is a user gesture — fill URL and autoplay preview.
         syncBackgroundMusicFieldFromForm();
-    }
-
-    function getPayload() {
-        collectScheduleFromDom();
-        pruneMatchSchedule();
-        collectTeamPointsFromDom();
-        syncTeamPointsWithTeamList();
-        collectScorePredictionsFromDom();
-        pruneScorePredictionsToCatalog(getScheduleCatalog().map(e => e.id));
-
-        const pointConfig = normalizePointConfig(form.pointConfig);
-        if (!form.includeThirdPlace) pointConfig.sideQuest.third = 0;
-
-        let groupDefinitions = [];
-        let groupFixtures = [];
-        if (form.includeGroupStage) {
-            groupDefinitions = (form.groupDefinitions || []).map((g, i) => ({
-                label: (g.label || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
-                teams: (g.teams || []).map(t => (t.name || '').trim()).filter(Boolean),
-            })).filter(g => g.teams.length);
-            groupFixtures = (typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions)
-                ? ArisanBracket.fixturesFromGroupDefinitions(groupDefinitions)
-                : [];
-        }
-
-        const byKey = new Map();
-        function pushTeam(t) {
-            const name = normalizeSeedName(t.name);
-            if (!name) return;
-            const key = name.toLowerCase();
-            if (!byKey.has(key)) byKey.set(key, { name, flag: t.flag || '' });
-            else if (t.flag && !byKey.get(key).flag) byKey.get(key).flag = t.flag;
-        }
-        if (form.includeGroupStage) uniqueTeamsFromGroups(form.groupDefinitions).forEach(pushTeam);
-        const knockoutSeeds = form.includeKnockoutStage
-            ? form.teams.map(t => ({
-                name: normalizeSeedName(t.name),
-                flag: normalizeSeedName(t.name) ? (t.flag || '') : '',
-            }))
-            : [];
-        knockoutSeeds.forEach(pushTeam);
-        const teams = Array.from(byKey.values());
-
-        return {
-            competitionType: form.competitionType,
-            includeGroupStage: form.includeGroupStage,
-            includeKnockoutStage: form.includeKnockoutStage,
-            includeThirdPlace: form.includeThirdPlace,
-            twoLegKnockout: form.twoLegKnockout,
-            pointConfig,
-            matchSchedule: JSON.parse(JSON.stringify(form.matchSchedule || {})),
-            scheduleStartDate: form.scheduleStartDate || '',
-            scheduleKickoff: form.scheduleKickoff || '19:00',
-            iconImageUrl: form.iconImageUrl || '',
-            trophyImageUrl: form.trophyImageUrl || '',
-            ballImageUrl: form.ballImageUrl || '',
-            backgroundMusicUrl: form.backgroundMusicUrl || '',
-            teams,
-            knockoutSeeds,
-            groupDefinitions,
-            groupFixtures,
-            participants: form.participants
-                .filter(p => p.name && p.name.trim())
-                .map((p) => {
-                    const copy = Object.assign({}, p, {
-                        picks: Object.assign({}, p.picks || defaultPicks(form.includeThirdPlace)),
-                    });
-                    copy.picks.mainQuest = normalizeMainQuestPicks(copy.picks.mainQuest, {
-                        includeGroupStage: form.includeGroupStage,
-                        includeKnockoutStage: form.includeKnockoutStage,
-                    });
-                    return copy;
-                }),
-        };
     }
 
     function bindLeagueMeta() {
@@ -3359,6 +3643,7 @@ window.ArisanSetupForm = (function () {
         teamPairsFromFixtures,
         isTeamsSectionComplete,
         renderScheduleSection,
+        reorderScheduleSectionsAfterSave,
     };
 })();
 

@@ -459,10 +459,29 @@
             font-size: 0.82rem;
         }
         .schedule-preview-list li:last-child { border-bottom: none; }
+        .schedule-match-main {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
         .schedule-preview-list li strong {
             font-weight: 600;
             color: #eaeaea;
             line-height: 1.35;
+        }
+        .schedule-swapped-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #7ec8f0;
+            background: rgba(126, 200, 240, 0.12);
+            border: 1px solid rgba(126, 200, 240, 0.35);
+            border-radius: 999px;
+            padding: 2px 7px;
         }
         .schedule-edit-inputs {
             display: flex;
@@ -470,6 +489,9 @@
             gap: 8px;
             justify-content: flex-end;
             align-items: center;
+        }
+        .schedule-swap-btn {
+            white-space: nowrap;
         }
         .schedule-edit-inputs input[type="date"] {
             width: auto;
@@ -1170,6 +1192,7 @@
                     twoLegKnockout: payload.twoLegKnockout,
                     pointConfig: payload.pointConfig,
                     matchSchedule: payload.matchSchedule,
+                    fixtureSideSwaps: payload.fixtureSideSwaps || {},
                     scheduleStartDate: payload.scheduleStartDate,
                     scheduleKickoff: payload.scheduleKickoff,
                     trophyImageUrl: payload.trophyImageUrl,
@@ -1183,6 +1206,7 @@
                     groupFixtures: payload.groupFixtures || [],
                 });
                 const openUrl = ArisanLeagueContext.leagueUrl(communitySlug, leagueSlug);
+                ArisanSetupForm.reorderScheduleSectionsAfterSave();
                 setStatus('Setup saved. Open league: ' + openUrl);
             } catch (e) {
                 setStatus('Save failed: ' + e.message, true);

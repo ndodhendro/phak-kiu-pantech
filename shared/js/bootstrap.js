@@ -387,6 +387,7 @@ function mountDynamicBracket() {
         trophyImageUrl: d.trophyImageUrl || '',
         groupFixtures: d.groupFixtures || [],
         groupDefinitions: d.groupDefinitions || [],
+        fixtureSideSwaps: d.fixtureSideSwaps || {},
         matchSchedule: d.matchSchedule || {},
         leagueYear: d.year,
     };

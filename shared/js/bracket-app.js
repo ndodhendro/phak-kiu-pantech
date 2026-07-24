@@ -648,6 +648,37 @@
             });
         }
 
+        function matchupTeamFlagSrc(matchup, teamIndex) {
+            const teams = matchup.querySelectorAll(':scope > .team');
+            const img = teams[teamIndex]?.querySelector('.team-flag img, .flag-wave img');
+            if (img && img.getAttribute('src')) return img.getAttribute('src');
+            const name = teams[teamIndex]?.querySelector('.team-name')?.textContent.trim();
+            if (!name || name === 'TBD') return '';
+            if (typeof ArisanCountries !== 'undefined' && ArisanCountries.getFlagUrl) {
+                return ArisanCountries.getFlagUrl(name) || '';
+            }
+            return '';
+        }
+
+        function appendPredictFlag(container, flagSrc, teamName) {
+            if (!container) return;
+            const wrap = document.createElement('span');
+            wrap.className = 'score-predict-flag';
+            wrap.title = teamName || '';
+            if (flagSrc) {
+                const img = document.createElement('img');
+                img.src = flagSrc;
+                img.alt = teamName ? (teamName.slice(0, 3).toUpperCase()) : '';
+                img.decoding = 'async';
+                img.loading = 'lazy';
+                wrap.appendChild(img);
+            } else {
+                wrap.classList.add('is-empty');
+                wrap.textContent = teamName ? teamName.slice(0, 3).toUpperCase() : '—';
+            }
+            container.appendChild(wrap);
+        }
+
         function fillScorePredictPanel(panel, matchup, sortedPreds, hasResult, actualA, actualB, teamA, teamB) {
             if (!panel || panel.dataset.filled === '1') return;
             panel.dataset.filled = '1';
@@ -658,6 +689,9 @@
             } else {
                 inner.replaceChildren();
             }
+
+            const flagA = matchupTeamFlagSrc(matchup, 0);
+            const flagB = matchupTeamFlagSrc(matchup, 1);
 
             sortedPreds.forEach(pred => {
                 const item = document.createElement('div');
@@ -681,11 +715,13 @@
 
                 const right = document.createElement('div');
                 right.className = 'score-predict-right';
+                appendPredictFlag(right, flagA, teamA);
                 const scoreEl = document.createElement('span');
                 scoreEl.className = 'score-predict-score';
                 scoreEl.textContent = pred.a + ' - ' + pred.b;
                 scoreEl.title = teamA + ' ' + pred.a + ' - ' + pred.b + ' ' + teamB;
                 right.appendChild(scoreEl);
+                appendPredictFlag(right, flagB, teamB);
 
                 if (hasResult) {
                     const badge = document.createElement('span');

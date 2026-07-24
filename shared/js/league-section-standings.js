@@ -152,6 +152,71 @@ Core.updateStandingsPoints = function updateStandingsPoints() {
         }
     });
 };
+Core.closeParticipantAvatarPopup = function closeParticipantAvatarPopup() {
+    if (Core._avatarPopupKeyHandler) {
+        document.removeEventListener('keydown', Core._avatarPopupKeyHandler);
+        Core._avatarPopupKeyHandler = null;
+    }
+    if (Core._avatarPopupEl) {
+        Core._avatarPopupEl.remove();
+        Core._avatarPopupEl = null;
+    }
+};
+Core.openParticipantAvatarPopup = function openParticipantAvatarPopup(name) {
+    const participant = String(name || '').trim();
+    if (!participant) return;
+
+    Core.closeParticipantAvatarPopup();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'participant-avatar-popup';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', participant);
+
+    const panel = document.createElement('div');
+    panel.className = 'participant-avatar-popup-panel';
+
+    const img = document.createElement('img');
+    img.className = 'participant-avatar-popup-img';
+    Core.applyParticipantAvatar(img, participant);
+
+    const caption = document.createElement('div');
+    caption.className = 'participant-avatar-popup-name';
+    caption.textContent = participant;
+
+    panel.appendChild(img);
+    panel.appendChild(caption);
+    overlay.appendChild(panel);
+
+    overlay.addEventListener('click', function (e) {
+        if (e.target === overlay || e.target === panel || e.target === img || e.target === caption) {
+            Core.closeParticipantAvatarPopup();
+        }
+    });
+
+    Core._avatarPopupKeyHandler = function (e) {
+        if (e.key === 'Escape') Core.closeParticipantAvatarPopup();
+    };
+    document.addEventListener('keydown', Core._avatarPopupKeyHandler);
+
+    Core._avatarPopupEl = overlay;
+    document.body.appendChild(overlay);
+};
+Core.bindStandingsAvatarClicks = function bindStandingsAvatarClicks() {
+    const chart = document.querySelector('#standings-points-chart')
+        || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
+    if (!chart || chart.dataset.avatarPopupBound === '1') return;
+    chart.dataset.avatarPopupBound = '1';
+    chart.addEventListener('click', function (e) {
+        const hit = e.target.closest('.chart-avatar, .chart-name, .chart-bar, .chart-bar-wrapper');
+        if (!hit || !chart.contains(hit)) return;
+        const row = hit.closest('.chart-row');
+        if (!row) return;
+        const name = row.querySelector('.chart-name')?.textContent.trim();
+        if (name) Core.openParticipantAvatarPopup(name);
+    });
+};
 Core.updateStandingsChart = function updateStandingsChart() {
     Core.updateStandingsPoints();
 
@@ -204,6 +269,7 @@ Core.updateStandingsChart = function updateStandingsChart() {
             : 0;
         Core.slideDimension(bar, 'width', pct + '%');
     });
+    Core.bindStandingsAvatarClicks();
     if (typeof Core.observeAnimPauseTargets === 'function') Core.observeAnimPauseTargets(chart);
 };
 })(window.ArisanLeagueApp);

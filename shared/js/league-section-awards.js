@@ -371,8 +371,11 @@ Core.buildGoldenBootChart = function buildGoldenBootChart() {
 Core.calculateCurrentGoalFromBracket = function calculateCurrentGoalFromBracket() {
     let total = 0;
 
-    document.querySelectorAll('.bracket .matchup.finished, .bracket .matchup.live').forEach(matchup => {
-        // Perebutan juara 3 tidak masuk current goal
+    // Group stage + knockout (FT+ET). Third-place playoff excluded.
+    document.querySelectorAll(
+        '.group-stage .matchup.finished, .group-stage .matchup.live, ' +
+        '.bracket .matchup.finished, .bracket .matchup.live'
+    ).forEach(matchup => {
         if (Core.isThirdPlaceMatchup(matchup)) return;
 
         matchup.querySelectorAll('.team-score').forEach(scoreEl => {
@@ -415,6 +418,33 @@ Core.getClosestTotalGoalParticipant = function getClosestTotalGoalParticipant(cu
     );
     return closest[0] || '';
 };
+Core.resolveTotalGoalTrackHeight = function resolveTotalGoalTrackHeight(sorted, startValue, endValue) {
+    // Scale the bar taller so every card can sit beside the track (L/R only).
+    // Prefer a long page over deep tree columns that need a div horizontal scrollbar.
+    const TG_MIN_GAP = 36;
+    const minH = 320;
+    const range = Math.max(1, (endValue - startValue));
+    const left = [];
+    const right = [];
+    (sorted || []).forEach(function (p, i) {
+        (i % 2 !== 0 ? left : right).push(p);
+    });
+
+    function needForSide(arr) {
+        let h = Math.max(0, arr.length - 1) * TG_MIN_GAP + 48;
+        for (let i = 1; i < arr.length; i++) {
+            const dg = arr[i].goal - arr[i - 1].goal;
+            if (dg > 0) {
+                h = Math.max(h, (TG_MIN_GAP * range) / dg);
+            } else {
+                h = Math.max(h, arr.length * TG_MIN_GAP);
+            }
+        }
+        return h;
+    }
+
+    return Math.ceil(Math.max(minH, needForSide(left), needForSide(right)));
+};
 Core.buildTotalGoalBar = function buildTotalGoalBar() {
     const container = document.getElementById('total-goal-bar');
     if (!container) return;
@@ -424,21 +454,47 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
     const currentGoal = Core.calculateCurrentGoalFromBracket();
     const endValue = Core.getTotalGoalBarEndValue(currentGoal);
     const finalResolved = Core.isFinalResolved();
-    const trackHeight = 500; // Total height of the track in px
+    const sorted = [...(Core.totalGoalData || [])].sort((a, b) => a.goal - b.goal);
 
-    // Adjustable spacing offsets (in px from calculated position)
-    // Positive = move down, Negative = move up
-    const markerOffsets = {
-        'Marten': 0,    // 57 goals
-        'Davin': 0,     // 71 goals
-        'Willy': 0,     // 81 goals
-        'Ndod': 0,      // 82 goals
-        'Khuang': 0,    // 88 goals
-        'Wesly': 0,     // 93 goals
-        'Cham': 0       // 117 goals
-    };
+    const TG_MIN_GAP = 36;
+    const TG_STUB = 10;
+    const TG_CARD_PAD = 100;
 
-    // Match standings points bar colors
+    // Pass 1: place every card beside the bar (L/R), grow height instead of deep columns.
+    let trackHeight = Core.resolveTotalGoalTrackHeight(sorted, startValue, endValue);
+    const placements = sorted.map(function (p, index) {
+        const preferLeft = index % 2 !== 0;
+        const pct = ((p.goal - startValue) / (endValue - startValue));
+        return {
+            name: p.name,
+            goal: p.goal,
+            index: index,
+            side: preferLeft ? 'left' : 'right',
+            top: pct * trackHeight,
+            zoneFrom: index === 0
+                ? startValue
+                : (sorted[index - 1].goal + p.goal) / 2,
+            zoneTo: index === sorted.length - 1
+                ? endValue
+                : (p.goal + sorted[index + 1].goal) / 2,
+        };
+    });
+
+    ['left', 'right'].forEach(function (side) {
+        const list = placements.filter(function (p) { return p.side === side; })
+            .sort(function (a, b) { return a.top - b.top || a.index - b.index; });
+        for (let i = 1; i < list.length; i++) {
+            const minTop = list[i - 1].top + TG_MIN_GAP;
+            if (list[i].top < minTop) list[i].top = minTop;
+        }
+        if (list.length) {
+            trackHeight = Math.max(
+                trackHeight,
+                Math.ceil(list[list.length - 1].top + TG_MIN_GAP / 2)
+            );
+        }
+    });
+
     const participantColors = (window.LEAGUE_DATA && window.LEAGUE_DATA.participantColors) || {
         'Davin': '#3498db',
         'Ndod': '#2ecc71',
@@ -449,22 +505,19 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
         'Wesly': '#00bcd4'
     };
 
-    // Create vertical structure
     const vertical = document.createElement('div');
     vertical.className = 'total-goal-vertical';
+    vertical.style.setProperty('--tg-branch-pad', (TG_STUB + TG_CARD_PAD) + 'px');
 
     const track = document.createElement('div');
     track.className = 'total-goal-track-v';
     track.style.height = trackHeight + 'px';
 
-    const goalToPx = (goal) =>
-        ((goal - startValue) / (endValue - startValue)) * trackHeight;
+    const goalToPx = function (goal) {
+        return ((goal - startValue) / (endValue - startValue)) * trackHeight;
+    };
 
-    const sorted = [...totalGoalData].sort((a, b) => a.goal - b.goal);
-
-    // Wilayah di atas currentGoal: tiap segmen midpoint antar prediksi
-    // diwarnai sesuai warna peserta arisan
-    sorted.forEach((p, index) => {
+    sorted.forEach(function (p, index) {
         const from = index === 0
             ? startValue
             : (sorted[index - 1].goal + p.goal) / 2;
@@ -484,38 +537,34 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
         track.appendChild(zone);
     });
 
-    // Fill to current goal position (heatmap gradient maps to full track height)
     const currentPct = ((currentGoal - startValue) / (endValue - startValue)) * 100;
+    const currentTop = goalToPx(currentGoal);
     const fill = document.createElement('div');
     fill.className = 'total-goal-fill-v';
     fill.style.height = '0%';
     fill.style.setProperty('--tg-track-px', trackHeight + 'px');
     track.appendChild(fill);
 
-    // End label
-    const endLabel = document.createElement('span');
-    endLabel.className = 'total-goal-end-label';
-    endLabel.textContent = endValue;
-    track.appendChild(endLabel);
-
-    // Current goal indicator (slides + counts with fill)
-    const currentTop = ((currentGoal - startValue) / (endValue - startValue)) * trackHeight;
     const currentIndicator = document.createElement('div');
     currentIndicator.className = 'total-goal-current-indicator';
     currentIndicator.style.top = '0px';
+    currentIndicator.setAttribute('title', 'Current goal');
 
     const countEl = document.createElement('span');
     countEl.className = 'total-goal-current-count';
     countEl.textContent = '0';
     currentIndicator.appendChild(countEl);
 
-    const currentLine = document.createElement('div');
-    currentIndicator.appendChild(currentLine);
-
-    const currentLabel = document.createElement('span');
-    currentLabel.className = 'total-goal-current-label-v';
-    currentLabel.textContent = '';
-    currentIndicator.appendChild(currentLabel);
+    const ballImg = document.createElement('img');
+    ballImg.className = 'total-goal-current-ball';
+    ballImg.setAttribute('data-league-ball', '');
+    ballImg.alt = 'Current goal';
+    ballImg.decoding = 'async';
+    ballImg.referrerPolicy = 'no-referrer';
+    ballImg.src = typeof Core.getBallImageUrl === 'function'
+        ? Core.getBallImageUrl()
+        : '';
+    currentIndicator.appendChild(ballImg);
 
     track.appendChild(currentIndicator);
 
@@ -526,55 +575,48 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
     fill.dataset.tgTop = String(currentTop);
     fill.dataset.tgCountTo = String(currentGoal);
 
-    // Sebelum Final: eliminasi progresif bila skor aktual keluar dari wilayah peserta.
-    // Setelah Final: hanya peserta terdekat (glowing) yang tersisa; sisanya eliminated.
-    // Glow bergantian mengikuti nilai current goal selama sliding.
-    sorted.forEach((p, index) => {
-        const zoneFrom = index === 0
-            ? startValue
-            : (sorted[index - 1].goal + p.goal) / 2;
-        const zoneTo = index === sorted.length - 1
-            ? endValue
-            : (p.goal + sorted[index + 1].goal) / 2;
-
-        const pct = ((p.goal - startValue) / (endValue - startValue));
-        const baseTop = pct * trackHeight;
-        const offset = markerOffsets[p.name] || 0;
-        const finalTop = baseTop + offset;
-
+    placements.forEach(function (slot) {
         const marker = document.createElement('div');
         marker.className = 'total-goal-marker-v';
-        marker.style.top = finalTop + 'px';
-
-        // Index ganjil di kiri, selain itu di kanan
-        if (index % 2 !== 0) {
+        marker.style.top = slot.top + 'px';
+        marker.classList.toggle('is-left', slot.side === 'left');
+        marker.classList.toggle('is-right', slot.side === 'right');
+        marker.dataset.tgSide = slot.side;
+        marker.dataset.tgDepth = '0';
+        marker.style.zIndex = '20';
+        if (slot.side === 'left') {
+            marker.style.left = 'auto';
+            marker.style.right = 'calc(100% + ' + TG_STUB + 'px)';
+            marker.style.flexDirection = 'row-reverse';
+        } else {
             marker.style.right = 'auto';
-            marker.style.left = '10px';
+            marker.style.left = 'calc(100% + ' + TG_STUB + 'px)';
             marker.style.flexDirection = 'row';
         }
 
         const line = document.createElement('div');
         line.className = 'total-goal-marker-line-v';
-        line.style.background = participantColors[p.name] || '#555';
+        line.style.background = participantColors[slot.name] || '#555';
+        line.style.width = TG_STUB + 'px';
 
         const info = document.createElement('div');
         info.className = 'total-goal-marker-info';
-        const color = participantColors[p.name] || '#555';
+        const color = participantColors[slot.name] || '#555';
         info.style.borderColor = color;
         info.style.setProperty('--glow-color', color);
 
         const avatar = document.createElement('img');
         avatar.className = 'total-goal-marker-avatar-v';
-        Core.applyParticipantAvatar(avatar, p.name);
+        Core.applyParticipantAvatar(avatar, slot.name);
         avatar.style.borderColor = color;
 
         const name = document.createElement('span');
         name.className = 'total-goal-marker-name-v';
-        name.textContent = p.name;
+        name.textContent = slot.name;
 
         const value = document.createElement('span');
         value.className = 'total-goal-marker-value-v';
-        value.textContent = p.goal;
+        value.textContent = slot.goal;
         value.style.color = color;
 
         info.appendChild(avatar);
@@ -585,10 +627,10 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
         track.appendChild(marker);
 
         fill._tgMarkers.push({
-            name: p.name,
-            goal: p.goal,
-            zoneFrom: zoneFrom,
-            zoneTo: zoneTo,
+            name: slot.name,
+            goal: slot.goal,
+            zoneFrom: slot.zoneFrom,
+            zoneTo: slot.zoneTo,
             marker: marker,
             info: info,
         });

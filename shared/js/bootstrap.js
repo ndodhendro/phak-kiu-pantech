@@ -245,11 +245,19 @@ function hasAnyMainQuestPotPick(rows, potKey) {
 function buildOneMainQuestTableHtml(rows, potKey, avatars) {
     const potsList = (row) => row[potKey] || row.pots || [];
     const maxPots = Math.max(...rows.map(r => potsList(r).length), 1);
+    const potHasSecond = [];
+    for (let i = 0; i < maxPots; i++) {
+        potHasSecond[i] = rows.some(row => {
+            const pot = potsList(row)[i] || [];
+            return String(pot[1] || '').trim() !== '';
+        });
+    }
 
     let thead = '<tr><th class="participant-col">Participant</th>';
     for (let i = 0; i < maxPots; i++) {
         const potClass = 'pot' + (i < 8 ? i + 1 : 8);
-        thead += '<th class="' + potClass + '" colspan="2">Pot ' + (i + 1) + '</th>';
+        const span = potHasSecond[i] ? 2 : 1;
+        thead += '<th class="' + potClass + '" colspan="' + span + '">Pot ' + (i + 1) + '</th>';
     }
     thead += '</tr>';
 
@@ -264,8 +272,21 @@ function buildOneMainQuestTableHtml(rows, potKey, avatars) {
         for (let i = 0; i < maxPots; i++) {
             const pot = potsList(row)[i] || ['', ''];
             const potClass = 'pot' + (i < 8 ? i + 1 : 8);
-            tr += '<td class="' + potClass + ' mq-pot-cell mq-pot-a">' + escHtml(pot[0]) + '</td>';
-            tr += '<td class="' + potClass + ' mq-pot-cell mq-pot-b">' + escHtml(pot[1]) + '</td>';
+            const pickA = String(pot[0] || '').trim();
+            const pickB = String(pot[1] || '').trim();
+
+            if (!potHasSecond[i]) {
+                tr += '<td class="' + potClass + ' mq-pot-cell mq-pot-solo">' + escHtml(pickA) + '</td>';
+                continue;
+            }
+
+            tr += '<td class="' + potClass + ' mq-pot-cell mq-pot-a' +
+                (pickB ? ' mq-has-pair' : '') + '">' + escHtml(pickA) + '</td>';
+            if (pickB) {
+                tr += '<td class="' + potClass + ' mq-pot-cell mq-pot-b">' + escHtml(pickB) + '</td>';
+            } else {
+                tr += '<td class="' + potClass + ' mq-pot-cell mq-pot-b mq-pot-empty" aria-hidden="true"></td>';
+            }
         }
         tr += '</tr>';
         return tr;
@@ -360,6 +381,10 @@ function buildStandingsChartFromParticipants() {
             '</div></div>' +
             '</div>';
     }).join('');
+
+    if (typeof bindStandingsAvatarClicks === 'function') {
+        bindStandingsAvatarClicks();
+    }
 }
 
 function getBracketMountOpts() {

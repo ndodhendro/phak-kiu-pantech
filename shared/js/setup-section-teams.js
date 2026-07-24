@@ -246,6 +246,46 @@
         else delete Core.form.matchSchedule[key];
     }
 
+    Core.isGroupScheduleEntry = function isGroupScheduleEntry(entry) {
+        return String(entry && entry.id || '').toLowerCase().startsWith('group-');
+    }
+
+    Core.renderScheduleRowsHtml = function renderScheduleRowsHtml(catalog) {
+        const swaps = Core.form.fixtureSideSwaps || {};
+        return '<ul class="schedule-preview-list">' +
+            catalog.map(entry => {
+                const pk = Core.catalogPairKey(entry);
+                const parts = Core.scheduleTextToParts(Core.scheduleTextForEntry(entry));
+                const timeValue = parts.time || Core.getDefaultScheduleKickoff();
+                const swapped = !!swaps[pk];
+                return '<li class="schedule-edit-row" data-match-id="' + Core.esc(entry.id) +
+                    '" data-pair-key="' + Core.esc(pk) + '">' +
+                    '<div class="schedule-match-main">' +
+                    '<strong>' + Core.esc(entry.label) + '</strong>' +
+                    (swapped ? '<span class="schedule-swapped-badge">Swapped</span>' : '') +
+                    '</div>' +
+                    '<div class="schedule-edit-inputs">' +
+                    '<button type="button" class="btn btn-secondary btn-sm schedule-swap-btn" data-action="swap-sides" title="Swap home/away order" aria-label="Swap home and away for ' + Core.esc(entry.label) + '">⇄ Swap</button>' +
+                    '<input type="date" data-schedule-date value="' + Core.esc(parts.date) + '" aria-label="Date">' +
+                    Core.scheduleTimeInputsHtml(timeValue) +
+                    '</div></li>';
+            }).join('') +
+            '</ul>';
+    }
+
+    Core.bindScheduleStagePanels = function bindScheduleStagePanels(root) {
+        if (!root) return;
+        root.querySelectorAll('.stage-panel[data-stage]').forEach(panel => {
+            const key = panel.dataset.stage;
+            panel.querySelector('.stage-panel-toggle')?.addEventListener('click', () => {
+                const open = panel.classList.toggle('is-open');
+                Core.stageOpenState[key] = open;
+                const btn = panel.querySelector('.stage-panel-toggle');
+                if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        });
+    }
+
     Core.renderScheduleSection = function renderScheduleSection(opts) {
         const skipCollect = !!(opts && opts.skipCollect);
         const section = document.getElementById('schedule-section');
@@ -274,40 +314,35 @@
         const scheduleTitle = document.getElementById('schedule-section-title');
         const scheduleHint = document.getElementById('schedule-section-hint');
         if (scheduleTitle) {
-            const parts = [];
-            if (Core.form.includeGroupStage) parts.push('Group Stage');
-            if (Core.form.includeKnockoutStage) parts.push('Knockout');
-            scheduleTitle.textContent = parts.join(' & ') + ' Schedule';
+            scheduleTitle.textContent = 'Match Schedule';
         }
         if (scheduleHint) {
-            const stageLabel = Core.form.includeGroupStage && Core.form.includeKnockoutStage
-                ? 'group and knockout matches'
-                : Core.form.includeGroupStage ? 'group stage matches' : 'knockout matches';
-            scheduleHint.textContent = 'Set kickoff date and time in 24-hour format (WIB) for each ' +
-                stageLabel + '. Leave date blank if not scheduled yet. Use Swap to reverse home/away order (e.g. to match the official schedule). ' +
+            scheduleHint.textContent = 'Set kickoff date and time in 24-hour format (WIB). Leave date blank if not scheduled yet. Use Swap to reverse home/away order. ' +
                 'List order: unscheduled first, then scheduled by nearest date. Order refreshes after Save.';
         }
 
-        const swaps = Core.form.fixtureSideSwaps || {};
-        preview.innerHTML = '<ul class="schedule-preview-list">' +
-            catalog.map(entry => {
-                const pk = Core.catalogPairKey(entry);
-                const parts = Core.scheduleTextToParts(Core.scheduleTextForEntry(entry));
-                const timeValue = parts.time || Core.getDefaultScheduleKickoff();
-                const swapped = !!swaps[pk];
-                return '<li class="schedule-edit-row" data-match-id="' + Core.esc(entry.id) +
-                    '" data-pair-key="' + Core.esc(pk) + '">' +
-                    '<div class="schedule-match-main">' +
-                    '<strong>' + Core.esc(entry.label) + '</strong>' +
-                    (swapped ? '<span class="schedule-swapped-badge">Swapped</span>' : '') +
-                    '</div>' +
-                    '<div class="schedule-edit-inputs">' +
-                    '<button type="button" class="btn btn-secondary btn-sm schedule-swap-btn" data-action="swap-sides" title="Swap home/away order" aria-label="Swap home and away for ' + Core.esc(entry.label) + '">⇄ Swap</button>' +
-                    '<input type="date" data-schedule-date value="' + Core.esc(parts.date) + '" aria-label="Date">' +
-                    Core.scheduleTimeInputsHtml(timeValue) +
-                    '</div></li>';
-            }).join('') +
-            '</ul>';
+        const groupEntries = catalog.filter(Core.isGroupScheduleEntry);
+        const knockoutEntries = catalog.filter(e => !Core.isGroupScheduleEntry(e));
+        let html = '';
+        if (Core.form.includeGroupStage && groupEntries.length) {
+            html += Core.stagePanelShell(
+                'schedule-group',
+                'Group Stage Schedule',
+                Core.renderScheduleRowsHtml(groupEntries)
+            );
+        }
+        if (Core.form.includeKnockoutStage && knockoutEntries.length) {
+            html += Core.stagePanelShell(
+                'schedule-knockout',
+                'Knockout Schedule',
+                Core.renderScheduleRowsHtml(knockoutEntries)
+            );
+        }
+        if (!html) {
+            html = Core.renderScheduleRowsHtml(catalog);
+        }
+        preview.innerHTML = html;
+        Core.bindScheduleStagePanels(preview);
 
         preview.querySelectorAll('.schedule-edit-row').forEach(row => {
             const onChange = () => Core.syncScheduleFromRow(row);

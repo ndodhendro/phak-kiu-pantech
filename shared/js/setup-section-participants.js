@@ -175,7 +175,9 @@
         if (names.length) {
             list.innerHTML = names.map(n => '<option value="' + Core.esc(n) + '">').join('');
         } else {
-            const countries = window.ArisanCountries || [];
+            const countries = (window.ArisanCountries || []).slice().sort((a, b) =>
+                String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+            );
             list.innerHTML = countries.map(c => '<option value="' + Core.esc(c.name) + '">').join('');
         }
     }

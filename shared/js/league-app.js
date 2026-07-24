@@ -176,6 +176,9 @@
     window.calculateStandingsPointsFromBracket = function () { return Core.calculateStandingsPointsFromBracket.apply(Core, arguments); };
     window.updateStandingsPoints = function () { return Core.updateStandingsPoints.apply(Core, arguments); };
     window.updateStandingsChart = function () { return Core.updateStandingsChart.apply(Core, arguments); };
+    window.openParticipantAvatarPopup = function () { return Core.openParticipantAvatarPopup.apply(Core, arguments); };
+    window.closeParticipantAvatarPopup = function () { return Core.closeParticipantAvatarPopup.apply(Core, arguments); };
+    window.bindStandingsAvatarClicks = function () { return Core.bindStandingsAvatarClicks.apply(Core, arguments); };
     window.unlockSplashScroll = function () { return Core.unlockSplashScroll.apply(Core, arguments); };
     window.lockSplashScroll = function () { return Core.lockSplashScroll.apply(Core, arguments); };
     window.enterSite = function () { return Core.enterSite.apply(Core, arguments); };

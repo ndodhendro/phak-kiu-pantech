@@ -282,7 +282,9 @@ Core.updateMainQuestEliminatedStatus = function updateMainQuestEliminatedStatus(
         const allowPodiumMedals = stage === 'knockout' || stage === 'legacy' || !stage;
 
         table.querySelectorAll('tbody td.mq-pot-cell').forEach(cell => {
+            if (cell.classList.contains('mq-pot-empty')) return;
             const teamName = cell.textContent.trim();
+            if (!teamName) return;
             const isPot1 = cell.classList.contains('pot1');
             cell.classList.remove(...statusClasses);
 

@@ -303,14 +303,17 @@
             font-size: 0.82rem;
         }
         .score-predict-wrap {
-            overflow-x: auto;
+            overflow: auto;
+            max-height: min(70vh, 640px);
             border: 1px solid #2a2a5a;
             border-radius: 8px;
             background: #0f0f23;
+            -webkit-overflow-scrolling: touch;
         }
         .score-predict-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 0.78rem;
             min-width: 640px;
         }
@@ -321,7 +324,7 @@
             text-align: left;
             vertical-align: middle;
         }
-        .score-predict-table th {
+        .score-predict-table thead th {
             color: #ffd700;
             font-weight: 600;
             font-size: 0.7rem;
@@ -330,7 +333,8 @@
             background: #12122a;
             position: sticky;
             top: 0;
-            z-index: 1;
+            z-index: 2;
+            box-shadow: 0 1px 0 #2a2a5a;
         }
         .score-predict-table th.sp-participant {
             text-align: center;
@@ -905,7 +909,12 @@
                 <span class="card-toggle-icon" aria-hidden="true">▼</span>
             </button>
             <div class="card-body" id="section-point-config">
-            <h3 class="sub-title">Main Quest</h3>
+            <div class="stage-panel is-open" data-stage="points-main">
+                <button type="button" class="stage-panel-toggle" aria-expanded="true">
+                    <span class="stage-panel-title">Main Quest</span>
+                    <span class="stage-panel-icon" aria-hidden="true">▼</span>
+                </button>
+                <div class="stage-panel-body">
             <p class="hint" id="main-quest-hint">Main Quest points apply to Full Time (90 min) scores only — not Extra Time. Each participant has separate table pots for Group Stage and Knockout Stage; standings combine both.</p>
             <div class="mq-mode-row">
                 <label class="mq-mode-option">
@@ -928,7 +937,14 @@
                 <p class="hint">Set W/D/L per team (based on FIFA ranking strength). Weaker teams can carry higher rewards so supporting underdogs stays fair. Add teams in Section 3 first.</p>
                 <div id="main-quest-team-points"></div>
             </div>
-            <h3 class="sub-title" style="margin-top:16px">Side Quest</h3>
+                </div>
+            </div>
+            <div class="stage-panel is-open" data-stage="points-side">
+                <button type="button" class="stage-panel-toggle" aria-expanded="true">
+                    <span class="stage-panel-title">Side Quest</span>
+                    <span class="stage-panel-icon" aria-hidden="true">▼</span>
+                </button>
+                <div class="stage-panel-body">
             <p class="hint">Side Quest points apply after awards are resolved. Enable “Share points equally” to split that category’s points among all correct guessers (e.g. 20 pts ÷ 5 people = 4 each). Total Goal awards the closest prediction(s). Score Predict awards exact full-time score hits per match.</p>
             <div class="pt-grid-6">
                 <div class="pt-item">
@@ -965,6 +981,8 @@
                     <label for="pt-scorepredict">Score Predict</label>
                     <input type="number" class="pt-input" id="pt-scorepredict" min="0" step="1" value="5">
                     <label class="pt-share-row"><input type="checkbox" id="pt-share-scorepredict" checked> Share points equally</label>
+                </div>
+            </div>
                 </div>
             </div>
             </div>
@@ -1053,6 +1071,27 @@
                     } catch (e) {}
                 });
             });
+
+            // Static stage panels (Point Config Main/Side Quest)
+            document.querySelectorAll('#section-point-config .stage-panel[data-stage]').forEach(panel => {
+                const key = panel.dataset.stage;
+                const btn = panel.querySelector('.stage-panel-toggle');
+                if (!btn || !key) return;
+                if (typeof ArisanSetupFormCore !== 'undefined' && ArisanSetupFormCore.stageOpenState) {
+                    if (ArisanSetupFormCore.stageOpenState[key] === false) {
+                        panel.classList.remove('is-open');
+                        btn.setAttribute('aria-expanded', 'false');
+                    }
+                }
+                btn.addEventListener('click', () => {
+                    const open = panel.classList.toggle('is-open');
+                    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    if (typeof ArisanSetupFormCore !== 'undefined') {
+                        if (!ArisanSetupFormCore.stageOpenState) ArisanSetupFormCore.stageOpenState = {};
+                        ArisanSetupFormCore.stageOpenState[key] = open;
+                    }
+                });
+            });
         })();
 
         const ROOT_AUTH_KEY = 'arisan_root_auth';
@@ -1097,7 +1136,9 @@
             const sel = document.getElementById('community-slug');
             const current = sel.value;
             sel.innerHTML = '<option value="">— Select community —</option>' +
-                communitiesCache.map(c =>
+                communitiesCache.slice().sort((a, b) =>
+                    String(a.name || a.slug || '').localeCompare(String(b.name || b.slug || ''), undefined, { sensitivity: 'base' })
+                ).map(c =>
                     '<option value="' + esc(c.slug) + '">' + esc(c.name) + ' (' + esc(c.slug) + ')</option>'
                 ).join('');
             if (current) sel.value = current;
@@ -1108,7 +1149,9 @@
             if (!communitySlug) { dl.innerHTML = ''; return; }
             try {
                 const leagues = await ArisanDB.listLeagues(communitySlug);
-                dl.innerHTML = leagues.map(l => `<option value="${esc(l.slug)}">${esc(l.title)}</option>`).join('');
+                dl.innerHTML = leagues.slice().sort((a, b) =>
+                    String(a.title || a.slug || '').localeCompare(String(b.title || b.slug || ''), undefined, { sensitivity: 'base' })
+                ).map(l => `<option value="${esc(l.slug)}">${esc(l.title)}</option>`).join('');
             } catch (e) { dl.innerHTML = ''; }
         }
 

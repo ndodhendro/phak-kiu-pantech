@@ -178,7 +178,14 @@
 
     Core.participantOpenState = {};
 
-    Core.stageOpenState = { group: true, knockout: true };
+    Core.stageOpenState = {
+        group: true,
+        knockout: true,
+        'points-main': true,
+        'points-side': true,
+        'schedule-group': true,
+        'schedule-knockout': true,
+    };
 
     Core.DEFAULT_CLUB_FLAG = 'https://img.icons8.com/ios-filled/50/6b7280/shield.png';
 
@@ -784,7 +791,7 @@
         if (!Core.form.includeGroupStage && !Core.form.includeKnockoutStage) {
             Core.form.teams.forEach(t => push(t.name));
         }
-        return names;
+        return names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
     }
 
     /** Main Quest pot dropdown: hide teams already picked in this stage's other pot slots. */
@@ -800,7 +807,9 @@
 
     Core.countryOptions = function countryOptions(selected, takenSet, opts) {
         const options = opts || {};
-        const list = window.ArisanCountries || [];
+        const list = (window.ArisanCountries || []).slice().sort((a, b) =>
+            String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+        );
         const taken = takenSet || new Set();
         const current = Core.normalizeSeedName(selected);
         const currentKey = current.toLowerCase();

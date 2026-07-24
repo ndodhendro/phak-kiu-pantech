@@ -1175,6 +1175,48 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             line-height: 1.2;
+            cursor: pointer;
+        }
+        .chart-bar,
+        .chart-bar-wrapper,
+        .chart-avatar {
+            cursor: pointer;
+        }
+        .participant-avatar-popup {
+            position: fixed;
+            inset: 0;
+            z-index: 100050;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.78);
+            cursor: zoom-out;
+        }
+        .participant-avatar-popup-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            max-width: 100%;
+            cursor: zoom-out;
+        }
+        .participant-avatar-popup-img {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: min(92vw, 100%);
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+            background: #1a1a3e;
+        }
+        .participant-avatar-popup-name {
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
         }
         .chart-row.rank-1 .chart-rank,
         .chart-row.rank-1 .chart-name,
@@ -1189,14 +1231,14 @@
             color: #fff;
         }
         .chart-avatar {
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid #444;
             flex-shrink: 0;
             position: absolute;
-            right: -12px;
+            right: -16px;
             top: 50%;
             transform: translateY(-50%);
             z-index: 2;
@@ -1218,7 +1260,7 @@
             align-items: center;
             justify-content: flex-end;
             padding-left: 10px;
-            padding-right: 18px;
+            padding-right: 22px;
             min-width: 0;
             width: 0%;
             transition: width var(--bar-duration) var(--bar-ease);
@@ -1321,31 +1363,43 @@
             min-width: 0;
             padding-right: 14px;
         }
-        /* Divider between country A | country B — body cells only */
-        #main-quest-table-root .standings-table td.mq-pot-a {
+        /* Divider between country A | country B — only when both picks exist */
+        #main-quest-table-root .standings-table td.mq-pot-a.mq-has-pair {
             border-right: 1px solid rgba(255, 255, 255, 0.22);
         }
-        #main-quest-table-root .standings-table td.pot1.mq-pot-a {
+        #main-quest-table-root .standings-table td.pot1.mq-pot-a.mq-has-pair {
             border-right-color: rgba(220, 90, 95, 0.55);
         }
-        #main-quest-table-root .standings-table td.pot2.mq-pot-a {
+        #main-quest-table-root .standings-table td.pot2.mq-pot-a.mq-has-pair {
             border-right-color: rgba(210, 145, 70, 0.55);
         }
-        #main-quest-table-root .standings-table td.pot3.mq-pot-a {
+        #main-quest-table-root .standings-table td.pot3.mq-pot-a.mq-has-pair {
             border-right-color: rgba(210, 185, 75, 0.55);
         }
-        #main-quest-table-root .standings-table td.pot4.mq-pot-a {
+        #main-quest-table-root .standings-table td.pot4.mq-pot-a.mq-has-pair {
             border-right-color: rgba(155, 100, 195, 0.55);
         }
-        #main-quest-table-root .standings-table td.pot5.mq-pot-a {
+        #main-quest-table-root .standings-table td.pot5.mq-pot-a.mq-has-pair {
             border-right-color: rgba(65, 145, 205, 0.55);
         }
-        #main-quest-table-root .standings-table td.pot6.mq-pot-a {
+        #main-quest-table-root .standings-table td.pot6.mq-pot-a.mq-has-pair {
             border-right-color: rgba(70, 175, 140, 0.55);
         }
-        #main-quest-table-root .standings-table td.pot7.mq-pot-a,
-        #main-quest-table-root .standings-table td.pot8.mq-pot-a {
+        #main-quest-table-root .standings-table td.pot7.mq-pot-a.mq-has-pair,
+        #main-quest-table-root .standings-table td.pot8.mq-pot-a.mq-has-pair {
             border-right-color: rgba(130, 140, 160, 0.55);
+        }
+        #main-quest-table-root .standings-table td.mq-pot-empty {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            width: 0 !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            overflow: hidden;
+            font-size: 0;
+            line-height: 0;
         }
         .standings-table tbody tr:hover {
             background: #1a1a3e;
@@ -1904,6 +1958,11 @@
         .podium-place > .podium-label {
             flex: 0 0 auto;
             width: 100%;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
         }
         .podium-teams {
             display: flex;
@@ -1928,23 +1987,21 @@
             gap: 8px;
             width: 100%;
         }
-        .podium-teams-row-winner .podium-team-card {
-            flex: 0 1 150px;
-            max-width: 170px;
-            min-width: 110px;
-        }
-        .podium-teams-row-others .podium-team-card {
-            flex: 1 1 100px;
-            max-width: 140px;
+        .podium-teams-row .podium-team-card,
+        .podium-teams-row-winner .podium-team-card,
+        .podium-teams-row-others .podium-team-card,
+        .podium-place .podium-team-card {
+            flex: 0 0 var(--podium-card-width, 120px);
+            width: var(--podium-card-width, 120px);
+            min-width: var(--podium-card-width, 120px);
+            max-width: var(--podium-card-width, 120px);
+            box-sizing: border-box;
         }
         .podium-team-card {
             background: #1a1a3e;
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             overflow: hidden;
-            min-width: 100px;
-            flex: 1;
-            max-width: 140px;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .podium-team-card:hover {
@@ -2046,14 +2103,19 @@
         .podium-place .podium-team-info {
             justify-content: center;
             text-align: center;
+            min-width: 0;
         }
         .podium-team-info .flag-wave {
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            flex-shrink: 0;
         }
         .podium-team-info span:not(.flag-wave) {
             font-size: 0.75rem;
             font-weight: 600;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
         }
         .podium-place .podium-team-info span:not(.flag-wave) {
             text-align: center;
@@ -2128,6 +2190,7 @@
             margin-bottom: 6px;
             color: #888;
             font-weight: 600;
+            text-align: center;
         }
         .podium-place-1 .podium-label { color: #ffd700; }
         .podium-place-2 .podium-label { color: #c0c0c0; }
@@ -2227,9 +2290,11 @@
 
         /* Total Goal Vertical Progress */
         .total-goal-bar-container {
-            padding: 10px 0;
+            padding: 22px 0 28px;
             display: flex;
             justify-content: center;
+            /* No div scrollbars — page (browser) may scroll if needed */
+            overflow: visible;
         }
         .total-goal-vertical {
             position: relative;
@@ -2237,6 +2302,10 @@
             justify-content: center;
             align-items: flex-start;
             width: 100%;
+            box-sizing: border-box;
+            padding-left: var(--tg-branch-pad, 110px);
+            padding-right: var(--tg-branch-pad, 110px);
+            overflow: visible;
         }
         .total-goal-track-v {
             width: 8px;
@@ -2249,6 +2318,7 @@
                 inset 0 1px 0 rgba(255, 255, 255, 0.1),
                 inset 0 -1px 0 rgba(0, 0, 0, 0.35),
                 0 8px 18px rgba(0, 0, 0, 0.3);
+            overflow: visible;
         }
         .total-goal-zone-v {
             position: absolute;
@@ -2295,98 +2365,112 @@
                 );
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
         }
-        .total-goal-end-label {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.6rem;
-            color: #666;
-            font-weight: 600;
-            bottom: -20px;
-        }
         .total-goal-current-indicator {
             position: absolute;
-            right: -8px;
-            left: auto;
-            width: 22px;
-            height: 22px;
-            background: #e94560;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.5rem;
-            font-weight: 700;
-            color: #fff;
-            box-shadow: 0 0 8px rgba(233, 69, 96, 0.6);
+            left: 50%;
+            right: auto;
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border-radius: 0;
+            display: block;
+            box-shadow: none;
             z-index: 5;
             will-change: top;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .total-goal-current-ball {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
         }
         .total-goal-current-count {
-            position: relative;
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 3px);
+            transform: translateX(-50%);
             z-index: 1;
+            font-size: 0.68rem;
+            font-weight: 800;
             font-variant-numeric: tabular-nums;
             line-height: 1;
+            color: #fff;
+            white-space: nowrap;
+            text-shadow:
+                0 0 2px #000,
+                0 1px 2px #000,
+                0 0 6px rgba(0, 0, 0, 0.9),
+                0 0 1px #000;
+            pointer-events: none;
         }
         .total-goal-current-line {
-            position: absolute;
-            left: 14px;
-            width: 25px;
-            height: 2px;
-            background: #e94560;
+            display: none;
         }
         .total-goal-current-label-v {
-            position: absolute;
-            left: 42px;
-            font-size: 0.6rem;
-            color: #e94560;
-            font-weight: 600;
-            white-space: nowrap;
-            transform: translateY(-50%);
-            top: 50%;
+            display: none;
         }
         .total-goal-marker-v {
             position: absolute;
-            right: 10px;
             display: flex;
-            flex-direction: row-reverse;
+            flex-direction: row;
             align-items: center;
-            gap: 6px;
+            gap: 0;
             transform: translateY(-50%);
             z-index: 4;
+            pointer-events: auto;
+            white-space: nowrap;
+        }
+        .total-goal-marker-v.is-left {
+            flex-direction: row-reverse;
         }
         .total-goal-marker-line-v {
-            width: 20px;
+            width: 10px;
             height: 2px;
             background: #555;
+            flex-shrink: 0;
+            opacity: 0.85;
         }
         .total-goal-marker-info {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             background: #1a1a3e;
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
-            padding: 5px 10px;
+            padding: 3px 7px;
+            flex-shrink: 0;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+            max-width: 92px;
         }
         .total-goal-marker-avatar-v {
-            width: 24px;
-            height: 24px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid #444;
             background: #2a2a5a;
+            flex-shrink: 0;
         }
         .total-goal-marker-name-v {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: 600;
             color: #fff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 3.6em;
         }
         .total-goal-marker-value-v {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 700;
             color: #f39c12;
             margin-left: auto;
+            flex-shrink: 0;
         }
 
         /* Golden Boot Chart */
@@ -3176,6 +3260,11 @@
             .chart-bar-wrapper {
                 height: 26px;
             }
+            .chart-avatar {
+                width: 26px;
+                height: 26px;
+                right: -13px;
+            }
             .chart-value {
                 font-size: 0.7rem;
             }
@@ -3218,9 +3307,9 @@
                 gap: 8px;
                 padding: 0 5px;
             }
-            .podium-team-card {
-                min-width: 70px;
-                max-width: 110px;
+            .podium-place .podium-team-card,
+            .podium-teams-row .podium-team-card {
+                --podium-card-width: 96px;
             }
             .podium-team-info {
                 padding: 6px 8px;
@@ -3267,7 +3356,7 @@
                 height: 26px;
             }
             .total-goal-track-v {
-                margin-left: 180px;
+                margin-left: 0;
             }
             .total-goal-marker-info {
                 padding: 4px 8px;
@@ -3353,9 +3442,9 @@
             .podium-place {
                 max-width: 160px;
             }
-            .podium-team-card {
-                min-width: 60px;
-                max-width: 100px;
+            .podium-place .podium-team-card,
+            .podium-teams-row .podium-team-card {
+                --podium-card-width: 84px;
             }
             .podium-team-info {
                 padding: 5px 6px;
@@ -3407,10 +3496,10 @@
                 height: 22px;
             }
             .total-goal-track-v {
-                margin-left: 180px;
+                margin-left: 0;
             }
             .total-goal-marker-line-v {
-                width: 12px;
+                width: 10px;
             }
             .total-goal-marker-info {
                 padding: 3px 6px;
@@ -3427,11 +3516,14 @@
                 font-size: 0.55rem;
             }
             .total-goal-current-indicator {
-                width: 18px;
-                height: 18px;
-                font-size: 0.4rem;
-                right: -6px;
-                left: auto;
+                width: 24px;
+                height: 24px;
+                left: 50%;
+                right: auto;
+            }
+            .total-goal-current-count {
+                font-size: 0.6rem;
+                bottom: calc(100% + 2px);
             }
             .goldenboot-card {
                 width: var(--award-card-width);

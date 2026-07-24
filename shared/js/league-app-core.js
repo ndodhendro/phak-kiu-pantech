@@ -209,11 +209,19 @@ Core.createPanelSlideInner = function createPanelSlideInner() {
     inner.className = 'panel-slide-inner';
     return inner;
 };
-Core.createSupportersDrop = function createSupportersDrop(btn, panel) {
+Core.createSupportersDrop = function createSupportersDrop(btn, panel, opts) {
     const drop = document.createElement('div');
     drop.className = 'supporters-drop';
-    drop.appendChild(btn);
-    drop.appendChild(panel);
+    // Podium cards stick to the block (flex-end): put the panel above the toggle so
+    // expand/collapse grows upward and the button stays under the cursor.
+    if (opts && opts.panelFirst) {
+        drop.classList.add('supporters-drop--panel-first');
+        drop.appendChild(panel);
+        drop.appendChild(btn);
+    } else {
+        drop.appendChild(btn);
+        drop.appendChild(panel);
+    }
     return drop;
 };
 Core.appendSupporterItems = function appendSupporterItems(inner, supporters) {
@@ -301,8 +309,9 @@ Core.bindSupportersToggle = function bindSupportersToggle(btn, panel, count, aft
         panel.dataset.slideBusy = '1';
         const willOpen = !panel.classList.contains('show');
         if (willOpen && typeof fillOnOpen === 'function') fillOnOpen();
-        // Award cards expand downward in-flow; pinning would scroll the toggle upward.
-        const skipPin = !!(btn.closest && btn.closest('.goldenboot-card, .player-podium-card, .podium-team-card'));
+        // Award cards (golden boot / glove) expand downward in normal flow — pin would scroll wrongly.
+        // Podium team cards sit on flex-end: expanding down moves the toggle up, so pin keeps it fixed.
+        const skipPin = !!(btn.closest && btn.closest('.goldenboot-card, .player-podium-card'));
         const stopPin = skipPin ? function () {} : Core.pinElementScreenY(btn);
         const isVisible = Core.toggleSlidePanel(panel);
         btn.textContent = isVisible ? 'Hide' : closedLabel;

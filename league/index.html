@@ -54,7 +54,7 @@
         <div class="league-view" data-league-view-panel="standings" hidden>
             <div class="standings-section standings-section--view">
                 <section class="league-panel" aria-label="Arisan Standings Points">
-                    <h2 class="table-section-title">📊 Arisan Standings Points</h2>
+                    <h2 class="table-section-title table-section-title--standings">📊 Arisan Standings Points</h2>
                     <div class="standings-chart" id="standings-points-chart"></div>
                 </section>
             </div>
@@ -63,7 +63,7 @@
         <div class="league-view" data-league-view-panel="main-quest" hidden>
             <div class="standings-section standings-section--view">
                 <section class="league-panel" aria-label="Main Quest">
-                    <h3 class="table-section-title">🎯 Main Quest</h3>
+                    <h3 class="table-section-title table-section-title--main-quest">🎯 Main Quest</h3>
                     <div class="standings-table-wrapper" id="main-quest-table-root"></div>
                 </section>
             </div>
@@ -71,8 +71,8 @@
 
         <div class="league-view" data-league-view-panel="podium" hidden>
             <div class="standings-section standings-section--view">
-                <section class="league-panel" aria-label="Side Quest Podium">
-                    <h3 class="table-section-title">⭐ Side Quest</h3>
+                <section class="league-panel" aria-label="Podiums">
+                    <h3 class="table-section-title table-section-title--podiums">🏆 Podiums</h3>
                     <div class="podium-section">
                         <div class="podium-container">
                             <div class="podium-place podium-place-2">
@@ -99,7 +99,7 @@
         <div class="league-view" data-league-view-panel="golden-boot" hidden>
             <div class="standings-section standings-section--view">
                 <section class="league-panel podium-section" aria-label="Golden Boot">
-                    <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://png.pngtree.com/png-clipart/20241006/original/pngtree-golden-boot-award-isolated-on-a-white-background-png-image_16219554.png" alt="Golden Boot" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Golden Boot</h4>
+                    <h2 class="table-section-title table-section-title--golden-boot"><img src="https://png.pngtree.com/png-clipart/20241006/original/pngtree-golden-boot-award-isolated-on-a-white-background-png-image_16219554.png" alt="" class="table-section-title-icon"> Golden Boot</h2>
                     <div class="standings-chart" id="goldenboot-chart"></div>
                 </section>
             </div>
@@ -108,7 +108,7 @@
         <div class="league-view" data-league-view-panel="golden-glove" hidden>
             <div class="standings-section standings-section--view">
                 <section class="league-panel podium-section" aria-label="Golden Glove">
-                    <h4 style="text-align:center; color:#ffd700; font-size:0.9rem; margin-bottom:10px;"><img src="https://owexnrdvmragupmquwzr.supabase.co/storage/v1/object/public/arisan-config/assets/images/golden%20glove.png" alt="Golden Glove" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;"> Golden Glove</h4>
+                    <h2 class="table-section-title table-section-title--golden-glove"><img src="https://owexnrdvmragupmquwzr.supabase.co/storage/v1/object/public/arisan-config/assets/images/golden%20glove.png" alt="" class="table-section-title-icon"> Golden Glove</h2>
                     <div class="podium-container goldenglove-podium" id="podium-goldenglove-container"></div>
                 </section>
             </div>
@@ -117,7 +117,7 @@
         <div class="league-view" data-league-view-panel="total-goal" hidden>
             <div class="standings-section standings-section--view">
                 <section class="league-panel podium-section" aria-label="Total Goal">
-                    <h4 style="text-align:center; color:#e94560; font-size:0.9rem; margin-bottom:15px;"><img alt="Total Goal" data-league-ball decoding="async" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Total Goal</h4>
+                    <h2 class="table-section-title table-section-title--total-goal"><img alt="" data-league-ball decoding="async" class="table-section-title-icon"> Total Goal</h2>
                     <div class="total-goal-bar-container" id="total-goal-bar"></div>
                 </section>
             </div>
@@ -133,10 +133,10 @@
     <nav class="floating-nav floating-nav--league" aria-label="League sections">
         <div class="floating-nav-views" role="group" aria-label="Sections">
             <a href="#" class="float-btn float-btn--icon" data-league-view="group" title="Group Stage" aria-label="Group Stage">🏟️</a>
-            <a href="#" class="float-btn float-btn--icon" data-league-view="ko" title="Knockout Stage" aria-label="Knockout Stage">🏆</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="ko" title="Knockout Stage" aria-label="Knockout Stage">⚔️</a>
             <a href="#" class="float-btn float-btn--icon" data-league-view="standings" title="Standings Points" aria-label="Standings Points">📊</a>
             <a href="#" class="float-btn float-btn--icon" data-league-view="main-quest" title="Main Quest" aria-label="Main Quest">🎯</a>
-            <a href="#" class="float-btn float-btn--icon" data-league-view="podium" title="Podium" aria-label="Champion, Runner-Up, Third Place">🥇</a>
+            <a href="#" class="float-btn float-btn--icon" data-league-view="podium" title="Podiums" aria-label="Podiums">🏆</a>
             <a href="#" class="float-btn float-btn--icon" data-league-view="golden-boot" title="Golden Boot" aria-label="Golden Boot">👟</a>
             <a href="#" class="float-btn float-btn--icon" data-league-view="golden-glove" title="Golden Glove" aria-label="Golden Glove">🧤</a>
             <a href="#" class="float-btn float-btn--icon" data-league-view="total-goal" title="Total Goal" aria-label="Total Goal">⚽</a>

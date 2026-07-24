@@ -277,6 +277,7 @@ Core.playTotalGoalCurrentLabel = function playTotalGoalCurrentLabel(fill) {
 Core.buildGoldenBootChart = function buildGoldenBootChart() {
     const container = document.getElementById('goldenboot-chart');
     if (!container) return;
+    container.innerHTML = '';
 
     // Sort by goals count descending, then name ascending
     const bootData = (window.ADMIN_CONFIG && window.ADMIN_CONFIG.goldenBoot) || [];
@@ -483,11 +484,12 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
         track.appendChild(zone);
     });
 
-    // Fill to current goal position
+    // Fill to current goal position (heatmap gradient maps to full track height)
     const currentPct = ((currentGoal - startValue) / (endValue - startValue)) * 100;
     const fill = document.createElement('div');
     fill.className = 'total-goal-fill-v';
     fill.style.height = '0%';
+    fill.style.setProperty('--tg-track-px', trackHeight + 'px');
     track.appendChild(fill);
 
     // End label

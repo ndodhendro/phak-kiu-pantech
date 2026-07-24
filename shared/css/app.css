@@ -169,7 +169,7 @@
         }
         body.league-views-ready {
             padding-right: 0;
-            padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px));
         }
         .league-view-panels {
             width: 100%;
@@ -1418,11 +1418,26 @@
         }
         .table-section-title {
             font-size: 1rem;
+            line-height: 1.3;
+            font-weight: 700;
             color: #fff;
             margin: 30px 0 15px;
             padding-bottom: 8px;
             border-bottom: 1px solid #2a2a5a;
         }
+        .table-section-title-icon {
+            width: 20px;
+            height: 20px;
+            vertical-align: middle;
+            margin-right: 4px;
+            object-fit: contain;
+        }
+        .table-section-title--standings { color: #5dade2; }
+        .table-section-title--main-quest { color: #e94560; }
+        .table-section-title--podiums { color: #ffd700; }
+        .table-section-title--golden-boot { color: #ffd700; }
+        .table-section-title--golden-glove { color: #ffd700; }
+        .table-section-title--total-goal { color: #2ecc71; }
         /* Main Quest pot colors — match KO rarity (Final→early) */
         #main-quest-table-root .standings-table th.participant-col,
         #main-quest-table-root .standings-table td.participant-cell {
@@ -1881,14 +1896,26 @@
             align-items: center;
             flex: 1;
             max-width: 280px;
+            min-height: 0;
+        }
+        .podium-place > .podium-label {
+            flex: 0 0 auto;
+            width: 100%;
         }
         .podium-teams {
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-end;
+            flex: 1 1 auto;
             gap: 8px;
-            padding: 12px 8px;
+            padding: 12px 8px 0;
             width: 100%;
+            min-height: 0;
+        }
+        .podium-place > .podium-block {
+            flex: 0 0 auto;
+            margin-top: 8px;
         }
         .podium-teams-row {
             display: flex;
@@ -2233,12 +2260,36 @@
             left: 0;
             width: 100%;
             height: 0%;
-            background:
-                linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 35%),
-                linear-gradient(180deg, #e94560 0%, #f39c12 100%);
+            overflow: hidden;
+            background: transparent;
             border-radius: 3px 3px 0 0;
             transition: height var(--bar-duration) var(--bar-ease);
             z-index: 2;
+        }
+        /* Heatmap clipped by fill height: cold at 0 goals → hot toward endValue */
+        .total-goal-fill-v::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--tg-track-px, 500px);
+            border-radius: inherit;
+            pointer-events: none;
+            background:
+                linear-gradient(90deg, rgba(255, 255, 255, 0.2), transparent 40%),
+                linear-gradient(
+                    180deg,
+                    #1e3a8a 0%,
+                    #2563eb 14%,
+                    #0ea5e9 28%,
+                    #14b8a6 42%,
+                    #22c55e 55%,
+                    #eab308 68%,
+                    #f97316 82%,
+                    #ef4444 93%,
+                    #b91c1c 100%
+                );
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
         }
         .total-goal-end-label {
@@ -2522,14 +2573,13 @@
         #podium-goldenglove-container .gg-row-winner {
             justify-content: center;
         }
-        #podium-goldenglove-container .gg-row-winner .player-podium-place {
-            flex: 0 1 260px;
-            max-width: 280px;
-            min-width: 160px;
-        }
-        #podium-goldenglove-container .gg-row-others .player-podium-place {
-            flex: 1 1 140px;
-            max-width: 220px;
+        #podium-goldenglove-container .gg-row-winner .player-podium-place,
+        #podium-goldenglove-container .gg-row-others .player-podium-place,
+        #podium-goldenglove-container .gg-row .player-podium-place {
+            flex: 0 0 148px;
+            width: 148px;
+            min-width: 148px;
+            max-width: 148px;
         }
         #podium-goldenglove-container .player-podium-card {
             position: relative;
@@ -3075,7 +3125,7 @@
                 margin-top: 40px;
             }
             .standings-title, .table-section-title {
-                font-size: 0.9rem;
+                font-size: 1rem;
             }
             .chart-label {
                 width: 104px;
@@ -3155,6 +3205,14 @@
             }
             .player-podium-place {
                 max-width: 150px;
+            }
+            #podium-goldenglove-container .gg-row-winner .player-podium-place,
+            #podium-goldenglove-container .gg-row-others .player-podium-place,
+            #podium-goldenglove-container .gg-row .player-podium-place {
+                flex: 0 0 132px;
+                width: 132px;
+                min-width: 132px;
+                max-width: 132px;
             }
             .player-podium-info {
                 padding: 7px 8px;
@@ -3237,7 +3295,7 @@
             }
             body.league-views-ready {
                 padding-right: 0;
-                padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+                padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
             }
         }
 
@@ -3283,6 +3341,14 @@
             .podium-place-3 .podium-block { height: 40px; }
             .player-podium-place {
                 max-width: 120px;
+            }
+            #podium-goldenglove-container .gg-row-winner .player-podium-place,
+            #podium-goldenglove-container .gg-row-others .player-podium-place,
+            #podium-goldenglove-container .gg-row .player-podium-place {
+                flex: 0 0 108px;
+                width: 108px;
+                min-width: 108px;
+                max-width: 108px;
             }
             .player-podium-info {
                 padding: 6px;
@@ -3708,19 +3774,40 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
+            transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
             box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
             backdrop-filter: blur(8px);
             animation: pulseHint 1.5s ease-in-out infinite;
         }
         body.league-views-ready #music-toggle {
-            top: max(14px, env(safe-area-inset-top));
-            bottom: auto;
-            right: max(10px, env(safe-area-inset-right));
+            top: auto;
+            left: auto;
+            right: max(12px, env(safe-area-inset-right));
+            bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+            width: 34px;
+            height: 34px;
+            font-size: 0.95rem;
+            border-width: 1.5px;
+            transform: none;
+            z-index: 1001;
+            box-shadow: 0 3px 10px rgba(233, 69, 96, 0.28);
         }
         @keyframes pulseHint {
             0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3); }
             50% { transform: scale(1.1); box-shadow: 0 6px 25px rgba(233, 69, 96, 0.6); }
+        }
+        body.league-views-ready #music-toggle:not(.playing) {
+            animation: pulseHint 1.5s ease-in-out infinite;
+        }
+        @keyframes pulseHintLeague {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 3px 10px rgba(233, 69, 96, 0.28);
+            }
+            50% {
+                transform: scale(1.08);
+                box-shadow: 0 4px 14px rgba(233, 69, 96, 0.45);
+            }
         }
         #music-toggle.playing {
             animation: none;
@@ -3730,13 +3817,23 @@
             box-shadow: 0 6px 25px rgba(233, 69, 96, 0.5);
             background: rgba(233, 69, 96, 0.2);
         }
+        body.league-views-ready #music-toggle:hover {
+            transform: scale(1.08);
+        }
         #music-toggle.muted {
             border-color: #666;
             box-shadow: 0 4px 15px rgba(100, 100, 100, 0.3);
             animation: none;
         }
+        body.league-views-ready #music-toggle.muted {
+            box-shadow: 0 3px 10px rgba(100, 100, 100, 0.28);
+        }
         #music-toggle.muted:hover {
             box-shadow: 0 6px 25px rgba(100, 100, 100, 0.5);
             background: rgba(100, 100, 100, 0.2);
+        }
+        body.league-views-ready #music-toggle.muted:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 14px rgba(100, 100, 100, 0.4);
         }
     

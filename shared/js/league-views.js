@@ -10,10 +10,10 @@
 
     var VIEWS = [
         { id: 'group', label: 'Group Stage', icon: '🏟️', title: 'Group Stage' },
-        { id: 'ko', label: 'Knockout Stage', icon: '🏆', title: 'Knockout Stage' },
+        { id: 'ko', label: 'Knockout Stage', icon: '⚔️', title: 'Knockout Stage' },
         { id: 'standings', label: 'Standings Points', icon: '📊', title: 'Standings Points' },
         { id: 'main-quest', label: 'Main Quest', icon: '🎯', title: 'Main Quest' },
-        { id: 'podium', label: 'Podium', icon: '🥇', title: 'Champion · Runner-Up · 3rd' },
+        { id: 'podium', label: 'Podiums', icon: '🏆', title: 'Podiums' },
         { id: 'golden-boot', label: 'Golden Boot', icon: '👟', title: 'Golden Boot' },
         { id: 'golden-glove', label: 'Golden Glove', icon: '🧤', title: 'Golden Glove' },
         { id: 'total-goal', label: 'Total Goal', icon: '⚽', title: 'Total Goal' },

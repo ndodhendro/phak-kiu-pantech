@@ -131,12 +131,17 @@
 /* --- */
 
 
-        function getBracketUnitLineAnchor(unitEl, bracketRect) {
-            const r = unitEl.getBoundingClientRect();
-            return {
-                x: r.right - bracketRect.left,
-                y: r.top + r.height / 2 - bracketRect.top,
-            };
+        function getBracketPoint(el, bracket, bracketRect, edge) {
+            const r = el.getBoundingClientRect();
+            const x = edge === 'left'
+                ? (r.left - bracketRect.left + bracket.scrollLeft)
+                : (r.right - bracketRect.left + bracket.scrollLeft);
+            const y = r.top + r.height / 2 - bracketRect.top + bracket.scrollTop;
+            return { x: x, y: y };
+        }
+
+        function getBracketUnitLineAnchor(unitEl, bracket, bracketRect) {
+            return getBracketPoint(unitEl, bracket, bracketRect, 'right');
         }
 
         function resolveBracketLineSource(prevRoundEl, units, winnerIndex) {
@@ -148,306 +153,46 @@
             return units[unitIndex] || null;
         }
 
-        let bracketFlowCycleTimer = null;
-        let bracketFlowCycleMs = 5000;
-        let bracketFlowVisible = true;
-        let bracketFlowVisibilityIo = null;
-        const BRACKET_FLOW_SPEED = 900; // px/s — same for borders & connectors
-        const BRACKET_FLOW_ARRIVE = 0.88; // keyframe % when dash reaches path end
-        const targetFlowArriveAt = new Map();
-
-        function getBracketFlowTargets(svg) {
-            const bracket = (svg && svg.closest('.bracket')) || document.querySelector('.bracket');
-            const flows = bracket ? bracket.querySelectorAll('.bracket-line-flow') : [];
-            const trophies = bracket ? bracket.querySelectorAll('.bracket-flow-trophy') : [];
-            return { bracket, flows, trophies };
-        }
-
-        function pauseBracketLineFlow(svg) {
-            const { bracket, flows, trophies } = getBracketFlowTargets(svg);
-            flows.forEach((el) => el.classList.remove('is-flowing'));
-            trophies.forEach((el) => el.classList.remove('is-flowing'));
-            if (bracket) bracket.classList.add('anim-paused');
-        }
-
-        function restartBracketLineFlow(svg) {
-            if (!svg || !svg.isConnected) return;
-            if (!bracketFlowVisible || document.hidden) {
-                pauseBracketLineFlow(svg);
-                return;
-            }
-            const { bracket, flows, trophies } = getBracketFlowTargets(svg);
-            if (bracket) bracket.classList.remove('anim-paused');
-            flows.forEach((el) => el.classList.remove('is-flowing'));
-            trophies.forEach((el) => el.classList.remove('is-flowing'));
-            void svg.getBoundingClientRect();
-            requestAnimationFrame(() => {
-                if (!svg.isConnected || !bracketFlowVisible || document.hidden) return;
-                flows.forEach((el) => el.classList.add('is-flowing'));
-                trophies.forEach((el) => el.classList.add('is-flowing'));
-            });
-        }
-
-        function scheduleBracketLineFlow(svg, cycleMs) {
-            if (bracketFlowCycleTimer) {
-                clearInterval(bracketFlowCycleTimer);
-                bracketFlowCycleTimer = null;
-            }
-            if (bracketFlowVisibilityIo) {
-                bracketFlowVisibilityIo.disconnect();
-                bracketFlowVisibilityIo = null;
-            }
-            if (!svg) return;
-            // Longer idle between cascades → less continuous GPU work
-            bracketFlowCycleMs = Math.max(7000, Math.ceil((cycleMs || 5000) + 2000));
-            const bracket = svg.closest('.bracket') || document.querySelector('.bracket');
-            bracketFlowVisible = true;
-            if (bracket && typeof IntersectionObserver !== 'undefined') {
-                bracketFlowVisibilityIo = new IntersectionObserver((entries) => {
-                    const entry = entries[0];
-                    bracketFlowVisible = !!(entry && entry.isIntersecting);
-                    if (bracketFlowVisible) restartBracketLineFlow(svg);
-                    else pauseBracketLineFlow(svg);
-                }, { root: null, threshold: 0.08, rootMargin: '40px' });
-                bracketFlowVisibilityIo.observe(bracket);
-            }
-            restartBracketLineFlow(svg);
-            bracketFlowCycleTimer = setInterval(() => {
-                if (!svg.isConnected) {
-                    clearInterval(bracketFlowCycleTimer);
-                    bracketFlowCycleTimer = null;
-                    return;
-                }
-                if (!bracketFlowVisible || document.hidden) return;
-                restartBracketLineFlow(svg);
-            }, bracketFlowCycleMs);
-        }
-
-        function clearBracketBorderFlow(bracket) {
-            if (!bracket) return;
-            bracket.querySelectorAll('.bracket-flow-ring').forEach((el) => el.remove());
-            bracket.querySelectorAll('.bracket-flow-border').forEach((el) => {
-                el.classList.remove('bracket-flow-border');
-                delete el.dataset.flowBorderEnd;
-            });
-            bracket.querySelectorAll('[data-flow-border-end]').forEach((el) => {
-                delete el.dataset.flowBorderEnd;
-            });
-            bracket.querySelectorAll('.bracket-flow-trophy').forEach((el) => {
-                el.classList.remove('bracket-flow-trophy', 'is-flowing');
-                el.style.removeProperty('animation-delay');
-            });
-        }
-
-        function markTrophyFlowGlow(bracket, startDelaySec, cycleEndRef) {
-            const trophy = bracket.querySelector('.round-final .round-trophy');
-            if (!trophy) return;
-            trophy.classList.add('bracket-flow-trophy');
-            trophy.style.animationDelay = Math.max(0, startDelaySec) + 's';
-            // Glow holds ~1.8s after the flow reaches the final
-            if (cycleEndRef) {
-                cycleEndRef.value = Math.max(cycleEndRef.value, startDelaySec + 1.8);
-            }
-        }
-
-        function finalRoundFlowArriveSec(finalRound) {
-            if (!finalRound) return 0;
-            let max = 0;
-            getRoundBracketUnits(finalRound).forEach((unit) => {
-                if (unit.dataset.flowBorderEnd != null) {
-                    max = Math.max(max, parseFloat(unit.dataset.flowBorderEnd) || 0);
-                }
-                if (unit.classList.contains('matchup-tie')) {
-                    unit.querySelectorAll('.matchup[data-flow-border-end]').forEach((m) => {
-                        max = Math.max(max, parseFloat(m.dataset.flowBorderEnd) || 0);
-                    });
-                }
-            });
-            return max;
-        }
-
-        /** Constant px/s travel; returns { travelSec, arriveSec }. */
-        function applyConstantSpeedFlow(flow, delaySec, cycleEndRef) {
-            flow.removeAttribute('pathLength');
-            const len = Math.max(1, flow.getTotalLength());
-            // Keyframes reach the end at BRACKET_FLOW_ARRIVE — match visual px/s
-            const travelSec = (len / BRACKET_FLOW_SPEED) / BRACKET_FLOW_ARRIVE;
-            flow.setAttribute('pathLength', '100');
-            flow.style.strokeDasharray = '12 200';
-            flow.style.strokeDashoffset = '12';
-            flow.style.animationDuration = travelSec + 's';
-            flow.style.animationDelay = Math.max(0, delaySec) + 's';
-            const arriveSec = Math.max(0, delaySec) + travelSec * BRACKET_FLOW_ARRIVE;
-            if (cycleEndRef) {
-                cycleEndRef.value = Math.max(cycleEndRef.value, delaySec + travelSec);
-            }
-            return { travelSec: travelSec, arriveSec: arriveSec };
-        }
-
-        function noteFlowArrival(targetEl, arriveSec) {
-            if (!targetEl) return;
-            const prev = targetFlowArriveAt.get(targetEl) || 0;
-            targetFlowArriveAt.set(targetEl, Math.max(prev, arriveSec));
-            // Tie wrapper shares arrival with its matchup legs
-            const tie = targetEl.closest && targetEl.closest('.matchup-tie');
-            if (tie && tie !== targetEl) {
-                const p = targetFlowArriveAt.get(tie) || 0;
-                targetFlowArriveAt.set(tie, Math.max(p, arriveSec));
-            }
-        }
-
-        function maxArrivalForUnits(units) {
-            let max = 0;
-            units.forEach((unit) => {
-                max = Math.max(max, targetFlowArriveAt.get(unit) || 0);
-                if (unit.classList.contains('matchup-tie')) {
-                    unit.querySelectorAll('.matchup').forEach((m) => {
-                        max = Math.max(max, targetFlowArriveAt.get(m) || 0);
-                    });
-                }
-            });
-            return max;
-        }
-
-        function markMatchupBorderFlow(matchup, startDelaySec, cycleEndRef) {
-            if (!matchup) return startDelaySec;
-            matchup.classList.add('bracket-flow-border');
-            const rect = matchup.getBoundingClientRect();
-            const w = Math.max(1, Math.round(rect.width || matchup.offsetWidth || 1));
-            const h = Math.max(1, Math.round(rect.height || matchup.offsetHeight || 1));
-            const inset = 1;
-            const x0 = inset;
-            const y0 = inset;
-            const x1 = w - inset;
-            const y1 = h - inset;
-            const midY = h / 2;
-            const rad = Math.min(10, Math.max(0, (Math.min(w, h) / 2) - inset));
-
-            const topD = [
-                `M ${x0},${midY}`,
-                `L ${x0},${y0 + rad}`,
-                `Q ${x0},${y0} ${x0 + rad},${y0}`,
-                `L ${x1 - rad},${y0}`,
-                `Q ${x1},${y0} ${x1},${y0 + rad}`,
-                `L ${x1},${midY}`,
-            ].join(' ');
-            const botD = [
-                `M ${x0},${midY}`,
-                `L ${x0},${y1 - rad}`,
-                `Q ${x0},${y1} ${x0 + rad},${y1}`,
-                `L ${x1 - rad},${y1}`,
-                `Q ${x1},${y1} ${x1},${y1 - rad}`,
-                `L ${x1},${midY}`,
-            ].join(' ');
-
-            const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            ring.classList.add('bracket-flow-ring');
-            ring.setAttribute('width', String(w));
-            ring.setAttribute('height', String(h));
-            ring.setAttribute('viewBox', `0 0 ${w} ${h}`);
-            ring.setAttribute('aria-hidden', 'true');
-
-            let travelSec = 0;
-            [topD, botD].forEach((d) => {
-                const flow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                flow.setAttribute('d', d);
-                flow.classList.add('bracket-line-flow', 'bracket-border-flow');
-                ring.appendChild(flow);
-            });
-            matchup.appendChild(ring);
-            ring.querySelectorAll('.bracket-line-flow').forEach((flow) => {
-                const result = applyConstantSpeedFlow(flow, startDelaySec, cycleEndRef);
-                travelSec = Math.max(travelSec, result.arriveSec - startDelaySec);
-            });
-
-            const endSec = startDelaySec + travelSec;
-            matchup.dataset.flowBorderEnd = String(endSec);
-            return endSec;
-        }
-
-        function markRoundMatchupsForFlow(roundEl, startDelaySec, cycleEndRef) {
-            if (!roundEl) return startDelaySec;
-            let maxEnd = startDelaySec;
-            getRoundBracketUnits(roundEl).forEach((unit) => {
-                if (unit.classList.contains('matchup-tie')) {
-                    let tieEnd = startDelaySec;
-                    unit.querySelectorAll('.matchup').forEach((m) => {
-                        tieEnd = Math.max(tieEnd, markMatchupBorderFlow(m, startDelaySec, cycleEndRef));
-                    });
-                    unit.dataset.flowBorderEnd = String(tieEnd);
-                    maxEnd = Math.max(maxEnd, tieEnd);
-                } else {
-                    maxEnd = Math.max(maxEnd, markMatchupBorderFlow(unit, startDelaySec, cycleEndRef));
-                }
-            });
-            return maxEnd;
-        }
-
-        function sourceFlowDelay(sourceEl, fallback) {
-            if (!sourceEl) return fallback || 0;
-            if (sourceEl.dataset.flowBorderEnd != null) {
-                return parseFloat(sourceEl.dataset.flowBorderEnd) || 0;
-            }
-            const m = sourceEl.querySelector && sourceEl.querySelector('.matchup[data-flow-border-end]');
-            if (m) return parseFloat(m.dataset.flowBorderEnd) || 0;
-            return fallback || 0;
-        }
-
         function appendBracketConnectorPath(svg, d, options) {
             const opts = options || {};
-            const base = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            base.setAttribute('d', d);
-            base.setAttribute('stroke', opts.stroke || '#444');
-            base.setAttribute('stroke-width', opts.strokeWidth || '1.5');
-            base.setAttribute('fill', 'none');
-            if (opts.dash) base.setAttribute('stroke-dasharray', opts.dash);
-            base.classList.add('bracket-line-base');
-            svg.appendChild(base);
-
-            const flow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            flow.setAttribute('d', d);
-            flow.setAttribute('fill', 'none');
-            flow.classList.add('bracket-line-flow');
-            svg.appendChild(flow);
-
-            const delaySec = opts.flowDelay != null
-                ? opts.flowDelay
-                : sourceFlowDelay(opts.sourceEl, 0);
-            const result = applyConstantSpeedFlow(flow, delaySec, opts.cycleEndRef);
-            noteFlowArrival(opts.targetEl, result.arriveSec);
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', opts.stroke || '#444');
+            path.setAttribute('stroke-width', opts.strokeWidth || '1.5');
+            path.setAttribute('fill', 'none');
+            if (opts.dash) path.setAttribute('stroke-dasharray', opts.dash);
+            path.classList.add('bracket-line-base');
+            svg.appendChild(path);
         }
 
-        function drawByeAdvanceLine(svg, bracketRect, sourceEl, nextRoundEl, nextUnits, flowOpts) {
+        function drawByeAdvanceLine(svg, bracket, bracketRect, sourceEl, nextRoundEl, nextUnits) {
             if (!sourceEl) return;
-            const src = getBracketUnitLineAnchor(sourceEl, bracketRect);
-            const nextRect = nextRoundEl.getBoundingClientRect();
-            const targetX = nextRect.left - bracketRect.left;
+            const src = getBracketUnitLineAnchor(sourceEl, bracket, bracketRect);
+            const targetX = getBracketPoint(nextRoundEl, bracket, bracketRect, 'left').x;
             let targetY;
             if (nextUnits.length) {
                 const firstRect = nextUnits[0].getBoundingClientRect();
-                targetY = firstRect.top - bracketRect.top - 6;
+                targetY = firstRect.top - bracketRect.top + bracket.scrollTop - 6;
             } else {
-                targetY = nextRect.top + nextRect.height * 0.2 - bracketRect.top;
+                const nextRect = nextRoundEl.getBoundingClientRect();
+                targetY = nextRect.top - bracketRect.top + bracket.scrollTop + nextRect.height * 0.2;
             }
             const midX = (src.x + targetX) / 2;
             appendBracketConnectorPath(
                 svg,
                 `M${src.x},${src.y} H${midX} V${targetY} H${targetX}`,
-                Object.assign({
+                {
                     stroke: '#666',
                     dash: '4 3',
-                    sourceEl: sourceEl,
-                    targetEl: nextUnits[0] || null,
-                }, flowOpts || {})
+                }
             );
         }
 
-        function drawRoundTransitionLines(svg, bracketRect, bracket, prevRoundEl, nextRoundEl, currentUnits, nextUnits, flowOpts) {
+        function drawRoundTransitionLines(svg, bracket, bracketRect, prevRoundEl, nextRoundEl, currentUnits, nextUnits) {
             const nextBye = parseInt(nextRoundEl.dataset.koByes || '0', 10);
             const isSfToFinal = (prevRoundEl.classList.contains('round-sf') ||
                 prevRoundEl.dataset.semifinalRound === 'true') &&
                 nextRoundEl.classList.contains('round-final');
-            const lineOpts = flowOpts || {};
 
             for (let j = 0; j < nextUnits.length; j++) {
                 const idx1 = nextBye + j * 2;
@@ -457,41 +202,33 @@
                 const targetEl = nextUnits[j];
                 if (!targetEl) continue;
 
-                const targetRect = targetEl.getBoundingClientRect();
-                const x3 = targetRect.left - bracketRect.left;
-                const y3 = targetRect.top + targetRect.height / 2 - bracketRect.top;
+                const target = getBracketPoint(targetEl, bracket, bracketRect, 'left');
+                const x3 = target.x;
+                const y3 = target.y;
 
                 const sources = [src1El, src2El].filter(Boolean);
                 if (!sources.length) continue;
 
-                let midX = (getBracketUnitLineAnchor(sources[0], bracketRect).x + x3) / 2;
+                const anchors = sources.map((el) => getBracketUnitLineAnchor(el, bracket, bracketRect));
+                let midX = (Math.max.apply(null, anchors.map((a) => a.x)) + x3) / 2;
                 if (isSfToFinal) {
                     const thirdRound = bracket.querySelector('.round-3rd');
                     if (thirdRound) {
-                        const thirdRight = thirdRound.getBoundingClientRect().right - bracketRect.left;
+                        const thirdRight = getBracketPoint(thirdRound, bracket, bracketRect, 'right').x;
                         midX = (thirdRight + x3) / 2;
                     }
-                } else if (sources.length === 2) {
-                    const a1 = getBracketUnitLineAnchor(sources[0], bracketRect);
-                    const a2 = getBracketUnitLineAnchor(sources[1], bracketRect);
-                    midX = (a1.x + a2.x + x3) / 3;
                 }
 
-                sources.forEach((srcEl, idx) => {
-                    const anchor = getBracketUnitLineAnchor(srcEl, bracketRect);
-                    const d = (idx === 0 || sources.length === 1)
+                anchors.forEach((anchor, idx) => {
+                    const d = (idx === 0 || anchors.length === 1)
                         ? `M${anchor.x},${anchor.y} H${midX} V${y3} H${x3}`
                         : `M${anchor.x},${anchor.y} H${midX} V${y3}`;
-                    appendBracketConnectorPath(svg, d, Object.assign({}, lineOpts, {
-                        sourceEl: srcEl,
-                        targetEl: targetEl,
-                        flowDelay: sourceFlowDelay(srcEl, lineOpts.flowDelay),
-                    }));
+                    appendBracketConnectorPath(svg, d);
                 });
             }
 
             if (nextBye > 0 && !prevRoundEl.dataset.koByeCarrier && currentUnits[0]) {
-                drawByeAdvanceLine(svg, bracketRect, currentUnits[0], nextRoundEl, nextUnits, lineOpts);
+                drawByeAdvanceLine(svg, bracket, bracketRect, currentUnits[0], nextRoundEl, nextUnits);
             }
         }
 
@@ -502,15 +239,20 @@
             // Juara 3 tidak ikut rantai (ditumpuk di bawah Final di kolom yang sama).
             const rounds = bracket.querySelectorAll('[data-bracket-chain]');
 
-            if (bracketFlowCycleTimer) {
-                clearInterval(bracketFlowCycleTimer);
-                bracketFlowCycleTimer = null;
-            }
-
             const existingSvg = bracket.querySelector('.bracket-lines');
             if (existingSvg) existingSvg.remove();
-            clearBracketBorderFlow(bracket);
-            targetFlowArriveAt.clear();
+            // Clean leftover flow markup from older builds
+            bracket.querySelectorAll('.bracket-flow-ring').forEach((el) => el.remove());
+            bracket.querySelectorAll('.bracket-flow-border').forEach((el) => {
+                el.classList.remove('bracket-flow-border');
+                delete el.dataset.flowBound;
+                delete el.dataset.flowBorderEnd;
+                delete el.dataset.flowKey;
+            });
+            bracket.querySelectorAll('.bracket-flow-trophy').forEach((el) => {
+                el.classList.remove('bracket-flow-trophy', 'is-flowing');
+                el.style.removeProperty('animation-delay');
+            });
 
             bracket.style.position = 'relative';
 
@@ -527,23 +269,14 @@
             svg.setAttribute('height', bracket.scrollHeight);
 
             const bracketRect = bracket.getBoundingClientRect();
-            const cycleEndRef = { value: 0 };
-            const flowOptsBase = { cycleEndRef: cycleEndRef };
-
-            // Continuous cascade: border → connectors → next border (constant px/s)
-            if (rounds.length) {
-                markRoundMatchupsForFlow(rounds[0], 0, cycleEndRef);
-            }
 
             for (let i = 0; i < rounds.length - 1; i++) {
                 const currentUnits = getRoundBracketUnits(rounds[i]);
                 const nextUnits = getRoundBracketUnits(rounds[i + 1]);
                 if (!currentUnits.length || !nextUnits.length) continue;
                 drawRoundTransitionLines(
-                    svg, bracketRect, bracket, rounds[i], rounds[i + 1], currentUnits, nextUnits, flowOptsBase
+                    svg, bracket, bracketRect, rounds[i], rounds[i + 1], currentUnits, nextUnits
                 );
-                const arriveAt = maxArrivalForUnits(nextUnits);
-                markRoundMatchupsForFlow(rounds[i + 1], arriveAt, cycleEndRef);
             }
 
             // SF → Perebutan Juara 3
@@ -554,38 +287,22 @@
             const thirdUnit = bracket.querySelector('.round-3rd .matchup-tie') ||
                 bracket.querySelector('.round-3rd .matchup');
             if (sfUnits.length >= 2 && thirdUnit) {
-                const tRect = thirdUnit.getBoundingClientRect();
-                const x3 = tRect.left - bracketRect.left;
-                const y3 = tRect.top + tRect.height / 2 - bracketRect.top;
-                const midX = (sfUnits[0].getBoundingClientRect().right - bracketRect.left + x3) / 2;
+                const target = getBracketPoint(thirdUnit, bracket, bracketRect, 'left');
+                const x3 = target.x;
+                const y3 = target.y;
+                const src0 = getBracketUnitLineAnchor(sfUnits[0], bracket, bracketRect);
+                const midX = (src0.x + x3) / 2;
 
                 [0, 1].forEach((i, idx) => {
-                    const mRect = sfUnits[i].getBoundingClientRect();
-                    const x1 = mRect.right - bracketRect.left;
-                    const y1 = mRect.top + mRect.height / 2 - bracketRect.top;
+                    const src = getBracketUnitLineAnchor(sfUnits[i], bracket, bracketRect);
                     const d = idx === 0
-                        ? `M${x1},${y1} H${midX} V${y3} H${x3}`
-                        : `M${x1},${y1} H${midX} V${y3}`;
-                    appendBracketConnectorPath(svg, d, Object.assign({}, flowOptsBase, {
-                        sourceEl: sfUnits[i],
-                        targetEl: thirdUnit,
-                        flowDelay: sourceFlowDelay(sfUnits[i], 0),
-                    }));
+                        ? `M${src.x},${src.y} H${midX} V${y3} H${x3}`
+                        : `M${src.x},${src.y} H${midX} V${y3}`;
+                    appendBracketConnectorPath(svg, d);
                 });
-                const thirdRound = bracket.querySelector('.round-3rd');
-                if (thirdRound) {
-                    markRoundMatchupsForFlow(thirdRound, maxArrivalForUnits([thirdUnit]), cycleEndRef);
-                }
             }
 
-            // Trophy glow: climax when flow finishes the Final matchup
-            const finalRound = bracket.querySelector('.round-final') ||
-                (rounds.length ? rounds[rounds.length - 1] : null);
-            markTrophyFlowGlow(bracket, finalRoundFlowArriveSec(finalRound), cycleEndRef);
-
             bracket.appendChild(svg);
-            // Idle pad after last pulse, then loop
-            scheduleBracketLineFlow(svg, (cycleEndRef.value + 1.2) * 1000);
         }
 
         let bracketLinesResizeTimer = null;
@@ -593,7 +310,6 @@
             if (bracketLinesResizeTimer) clearTimeout(bracketLinesResizeTimer);
             bracketLinesResizeTimer = setTimeout(drawBracketLines, 180);
         });
-    
 
 /* --- */
 
@@ -747,29 +463,81 @@
             return name.substring(0, 3).toUpperCase();
         }
 
+        function formatSupportersLabel(count) {
+            const n = Math.max(0, Number(count) || 0);
+            return n === 1 ? 'Supporter (1)' : ('Supporters (' + n + ')');
+        }
+
+        function createPanelSlideInner() {
+            const inner = document.createElement('div');
+            inner.className = 'panel-slide-inner';
+            return inner;
+        }
+
+        function toggleSlidePanel(panel, wantOpen) {
+            const open = wantOpen == null ? !panel.classList.contains('show') : !!wantOpen;
+            panel.classList.toggle('show', open);
+            return open;
+        }
+
+        function afterPanelSlide(panel, callback) {
+            if (typeof callback !== 'function') return;
+            let done = false;
+            const finish = function () {
+                if (done) return;
+                done = true;
+                panel.removeEventListener('transitionend', onEnd);
+                callback();
+            };
+            const onEnd = function (e) {
+                if (e.target !== panel) return;
+                if (e.propertyName && e.propertyName !== 'grid-template-rows') return;
+                finish();
+            };
+            panel.addEventListener('transitionend', onEnd);
+            setTimeout(finish, 360);
+        }
+
+        function bindSupportersToggle(btn, panel, count, afterToggle) {
+            const closedLabel = formatSupportersLabel(count);
+            btn.textContent = closedLabel;
+            btn.onclick = function(e) {
+                if (e) e.stopPropagation();
+                if (panel.dataset.slideBusy === '1') return;
+                panel.dataset.slideBusy = '1';
+                const isVisible = toggleSlidePanel(panel);
+                btn.textContent = isVisible ? 'Hide' : closedLabel;
+                afterPanelSlide(panel, function () {
+                    panel.dataset.slideBusy = '';
+                    if (typeof afterToggle === 'function') afterToggle(isVisible);
+                });
+            };
+        }
+
+        function getSupportersMapForMatchup(matchup) {
+            return isKnockoutMatchup(matchup) ? teamSupportersKnockout : teamSupportersGroup;
+        }
+
         function injectSupporters() {
-            const matchups = document.querySelectorAll('.bracket .matchup');
-            matchups.forEach(matchup => {
-                const teams = matchup.querySelectorAll('.team');
+            document.querySelectorAll('.bracket .matchup, .group-stage .matchup').forEach(matchup => {
+                const supportersMap = getSupportersMapForMatchup(matchup);
+                const teams = matchup.querySelectorAll(':scope > .team');
                 teams.forEach(teamEl => {
                     const nameEl = teamEl.querySelector('.team-name');
                     if (!nameEl) return;
                     const teamName = nameEl.textContent.trim();
                     if (teamName === 'TBD') return;
 
-                    // Find supporters
-                    const supporters = teamSupporters[teamName] || [];
+                    const supporters = supportersMap[teamName] || [];
                     if (supporters.length === 0) return;
 
-                    // Create toggle button and panel at matchup level (after team rows)
-                    // Check if this team already has a panel sibling
                     if (teamEl.dataset.supporterInjected) return;
                     teamEl.dataset.supporterInjected = 'true';
 
-                    // Create panel
                     const panel = document.createElement('div');
                     panel.className = 'supporters-panel';
                     panel.id = 'sp-' + teamName.replace(/[^a-zA-Z0-9]/g, '') + '-' + Math.random().toString(36).substr(2, 4);
+                    const inner = createPanelSlideInner();
 
                     supporters.forEach(s => {
                         const item = document.createElement('div');
@@ -782,21 +550,19 @@
                         label.textContent = getInitials(s);
                         item.appendChild(img);
                         item.appendChild(label);
-                        panel.appendChild(item);
+                        inner.appendChild(item);
+                    });
+                    panel.appendChild(inner);
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'supporters-toggle';
+                    bindSupportersToggle(btn, panel, supporters.length, function() {
+                        if (isKnockoutMatchup(matchup) && typeof drawBracketLines === 'function') {
+                            setTimeout(drawBracketLines, 50);
+                        }
                     });
 
-                    // Create toggle button
-                    const btn = document.createElement('button');
-                    btn.className = 'supporters-toggle';
-                    btn.textContent = 'Show';
-                    btn.onclick = function() {
-                        const isVisible = panel.classList.toggle('show');
-                        btn.textContent = isVisible ? 'Hide' : 'Show';
-                        // Redraw bracket lines after toggle
-                        setTimeout(drawBracketLines, 50);
-                    };
-
-                    // Insert after team element
                     teamEl.insertAdjacentElement('afterend', panel);
                     teamEl.insertAdjacentElement('afterend', btn);
                 });
@@ -807,6 +573,19 @@
 
         function getScorePredictionsForMatch(matchId) {
             return (scorePredictions && scorePredictions[matchId]) || [];
+        }
+
+        function sortScorePredictions(preds, hasResult, actualA, actualB) {
+            return (preds || []).slice().sort((a, b) => {
+                if (hasResult) {
+                    const aExact = a.a === actualA && a.b === actualB;
+                    const bExact = b.a === actualA && b.b === actualB;
+                    if (aExact !== bExact) return aExact ? -1 : 1;
+                }
+                return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
+                    sensitivity: 'base',
+                });
+            });
         }
 
         function injectScorePredictions() {
@@ -834,11 +613,13 @@
                         : null;
                 }
                 const hasResult = actualA != null && actualB != null;
+                const sortedPreds = sortScorePredictions(preds, hasResult, actualA, actualB);
 
                 const panel = document.createElement('div');
                 panel.className = 'score-predict-panel';
+                const inner = createPanelSlideInner();
 
-                preds.forEach(pred => {
+                sortedPreds.forEach(pred => {
                     const item = document.createElement('div');
                     item.className = 'score-predict-item';
                     const exact = hasResult && pred.a === actualA && pred.b === actualB;
@@ -881,30 +662,32 @@
                     meta.appendChild(right);
                     item.appendChild(img);
                     item.appendChild(meta);
-                    panel.appendChild(item);
+                    inner.appendChild(item);
                 });
+                panel.appendChild(inner);
 
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'score-predict-toggle';
-                btn.textContent = 'Predictions (' + preds.length + ')';
+                btn.className = 'supporters-toggle score-predict-toggle';
+                const closedLabel = 'Predictions (' + sortedPreds.length + ')';
+                btn.textContent = closedLabel;
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const open = panel.classList.toggle('show');
-                    btn.textContent = open
-                        ? 'Hide predictions'
-                        : 'Predictions (' + preds.length + ')';
-                    if (typeof drawBracketLines === 'function') setTimeout(drawBracketLines, 50);
+                    if (panel.dataset.slideBusy === '1') return;
+                    panel.dataset.slideBusy = '1';
+                    const open = toggleSlidePanel(panel);
+                    btn.textContent = open ? 'Hide' : closedLabel;
+                    afterPanelSlide(panel, function () {
+                        panel.dataset.slideBusy = '';
+                        if (isKnockoutMatchup(matchup) && typeof drawBracketLines === 'function') {
+                            drawBracketLines();
+                        }
+                    });
                 });
 
-                const anchor = matchup.querySelector(':scope > .team:last-of-type') || matchup.lastElementChild;
-                if (anchor) {
-                    anchor.insertAdjacentElement('afterend', panel);
-                    anchor.insertAdjacentElement('afterend', btn);
-                } else {
-                    matchup.appendChild(btn);
-                    matchup.appendChild(panel);
-                }
+                // Always at bottom of the card (after both teams' supporter toggles).
+                matchup.appendChild(btn);
+                matchup.appendChild(panel);
             });
         }
 
@@ -1458,10 +1241,12 @@
 
             if (!teamData) {
                 if (flagEl) {
+                    flagEl.classList.add('is-tbd');
                     flagEl.innerHTML = '<img src="' + TBD_FLAG_SRC + '" alt="TBD" style="opacity:0.4">';
                 }
                 if (nameEl) {
                     nameEl.textContent = 'TBD';
+                    nameEl.classList.remove('confirmed');
                 }
                 if (scoreEl) scoreEl.remove();
                 delete teamEl.dataset.supporterInjected;
@@ -1469,6 +1254,7 @@
             }
 
             if (flagEl) {
+                flagEl.classList.remove('is-tbd');
                 flagEl.innerHTML = '<img src="' + teamData.flagSrc + '" alt="' + teamData.flagAlt + '">';
             }
             if (nameEl) {
@@ -1574,8 +1360,8 @@
         const DEFAULT_BALL_URL = 'https://png.pngtree.com/png-vector/20260610/ourmid/pngtree-vibrant-trionda-soccer-football-official-fifa-world-cup-2026-design-png-image_19512258.webp';
         const FINAL_PLACE_IMAGES = {
             champion: DEFAULT_TROPHY_URL,
-            runnerup: 'https://png.pngtree.com/png-clipart/20250717/original/pngtree-silver-second-place-trophy-with-number-two-png-image_21318342.png',
-            third: 'https://static.vecteezy.com/system/resources/previews/063/104/243/non_2x/bronze-medal-with-number-three-and-laurel-wreath-isolated-on-transparent-background-png.png',
+            runnerup: '🥇',
+            third: '👏',
         };
 
         function getTrophyImageUrl() {
@@ -1604,16 +1390,26 @@
             return DEFAULT_BALL_URL;
         }
 
-        function appendTeamPlaceBadge(teamEl, src, alt, variant) {
+        function appendTeamPlaceBadge(teamEl, srcOrEmoji, alt, variant) {
             if (!teamEl) return;
             const slot = document.createElement('span');
             slot.className = 'team-place-badge-slot' + (variant ? ' badge-' + variant : '');
-            if (src) {
-                const img = document.createElement('img');
-                img.src = src;
-                img.alt = alt || '';
-                img.title = alt || '';
-                slot.appendChild(img);
+            if (srcOrEmoji) {
+                const isUrl = /^https?:\/\//i.test(String(srcOrEmoji)) || String(srcOrEmoji).indexOf('/') !== -1;
+                if (isUrl) {
+                    const img = document.createElement('img');
+                    img.src = srcOrEmoji;
+                    img.alt = alt || '';
+                    img.title = alt || '';
+                    slot.appendChild(img);
+                } else {
+                    const emoji = document.createElement('span');
+                    emoji.className = 'team-place-badge-emoji';
+                    emoji.textContent = srcOrEmoji;
+                    emoji.title = alt || '';
+                    emoji.setAttribute('aria-label', alt || '');
+                    slot.appendChild(emoji);
+                }
             }
             teamEl.appendChild(slot);
         }
@@ -2036,6 +1832,7 @@
                     const flagEl = teams[i].querySelector('.team-flag');
                     const nameEl = teams[i].querySelector('.team-name');
                     if (flagEl) {
+                        flagEl.classList.remove('is-tbd');
                         flagEl.innerHTML = '<img src="' + countryFlagSrc(t.flag) + '" alt="' + t.alt + '">';
                     }
                     if (nameEl) {
@@ -2545,21 +2342,25 @@
 
                 const teamInfo = document.createElement('div');
                 teamInfo.className = 'podium-team-info';
+                const flagWrap = document.createElement('span');
+                flagWrap.className = 'flag-wave';
                 const flagImg = document.createElement('img');
                 flagImg.src = countryFlagSrc(info.flag);
                 flagImg.alt = team;
+                flagWrap.appendChild(flagImg);
                 const nameSpan = document.createElement('span');
                 nameSpan.textContent = team;
-                teamInfo.appendChild(flagImg);
+                teamInfo.appendChild(flagWrap);
                 teamInfo.appendChild(nameSpan);
                 card.appendChild(teamInfo);
 
                 const btn = document.createElement('button');
+                btn.type = 'button';
                 btn.className = 'podium-supporters-toggle';
-                btn.textContent = 'Show';
 
                 const panel = document.createElement('div');
                 panel.className = 'podium-supporters-panel';
+                const inner = createPanelSlideInner();
 
                 (info.supporters || []).forEach(s => {
                     const item = document.createElement('div');
@@ -2572,13 +2373,11 @@
                     label.textContent = getInitials(s);
                     item.appendChild(img);
                     item.appendChild(label);
-                    panel.appendChild(item);
+                    inner.appendChild(item);
                 });
+                panel.appendChild(inner);
 
-                btn.onclick = function() {
-                    const isVisible = panel.classList.toggle('show');
-                    btn.textContent = isVisible ? 'Hide' : 'Show';
-                };
+                bindSupportersToggle(btn, panel, (info.supporters || []).length);
 
                 card.appendChild(btn);
                 card.appendChild(panel);
@@ -2654,12 +2453,15 @@
             const countryEl = document.createElement('span');
             countryEl.className = countryClass;
 
+            const flagWrap = document.createElement('span');
+            flagWrap.className = 'flag-wave';
             const flagImg = document.createElement('img');
             flagImg.src = countryFlagSrc(nationality.flag);
             flagImg.alt = nationality.country;
-            flagImg.onerror = function() { this.style.display = 'none'; };
+            flagImg.onerror = function() { flagWrap.style.display = 'none'; };
+            flagWrap.appendChild(flagImg);
 
-            countryEl.appendChild(flagImg);
+            countryEl.appendChild(flagWrap);
             countryEl.appendChild(document.createTextNode(nationality.country));
             container.appendChild(countryEl);
         }
@@ -2728,11 +2530,12 @@
             card.appendChild(info);
 
             const btn = document.createElement('button');
+            btn.type = 'button';
             btn.className = 'podium-supporters-toggle';
-            btn.textContent = 'Show';
 
             const panel = document.createElement('div');
             panel.className = 'podium-supporters-panel';
+            const inner = createPanelSlideInner();
 
             (player.supporters || []).forEach(s => {
                 const item = document.createElement('div');
@@ -2745,13 +2548,11 @@
                 label.textContent = getInitials(s);
                 item.appendChild(img);
                 item.appendChild(label);
-                panel.appendChild(item);
+                inner.appendChild(item);
             });
+            panel.appendChild(inner);
 
-            btn.onclick = function() {
-                const isVisible = panel.classList.toggle('show');
-                btn.textContent = isVisible ? 'Hide' : 'Show';
-            };
+            bindSupportersToggle(btn, panel, (player.supporters || []).length);
 
             card.appendChild(btn);
             card.appendChild(panel);
@@ -3061,8 +2862,8 @@
                             playBarSlideSection(section);
                         }
                     } else if (hide && wasVisible) {
+                        // Keep bars filled — resetting on scroll-out caused repeated layout work
                         barSlideSectionVisible.set(section, false);
-                        resetBarSlideSection(section);
                     }
                 });
             }, {
@@ -3170,12 +2971,13 @@
 
                 // Supporters toggle button
                 const btn = document.createElement('button');
+                btn.type = 'button';
                 btn.className = 'goldenboot-supporters-btn';
-                btn.textContent = 'Show';
 
                 // Supporters panel
                 const panel = document.createElement('div');
                 panel.className = 'goldenboot-supporters-panel';
+                const inner = createPanelSlideInner();
 
                 player.supporters.forEach(s => {
                     const item = document.createElement('div');
@@ -3188,13 +2990,11 @@
                     sLabel.textContent = getInitials(s);
                     item.appendChild(img);
                     item.appendChild(sLabel);
-                    panel.appendChild(item);
+                    inner.appendChild(item);
                 });
+                panel.appendChild(inner);
 
-                btn.onclick = function() {
-                    const isVisible = panel.classList.toggle('show');
-                    btn.textContent = isVisible ? 'Hide' : 'Show';
-                };
+                bindSupportersToggle(btn, panel, (player.supporters || []).length);
 
                 card.appendChild(btn);
                 card.appendChild(panel);
@@ -3917,10 +3717,48 @@
         var audio = document.getElementById('bg-music');
         if (audio) audio.volume = 0.5;
 
+        function unlockSplashScroll() {
+            document.documentElement.classList.remove('splash-locked');
+            document.body.style.top = '';
+            delete document.body.dataset.splashScrollY;
+            // Always start league detail from the top after Enter
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }
+
+        function lockSplashScroll() {
+            if (!document.documentElement.classList.contains('splash-locked')) {
+                document.documentElement.classList.add('splash-locked');
+            }
+            // Freeze at current visual position, but Enter always resets to top
+            var y = window.scrollY || window.pageYOffset || 0;
+            document.body.dataset.splashScrollY = String(y);
+            document.body.style.top = '-' + y + 'px';
+        }
+
+        // Block background scroll/gestures until Enter
+        (function bindSplashScrollGuard() {
+            var overlay = document.getElementById('splash-overlay');
+            if (!overlay || overlay.classList.contains('hidden')) return;
+            lockSplashScroll();
+            var block = function (e) {
+                if (!document.documentElement.classList.contains('splash-locked')) return;
+                if (e.target && e.target.closest && e.target.closest('#enter-btn')) return;
+                e.preventDefault();
+            };
+            window.addEventListener('wheel', block, { passive: false, capture: true });
+            window.addEventListener('touchmove', block, { passive: false, capture: true });
+        })();
+
         function enterSite() {
             // Hilangkan splash overlay
             document.getElementById('splash-overlay').classList.add('hidden');
+            unlockSplashScroll();
             hasEntered = true;
+            requestAnimationFrame(function () {
+                window.scrollTo(0, 0);
+            });
             window.setTimeout(playFinalWinnerCelebration, 450);
             // Mulai musik
             if (audio) {
@@ -3929,6 +3767,7 @@
                 if (btn) btn.classList.add('playing');
             }
         }
+        window.enterSite = enterSite;
 
         function toggleMusic() {
             if (!audio) return;

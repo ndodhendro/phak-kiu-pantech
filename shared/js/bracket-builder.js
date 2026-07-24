@@ -257,7 +257,7 @@ window.ArisanBracket = (function () {
     function teamCellHtml(team, competitionType) {
         if (!team || !team.name) {
             return '<div class="team">' +
-                '<span class="team-flag"><img src="' + TBD_FLAG + '" alt="TBD" style="opacity:0.4"></span>' +
+                '<span class="team-flag is-tbd"><img src="' + TBD_FLAG + '" alt="TBD" style="opacity:0.4"></span>' +
                 '<span class="team-name">TBD</span></div>';
         }
         const url = resolveTeamFlagUrl(team, competitionType);
@@ -608,7 +608,9 @@ window.ArisanBracket = (function () {
                 if (!byGroup.has(key)) byGroup.set(key, []);
                 byGroup.get(key).push(e);
             });
-            return Array.from(byGroup.entries()).map(([label, matches]) => ({ label, matches }));
+            return Array.from(byGroup.entries())
+                .map(([label, matches]) => ({ label, matches }))
+                .sort((a, b) => String(a.label).localeCompare(String(b.label)));
         }
 
         const parent = new Map();
@@ -753,6 +755,7 @@ window.ArisanBracket = (function () {
 
     function buildGroupStageHtml(opts) {
         const competitionType = opts.competitionType || 'country';
+        const defs = normalizeGroupDefinitions(opts.groupDefinitions);
         const entries = resolveGroupPairs(opts);
         if (!entries.length) return '';
 
@@ -760,7 +763,29 @@ window.ArisanBracket = (function () {
         const year = opts.leagueYear ||
             (window.LEAGUE_DATA && window.LEAGUE_DATA.year) ||
             new Date().getFullYear();
-        const partitions = partitionGroupMatches(entries);
+
+        let partitions;
+        if (defs.length >= 2) {
+            // Prefer explicit setup groups so every defined group gets its own column
+            partitions = defs.map((g) => {
+                const teamSet = new Set(g.teams || []);
+                const matches = entries.filter((e) => {
+                    if (e.explicitGroup) {
+                        return String(e.explicitGroup).trim().toUpperCase() === String(g.label).trim().toUpperCase();
+                    }
+                    const a = e.pair[0] && e.pair[0].name;
+                    const b = e.pair[1] && e.pair[1].name;
+                    return (a && teamSet.has(a)) || (b && teamSet.has(b));
+                });
+                return { label: g.label, matches: matches };
+            }).filter((p) => p.matches.length);
+        } else {
+            partitions = partitionGroupMatches(entries);
+        }
+
+        // Stable A→B→C order when labels are letters
+        partitions = partitions.slice().sort((a, b) => String(a.label).localeCompare(String(b.label)));
+
         const multiGroup = partitions.length > 1 && partitions.every(p => p.label);
 
         let html = '<div class="round round-group' + (multiGroup ? ' group-stage-board' : ' group-stage-flat') + '">';
@@ -793,7 +818,7 @@ window.ArisanBracket = (function () {
                     entry.pair[0],
                     entry.pair[1],
                     competitionType,
-                    ''
+                    partitions[0] && partitions[0].label ? partitions[0].label : ''
                 );
             });
             html += '</div>';

@@ -9,8 +9,8 @@
             --bracket-matchup-width: 270px;
             --bracket-round-pad-x: 5px;
             --bracket-round-width: calc(var(--bracket-matchup-width) + (var(--bracket-round-pad-x) * 2));
-            --glow-rhythm: 4s;
-            --glow-rhythm-half: 2s;
+            --glow-rhythm: 2.5s;
+            --glow-rhythm-half: 1.25s;
             --glow-sync-delay: 0ms;
             /* Static 3D surfaces */
             --ui-3d-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
@@ -254,6 +254,10 @@
             min-width: 100%;
             max-width: none;
         }
+        .round-group.group-stage-board {
+            width: max-content;
+            min-width: 100%;
+        }
         .group-stage-columns {
             display: flex;
             flex-direction: row;
@@ -425,68 +429,10 @@
             width: 0;
             height: 0;
         }
-        /* Knockout connector + matchup border flow — constant px/s cascade */
-        .bracket {
-            --flow-cycle: 5s;
-        }
         .bracket-lines {
             z-index: 0;
             contain: layout style;
             pointer-events: none;
-        }
-        .bracket .bracket-line-flow {
-            stroke: rgba(126, 200, 240, 0.85);
-            stroke-width: 2;
-            stroke-linecap: round;
-            fill: none;
-            /* Gap >> pathLength so the dash never wraps back to the path start */
-            stroke-dasharray: 12 200;
-            stroke-dashoffset: 12;
-            opacity: 0;
-        }
-        /* Duration + delay set inline from real path length (constant visual speed) */
-        .bracket .bracket-line-flow.is-flowing {
-            animation-name: bracketLineFlow;
-            animation-timing-function: linear;
-            animation-fill-mode: both;
-        }
-        @keyframes bracketLineFlow {
-            /* Full duration = pathLength / speed — same px/s on border & connectors */
-            0% {
-                stroke-dashoffset: 12;
-                opacity: 0;
-            }
-            4% {
-                opacity: 0.95;
-            }
-            88% {
-                stroke-dashoffset: -100;
-                opacity: 0.95;
-            }
-            100% {
-                stroke-dashoffset: -112;
-                opacity: 0;
-            }
-        }
-        /* SVG border chase: left mid → top/bottom → meet at right mid */
-        .bracket .matchup.bracket-flow-border {
-            position: relative;
-        }
-        .bracket .matchup .bracket-flow-ring {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 4;
-            overflow: visible;
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .bracket .bracket-line-flow,
-            .bracket .bracket-line-flow.is-flowing {
-                animation: none;
-                opacity: 0;
-            }
         }
         .round {
             display: flex;
@@ -498,6 +444,8 @@
             box-sizing: border-box;
             position: relative;
             z-index: 1;
+            content-visibility: auto;
+            contain-intrinsic-size: auto 480px;
         }
         .round-header {
             text-align: center;
@@ -701,6 +649,7 @@
             min-width: var(--bracket-matchup-width);
         }
         .round-trophy {
+            position: relative;
             flex: 0 0 auto;
             display: flex;
             align-items: center;
@@ -708,8 +657,54 @@
             width: 60px;
             height: 60px;
             margin-left: -4px;
+            border-radius: 50%;
+            overflow: visible;
+        }
+        /* Soft golden kelap-kelip around trophy */
+        .round-trophy::before {
+            content: '';
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            background: radial-gradient(
+                circle,
+                rgba(255, 230, 120, 0.35) 0%,
+                rgba(255, 200, 60, 0.12) 45%,
+                transparent 72%
+            );
+            box-shadow:
+                0 0 12px rgba(255, 215, 0, 0.35),
+                0 0 28px rgba(255, 190, 50, 0.18);
+            animation: trophyGlowBlink 4.5s ease-in-out infinite;
+        }
+        /* Slow diagonal shine sweep across trophy */
+        .round-trophy::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 2;
+            background: linear-gradient(
+                115deg,
+                transparent 0%,
+                transparent 38%,
+                rgba(255, 255, 255, 0.15) 45%,
+                rgba(255, 246, 190, 0.7) 50%,
+                rgba(255, 255, 255, 0.2) 55%,
+                transparent 62%,
+                transparent 100%
+            );
+            background-size: 240% 100%;
+            background-repeat: no-repeat;
+            mix-blend-mode: soft-light;
+            animation: trophyShineSweep 5.5s ease-in-out infinite;
         }
         .round-trophy img {
+            position: relative;
+            z-index: 1;
             max-width: 60px;
             max-height: 60px;
             width: auto;
@@ -717,76 +712,37 @@
             object-fit: contain;
             object-position: center;
             display: block;
+            filter: drop-shadow(0 0 5px rgba(255, 200, 60, 0.4));
+            animation: trophyImgShine 4.5s ease-in-out infinite;
         }
-        /* Flow climax: trophy lights up after Final border merge */
-        .round-trophy.bracket-flow-trophy {
-            position: relative;
-            border-radius: 50%;
+        @keyframes trophyGlowBlink {
+            0%, 100% { opacity: 0.35; transform: scale(0.96); }
+            50% { opacity: 1; transform: scale(1.04); }
         }
-        .round-trophy.bracket-flow-trophy.is-flowing {
-            animation-name: trophyFlowGlow;
-            animation-duration: 1.8s;
-            animation-timing-function: ease-in-out;
-            animation-fill-mode: both;
-            /* delay set inline when Final flow arrives */
+        @keyframes trophyShineSweep {
+            0%, 18% { background-position: 140% 0; opacity: 0; }
+            28% { opacity: 0.85; }
+            48% { background-position: -40% 0; opacity: 0.9; }
+            58%, 100% { background-position: -40% 0; opacity: 0; }
         }
-        .round-trophy.bracket-flow-trophy.is-flowing img {
-            animation-name: trophyFlowGlowImg;
-            animation-duration: 1.8s;
-            animation-timing-function: ease-in-out;
-            animation-fill-mode: both;
-            animation-delay: inherit;
-        }
-        /* Opacity/transform only — avoid animated filter (expensive) */
-        @keyframes trophyFlowGlow {
-            0% {
-                opacity: 0;
-                box-shadow: none;
+        @keyframes trophyImgShine {
+            0%, 100% {
+                filter: drop-shadow(0 0 4px rgba(255, 200, 60, 0.28)) brightness(1);
             }
-            12% {
-                opacity: 1;
-                box-shadow:
-                    0 0 14px rgba(255, 200, 60, 0.45),
-                    0 0 28px rgba(255, 180, 40, 0.25);
+            50% {
+                filter: drop-shadow(0 0 12px rgba(255, 220, 100, 0.7)) brightness(1.08);
             }
-            45% {
-                opacity: 1;
-                box-shadow:
-                    0 0 18px rgba(255, 215, 80, 0.55),
-                    0 0 36px rgba(255, 190, 50, 0.3);
-            }
-            70% {
-                opacity: 0.85;
-                box-shadow:
-                    0 0 12px rgba(255, 200, 60, 0.35),
-                    0 0 22px rgba(255, 180, 40, 0.2);
-            }
-            100% {
-                opacity: 0;
-                box-shadow: none;
-            }
-        }
-        @keyframes trophyFlowGlowImg {
-            0% { transform: scale(1); opacity: 1; }
-            12% { transform: scale(1.04); opacity: 1; }
-            45% { transform: scale(1.07); opacity: 1; }
-            70% { transform: scale(1.03); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
         }
         @media (prefers-reduced-motion: reduce) {
-            .round-trophy.bracket-flow-trophy.is-flowing,
-            .round-trophy.bracket-flow-trophy.is-flowing img {
+            .round-trophy::before,
+            .round-trophy::after,
+            .round-trophy img {
                 animation: none;
-                filter: none;
-                box-shadow: none;
-                transform: none;
-                opacity: 1;
             }
+            .round-trophy::before { opacity: 0.65; }
+            .round-trophy::after { opacity: 0; }
         }
         /* Pause heavy loops when tab hidden or section off-screen */
-        html.anim-paused .bracket .bracket-line-flow.is-flowing,
-        html.anim-paused .round-trophy.bracket-flow-trophy.is-flowing,
-        html.anim-paused .round-trophy.bracket-flow-trophy.is-flowing img,
         html.anim-paused .podium-place-1 .podium-team-card::after,
         html.anim-paused .podium-place-2 .podium-team-card::after,
         html.anim-paused .podium-place-3 .podium-team-card::after,
@@ -795,10 +751,23 @@
         html.anim-paused .chart-row.rank-3 .chart-bar-wrapper::after,
         html.anim-paused .matchup.today::after,
         html.anim-paused .matchup.live::before,
+        html.anim-paused .matchup.live,
+        html.anim-paused .matchup.live .matchup-date,
+        html.anim-paused .matchup.live .wave-bars span,
         html.anim-paused .matchup.waiting-admin::after,
-        .bracket.anim-paused .bracket-line-flow.is-flowing,
-        .bracket.anim-paused .round-trophy.bracket-flow-trophy.is-flowing,
-        .bracket.anim-paused .round-trophy.bracket-flow-trophy.is-flowing img,
+        html.anim-paused #podium-goldenglove-container .player-podium-card::after,
+        html.anim-paused .goldenboot-row.top-1 .goldenboot-card::after,
+        html.anim-paused .goldenboot-row.top-1 .goldenboot-bar-wrapper::after,
+        html.anim-paused .total-goal-marker-info.glowing::after,
+        html.anim-paused .matchup-soon-badge,
+        html.anim-paused .matchup-waiting-badge,
+        html.anim-paused .round-trophy::before,
+        html.anim-paused .round-trophy::after,
+        html.anim-paused .round-trophy img,
+        html.anim-paused .team-flag,
+        html.anim-paused .flag-wave,
+        html.anim-paused .team-flag::after,
+        html.anim-paused .flag-wave::after,
         .standings-section.anim-paused .chart-row.rank-1 .chart-bar-wrapper::after,
         .standings-section.anim-paused .chart-row.rank-2 .chart-bar-wrapper::after,
         .standings-section.anim-paused .chart-row.rank-3 .chart-bar-wrapper::after {
@@ -872,22 +841,144 @@
             width: 16px;
             height: 16px;
         }
+        .team-place-badge-slot.badge-runnerup .team-place-badge-emoji,
+        .team-place-badge-slot.badge-third .team-place-badge-emoji {
+            font-size: 1.05rem;
+        }
+        .team-place-badge-emoji {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+        .podium-label-emoji {
+            display: inline-block;
+            margin-right: 4px;
+            font-size: 1rem;
+            line-height: 1;
+            vertical-align: middle;
+        }
         .team-flag {
             margin-right: 8px;
             width: 20px;
             height: 15px;
             text-align: center;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            border-radius: 2px;
+            transform-origin: left center;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+            will-change: transform;
+            animation: swing 1.7s ease-in-out infinite alternate;
+        }
+        .flag-wave {
+            position: relative;
+            display: inline-flex;
+            flex-shrink: 0;
+            overflow: hidden;
+            border-radius: 2px;
+            transform-origin: left center;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+            will-change: transform;
+            animation: swing 1.7s ease-in-out infinite alternate;
+        }
+        .podium-team-info .flag-wave {
+            width: 24px;
+            height: 18px;
+            margin-right: 0;
+            animation-duration: 1.85s;
+            animation-delay: -0.35s;
+        }
+        .player-podium-country .flag-wave,
+        .goldenboot-player-country .flag-wave {
+            width: 16px;
+            height: 12px;
+            animation-duration: 1.55s;
+            animation-delay: -0.7s;
+        }
+        /* Parent perspective so rotateY reads as depth toward/away from screen */
+        .team,
+        .podium-team-info,
+        .player-podium-country,
+        .goldenboot-player-country {
+            perspective: 90px;
+            perspective-origin: left center;
+        }
+        .team-flag img,
+        .flag-wave img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: inherit;
+            box-shadow: none;
+            /* Image stays put inside the swinging cloth frame */
+            transform: none;
+            animation: none;
         }
         .team-flag img {
-            width: 20px;
-            height: 15px;
-            object-fit: cover;
-            border-radius: 2px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        /* Moving light/shadow folds — illusion of wind ripples over cloth */
+        .team-flag::after,
+        .flag-wave::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            border-radius: inherit;
+            background: linear-gradient(
+                105deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.08) 12%,
+                rgba(255, 255, 255, 0.38) 22%,
+                transparent 34%,
+                rgba(0, 0, 0, 0.28) 48%,
+                transparent 58%,
+                rgba(255, 255, 255, 0.22) 72%,
+                transparent 84%,
+                rgba(0, 0, 0, 0.18) 94%,
+                transparent 100%
+            );
+            background-size: 240% 100%;
+            background-repeat: repeat-x;
+            mix-blend-mode: soft-light;
+            animation: wind-folds 1.25s linear infinite;
+        }
+        @keyframes swing {
+            from { transform: rotateY(-22deg); }
+            to { transform: rotateY(22deg); }
+        }
+        @keyframes wind-folds {
+            from { background-position: 0% 0; }
+            to { background-position: -240% 0; }
+        }
+        .team-flag.is-tbd,
+        .team-flag:has(img[alt="TBD"]),
+        .team-flag.is-tbd::after,
+        .team-flag:has(img[alt="TBD"])::after {
+            animation: none !important;
+            transform: none !important;
+        }
+        .team-flag.is-tbd::after,
+        .team-flag:has(img[alt="TBD"])::after {
+            display: none;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .team-flag,
+            .flag-wave,
+            .team-flag::after,
+            .flag-wave::after {
+                animation: none;
+            }
         }
         .team-name {
             font-size: 0.78rem;
@@ -1424,17 +1515,47 @@
             background: rgba(255,255,255,0.1);
             color: #fff;
         }
-        .supporters-panel {
-            display: none;
-            padding: 6px 8px;
+        .supporters-panel,
+        .score-predict-panel,
+        .podium-supporters-panel,
+        .goldenboot-supporters-panel {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1));
             background: #12122a;
-            border-top: 1px solid #2a2a5a;
+            border-top: 1px solid transparent;
         }
-        .supporters-panel.show {
+        .supporters-panel > .panel-slide-inner,
+        .score-predict-panel > .panel-slide-inner,
+        .podium-supporters-panel > .panel-slide-inner,
+        .goldenboot-supporters-panel > .panel-slide-inner {
+            overflow: hidden;
+            min-height: 0;
+        }
+        .supporters-panel.show,
+        .score-predict-panel.show,
+        .podium-supporters-panel.show,
+        .goldenboot-supporters-panel.show {
+            grid-template-rows: 1fr;
+            border-top-color: #2a2a5a;
+        }
+        .supporters-panel .panel-slide-inner,
+        .podium-supporters-panel .panel-slide-inner,
+        .goldenboot-supporters-panel .panel-slide-inner {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             justify-content: center;
+            padding: 0 8px;
+            opacity: 0;
+            transition: padding 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1)),
+                opacity 0.22s ease;
+        }
+        .supporters-panel.show .panel-slide-inner,
+        .podium-supporters-panel.show .panel-slide-inner,
+        .goldenboot-supporters-panel.show .panel-slide-inner {
+            padding: 6px 8px;
+            opacity: 1;
         }
         .supporter-item {
             display: flex;
@@ -1452,39 +1573,51 @@
         }
         .supporter-name {
             font-size: 0.55rem;
-            color: #aaa;
+            color: #fff;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .score-predict-toggle {
-            display: block;
-            width: 100%;
-            background: #12122a;
-            border: none;
-            border-top: 1px solid #2a2a5a;
+        .supporters-toggle.score-predict-toggle {
             color: #7ec8f0;
+            background: #12122a;
             font-size: 0.62rem;
             letter-spacing: 0.04em;
-            text-transform: uppercase;
+            text-transform: none;
             padding: 5px 8px;
-            cursor: pointer;
             font-weight: 600;
         }
-        .score-predict-toggle:hover {
+        .supporters-toggle.score-predict-toggle:hover {
             background: #1a1a3e;
             color: #a8dffc;
         }
         .score-predict-panel {
-            display: none;
+            background: #0f0f23;
+        }
+        .score-predict-panel .panel-slide-inner {
+            display: flex;
             flex-direction: column;
             gap: 6px;
-            padding: 8px 10px;
-            background: #0f0f23;
-            border-top: 1px solid #2a2a5a;
+            padding: 0 10px;
+            opacity: 0;
+            transition: padding 0.32s var(--bar-ease, cubic-bezier(0.45, 0, 0.55, 1)),
+                opacity 0.22s ease;
         }
-        .score-predict-panel.show {
-            display: flex;
+        .score-predict-panel.show .panel-slide-inner {
+            padding: 8px 10px;
+            opacity: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .supporters-panel,
+            .score-predict-panel,
+            .podium-supporters-panel,
+            .goldenboot-supporters-panel,
+            .supporters-panel .panel-slide-inner,
+            .score-predict-panel .panel-slide-inner,
+            .podium-supporters-panel .panel-slide-inner,
+            .goldenboot-supporters-panel .panel-slide-inner {
+                transition: none;
+            }
         }
         .score-predict-item {
             display: flex;
@@ -1498,7 +1631,8 @@
             padding: 4px 6px;
         }
         .score-predict-item.wrong {
-            opacity: 0.55;
+            background: rgba(233, 69, 96, 0.14);
+            border-radius: 6px;
             padding: 4px 6px;
         }
         .score-predict-avatar {
@@ -1713,6 +1847,7 @@
             pointer-events: none;
             animation: glowPulse var(--glow-rhythm) ease-in-out infinite;
             animation-delay: var(--glow-sync-delay);
+            will-change: opacity;
         }
         .podium-place-1 .podium-team-card::after {
             box-shadow: 0 0 14px rgba(255, 215, 0, 0.7), 0 0 28px rgba(255, 215, 0, 0.3);
@@ -1733,19 +1868,15 @@
             justify-content: center;
             text-align: center;
         }
-        .podium-team-info img {
-            width: 24px;
-            height: 18px;
-            object-fit: cover;
-            border-radius: 2px;
+        .podium-team-info .flag-wave {
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
-        .podium-team-info span {
+        .podium-team-info span:not(.flag-wave) {
             font-size: 0.75rem;
             font-weight: 600;
             white-space: nowrap;
         }
-        .podium-place .podium-team-info span {
+        .podium-place .podium-team-info span:not(.flag-wave) {
             text-align: center;
         }
         .podium-supporters-toggle {
@@ -1764,18 +1895,6 @@
         .podium-supporters-toggle:hover {
             background: rgba(255,255,255,0.1);
             color: #fff;
-        }
-        .podium-supporters-panel {
-            display: none;
-            padding: 6px 8px;
-            background: #12122a;
-            border-top: 1px solid #2a2a5a;
-        }
-        .podium-supporters-panel.show {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
         }
         .podium-block {
             position: relative;
@@ -1907,12 +2026,8 @@
             text-overflow: ellipsis;
             max-width: 100%;
         }
-        .player-podium-country img {
-            width: 16px;
-            height: 12px;
-            object-fit: cover;
+        .player-podium-country .flag-wave {
             border-radius: 1px;
-            flex-shrink: 0;
             box-shadow: 0 1px 2px rgba(0,0,0,0.35);
         }
         .player-podium-count {
@@ -2135,12 +2250,8 @@
             text-overflow: ellipsis;
             max-width: 100%;
         }
-        .goldenboot-player-country img {
-            width: 16px;
-            height: 12px;
-            object-fit: cover;
+        .goldenboot-player-country .flag-wave {
             border-radius: 1px;
-            flex-shrink: 0;
             box-shadow: 0 1px 2px rgba(0,0,0,0.35);
         }
         .goldenboot-supporters-btn {
@@ -2159,18 +2270,6 @@
         .goldenboot-supporters-btn:hover {
             background: rgba(255,255,255,0.1);
             color: #fff;
-        }
-        .goldenboot-supporters-panel {
-            display: none;
-            padding: 6px 8px;
-            background: #12122a;
-            border-top: 1px solid #2a2a5a;
-        }
-        .goldenboot-supporters-panel.show {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
         }
         .goldenboot-bar-wrapper {
             flex: 1;
@@ -2238,7 +2337,7 @@
         /* === Unified Glow Animation (shared rhythm via --glow-rhythm + --glow-sync-delay) === */
         /* Opacity pulse only on ::after glow layers — never on text containers */
         @keyframes glowPulse {
-            0%, 100% { opacity: 0.35; }
+            0%, 100% { opacity: 0.25; }
             50% { opacity: 1; }
         }
         @keyframes glowPulseShadow {
@@ -2583,6 +2682,9 @@
             animation: liveWaveBar var(--glow-rhythm) ease-in-out infinite;
             animation-delay: var(--glow-sync-delay);
         }
+        .matchup-live-badge .wave-bars span:nth-child(1) { animation-delay: calc(var(--glow-sync-delay) + 0s); }
+        .matchup-live-badge .wave-bars span:nth-child(2) { animation-delay: calc(var(--glow-sync-delay) + 0.15s); }
+        .matchup-live-badge .wave-bars span:nth-child(3) { animation-delay: calc(var(--glow-sync-delay) + 0.3s); }
         .matchup.live .team {
             position: relative;
             z-index: 1;
@@ -2816,10 +2918,6 @@
                 width: 16px;
                 height: 12px;
             }
-            .team-flag img {
-                width: 16px;
-                height: 12px;
-            }
             .team-name {
                 font-size: 0.7rem;
             }
@@ -2898,11 +2996,11 @@
                 padding: 6px 8px;
                 gap: 5px;
             }
-            .podium-team-info img {
+            .podium-team-info .flag-wave {
                 width: 18px;
                 height: 13px;
             }
-            .podium-team-info span {
+            .podium-team-info span:not(.flag-wave) {
                 font-size: 0.65rem;
             }
             .player-podium-place {
@@ -3000,11 +3098,11 @@
                 padding: 5px 6px;
                 gap: 4px;
             }
-            .podium-team-info img {
+            .podium-team-info .flag-wave {
                 width: 16px;
                 height: 12px;
             }
-            .podium-team-info span {
+            .podium-team-info span:not(.flag-wave) {
                 font-size: 0.6rem;
             }
             .podium-label {
@@ -3293,6 +3391,20 @@
 /* --- */
 
 
+        /* Lock page scroll while splash Enter is showing */
+        html.splash-locked,
+        html.splash-locked body {
+            overflow: hidden !important;
+            overscroll-behavior: none;
+            touch-action: none;
+            height: 100%;
+        }
+        html.splash-locked body {
+            position: fixed;
+            width: 100%;
+            left: 0;
+            right: 0;
+        }
         #splash-overlay {
             position: fixed;
             top: 0;
@@ -3307,6 +3419,12 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             transition: opacity 0.5s ease, visibility 0.5s ease;
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+        #splash-overlay .splash-content,
+        #splash-overlay #enter-btn {
+            touch-action: manipulation;
         }
         #splash-overlay.splash-pending .splash-content {
             visibility: hidden;

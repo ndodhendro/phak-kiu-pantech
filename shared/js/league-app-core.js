@@ -212,8 +212,7 @@ Core.createPanelSlideInner = function createPanelSlideInner() {
 Core.createSupportersDrop = function createSupportersDrop(btn, panel, opts) {
     const drop = document.createElement('div');
     drop.className = 'supporters-drop';
-    // Podium cards stick to the block (flex-end): put the panel above the toggle so
-    // expand/collapse grows upward and the button stays under the cursor.
+    // panelFirst: rare layouts that need the list above the toggle.
     if (opts && opts.panelFirst) {
         drop.classList.add('supporters-drop--panel-first');
         drop.appendChild(panel);
@@ -309,9 +308,11 @@ Core.bindSupportersToggle = function bindSupportersToggle(btn, panel, count, aft
         panel.dataset.slideBusy = '1';
         const willOpen = !panel.classList.contains('show');
         if (willOpen && typeof fillOnOpen === 'function') fillOnOpen();
-        // Award cards (golden boot / glove) expand downward in normal flow — pin would scroll wrongly.
-        // Podium team cards sit on flex-end: expanding down moves the toggle up, so pin keeps it fixed.
-        const skipPin = !!(btn.closest && btn.closest('.goldenboot-card, .player-podium-card'));
+        // Award + podium team cards expand downward in normal document flow — pin would scroll wrongly.
+        // Matchup panels still use pin when surrounding layout would shift the toggle upward.
+        const skipPin = !!(btn.closest && btn.closest(
+            '.goldenboot-card, .player-podium-card, .podium-team-card'
+        ));
         const stopPin = skipPin ? function () {} : Core.pinElementScreenY(btn);
         const isVisible = Core.toggleSlidePanel(panel);
         btn.textContent = isVisible ? 'Hide' : closedLabel;

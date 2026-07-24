@@ -1939,6 +1939,7 @@
         }
         .podium-container {
             display: flex;
+            /* Equal-height columns so empty places (e.g. 3rd) still sit on the same baseline. */
             align-items: stretch;
             justify-content: center;
             gap: 12px;
@@ -1968,12 +1969,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-end;
-            flex: 1 1 auto;
+            justify-content: flex-start;
+            /* Pack cards onto the block; free space stays above (labels stay top-aligned).
+               Opening supporters eats this auto-margin first, so the toggle stays put
+               and the block only moves down after the gap is gone. */
+            margin-top: auto;
+            flex: 0 0 auto;
             gap: 8px;
             padding: 12px 8px 0;
             width: 100%;
-            min-height: 0;
         }
         .podium-place > .podium-block {
             flex: 0 0 auto;
@@ -1983,7 +1987,7 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            align-items: stretch;
+            align-items: flex-start;
             gap: 8px;
             width: 100%;
         }
@@ -2139,7 +2143,7 @@
         }
         .podium-block {
             position: relative;
-            margin-top: auto;
+            margin-top: 8px;
             border-radius: 10px 10px 6px 6px;
             width: 100%;
             display: flex;
@@ -3355,9 +3359,6 @@
                 width: 26px;
                 height: 26px;
             }
-            .total-goal-track-v {
-                margin-left: 0;
-            }
             .total-goal-marker-info {
                 padding: 4px 8px;
                 gap: 5px;
@@ -3494,9 +3495,6 @@
             .player-podium-img {
                 width: 22px;
                 height: 22px;
-            }
-            .total-goal-track-v {
-                margin-left: 0;
             }
             .total-goal-marker-line-v {
                 width: 10px;

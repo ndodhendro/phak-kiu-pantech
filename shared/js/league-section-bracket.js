@@ -252,6 +252,15 @@ Core.getSupportersMapForMatchup = function getSupportersMapForMatchup(matchup) {
 };
 Core.injectSupporters = function injectSupporters() {
     document.querySelectorAll('.bracket .matchup, .group-stage .matchup').forEach(matchup => {
+        // Drop previous team-supporter rows so re-entering a view does not stack toggles.
+        matchup.querySelectorAll(':scope > .supporters-drop').forEach(drop => {
+            if (drop.querySelector('.score-predict-toggle')) return;
+            if (drop.querySelector('.supporters-toggle')) drop.remove();
+        });
+        matchup.querySelectorAll(':scope > .team').forEach(teamEl => {
+            delete teamEl.dataset.supporterInjected;
+        });
+
         const supportersMap = Core.getSupportersMapForMatchup(matchup);
         const teams = matchup.querySelectorAll(':scope > .team');
         teams.forEach(teamEl => {

@@ -12,6 +12,9 @@
             --glow-rhythm: 2.5s;
             --glow-rhythm-half: 1.25s;
             --glow-sync-delay: 0ms;
+            /* Shared award card size (Golden Boot + Golden Glove) */
+            --award-card-width: 160px;
+            --award-card-min-height: 76px;
             /* Static 3D surfaces */
             --ui-3d-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
             --ui-3d-shade: inset 0 -2px 6px rgba(0, 0, 0, 0.28);
@@ -2392,11 +2395,16 @@
         }
         .goldenboot-bar-area {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
         }
         .goldenboot-card {
-            width: 180px;
-            min-width: 180px;
+            box-sizing: border-box;
+            width: var(--award-card-width);
+            min-width: var(--award-card-width);
+            max-width: var(--award-card-width);
+            min-height: var(--award-card-min-height);
+            display: flex;
+            flex-direction: column;
             background: #1a1a3e;
             border-radius: 10px;
             border: 1px solid rgba(255, 215, 0, 0.4);
@@ -2416,8 +2424,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex: 1 1 auto;
             padding: 6px 8px;
             gap: 8px;
+            min-height: 0;
+        }
+        .goldenboot-card .supporters-drop {
+            flex: 0 0 auto;
+            margin-top: auto;
         }
         .goldenboot-player-meta {
             display: flex;
@@ -2576,16 +2590,28 @@
         #podium-goldenglove-container .gg-row-winner .player-podium-place,
         #podium-goldenglove-container .gg-row-others .player-podium-place,
         #podium-goldenglove-container .gg-row .player-podium-place {
-            flex: 0 0 148px;
-            width: 148px;
-            min-width: 148px;
-            max-width: 148px;
+            flex: 0 0 var(--award-card-width);
+            width: var(--award-card-width);
+            min-width: var(--award-card-width);
+            max-width: var(--award-card-width);
         }
         #podium-goldenglove-container .player-podium-card {
+            box-sizing: border-box;
+            width: 100%;
+            min-height: var(--award-card-min-height);
+            display: flex;
+            flex-direction: column;
             position: relative;
             overflow: visible;
             border-color: rgba(255, 215, 0, 0.7);
             box-shadow: var(--ui-3d-highlight), var(--ui-3d-shade), var(--ui-3d-drop);
+        }
+        #podium-goldenglove-container .player-podium-info {
+            flex: 1 1 auto;
+        }
+        #podium-goldenglove-container .player-podium-card .supporters-drop {
+            flex: 0 0 auto;
+            margin-top: auto;
         }
         #podium-goldenglove-container .player-podium-card::after {
             content: '';
@@ -3071,6 +3097,10 @@
 
         /* Responsive - Mobile */
         @media (max-width: 768px) {
+            :root {
+                --award-card-width: 140px;
+                --award-card-min-height: 70px;
+            }
             body {
                 padding: 15px 10px 88px;
             }
@@ -3209,10 +3239,15 @@
             #podium-goldenglove-container .gg-row-winner .player-podium-place,
             #podium-goldenglove-container .gg-row-others .player-podium-place,
             #podium-goldenglove-container .gg-row .player-podium-place {
-                flex: 0 0 132px;
-                width: 132px;
-                min-width: 132px;
-                max-width: 132px;
+                flex: 0 0 var(--award-card-width);
+                width: var(--award-card-width);
+                min-width: var(--award-card-width);
+                max-width: var(--award-card-width);
+            }
+            .goldenboot-card {
+                width: var(--award-card-width);
+                min-width: var(--award-card-width);
+                max-width: var(--award-card-width);
             }
             .player-podium-info {
                 padding: 7px 8px;
@@ -3249,8 +3284,9 @@
                 font-size: 0.6rem;
             }
             .goldenboot-card {
-                width: 150px;
-                min-width: 150px;
+                width: var(--award-card-width);
+                min-width: var(--award-card-width);
+                max-width: var(--award-card-width);
                 margin-right: 8px;
             }
             .goldenboot-player-name {
@@ -3302,6 +3338,8 @@
         @media (max-width: 480px) {
             :root {
                 --bracket-matchup-width: 200px;
+                --award-card-width: 120px;
+                --award-card-min-height: 64px;
             }
             .round {
                 width: var(--bracket-round-width);
@@ -3345,10 +3383,10 @@
             #podium-goldenglove-container .gg-row-winner .player-podium-place,
             #podium-goldenglove-container .gg-row-others .player-podium-place,
             #podium-goldenglove-container .gg-row .player-podium-place {
-                flex: 0 0 108px;
-                width: 108px;
-                min-width: 108px;
-                max-width: 108px;
+                flex: 0 0 var(--award-card-width);
+                width: var(--award-card-width);
+                min-width: var(--award-card-width);
+                max-width: var(--award-card-width);
             }
             .player-podium-info {
                 padding: 6px;
@@ -3396,8 +3434,9 @@
                 left: auto;
             }
             .goldenboot-card {
-                width: 132px;
-                min-width: 132px;
+                width: var(--award-card-width);
+                min-width: var(--award-card-width);
+                max-width: var(--award-card-width);
                 margin-right: 8px;
             }
             .goldenboot-player-name {

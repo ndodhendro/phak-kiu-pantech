@@ -301,7 +301,9 @@ Core.bindSupportersToggle = function bindSupportersToggle(btn, panel, count, aft
         panel.dataset.slideBusy = '1';
         const willOpen = !panel.classList.contains('show');
         if (willOpen && typeof fillOnOpen === 'function') fillOnOpen();
-        const stopPin = Core.pinElementScreenY(btn);
+        // Award cards expand downward in-flow; pinning would scroll the toggle upward.
+        const skipPin = !!(btn.closest && btn.closest('.goldenboot-card, .player-podium-card, .podium-team-card'));
+        const stopPin = skipPin ? function () {} : Core.pinElementScreenY(btn);
         const isVisible = Core.toggleSlidePanel(panel);
         btn.textContent = isVisible ? 'Hide' : closedLabel;
         Core.afterPanelSlide(panel, function () {

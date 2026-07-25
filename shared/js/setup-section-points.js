@@ -127,6 +127,10 @@
         setShare('pt-share-glove', pc.sideQuestShare.goldenGlove);
         setShare('pt-share-totalgoal', pc.sideQuestShare.totalGoal);
         setShare('pt-share-scorepredict', pc.sideQuestShare.scorePredict);
+        const gpr = Core.form.groupPointRules || { win: 3, draw: 1, loss: 0 };
+        set('gpt-win', gpr.win);
+        set('gpt-draw', gpr.draw);
+        set('gpt-loss', gpr.loss);
         Core.syncMainQuestModeUi();
         Core.renderMainQuestTeamPoints();
     }
@@ -182,6 +186,15 @@
         bindShare('pt-share-scorepredict', 'scorePredict');
         bindMode('mq-mode-fixed', 'fixed');
         bindMode('mq-mode-fifa', 'fifa');
+        ['win', 'draw', 'loss'].forEach(function (key) {
+            const el = document.getElementById('gpt-' + key);
+            if (!el) return;
+            el.addEventListener('input', function () {
+                if (!Core.form.groupPointRules) Core.form.groupPointRules = { win: 3, draw: 1, loss: 0 };
+                const v = parseInt(el.value, 10);
+                Core.form.groupPointRules[key] = Number.isNaN(v) ? 0 : v;
+            });
+        });
     }
 
 })(window.ArisanSetupFormCore);

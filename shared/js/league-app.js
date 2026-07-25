@@ -60,6 +60,7 @@
     window.barEase = function () { return Core.barEase.apply(Core, arguments); };
     window.getBarSlideSectionEl = function () { return Core.getBarSlideSectionEl.apply(Core, arguments); };
     window.playBarSlideSection = function () { return Core.playBarSlideSection.apply(Core, arguments); };
+    window.flushPendingBarSlides = function () { return Core.flushPendingBarSlides.apply(Core, arguments); };
     window.resetBarSlideSection = function () { return Core.resetBarSlideSection.apply(Core, arguments); };
     window.getBarSlideObserver = function () { return Core.getBarSlideObserver.apply(Core, arguments); };
     window.observeBarSlide = function () { return Core.observeBarSlide.apply(Core, arguments); };
@@ -176,6 +177,11 @@
     window.calculateStandingsPointsFromBracket = function () { return Core.calculateStandingsPointsFromBracket.apply(Core, arguments); };
     window.updateStandingsPoints = function () { return Core.updateStandingsPoints.apply(Core, arguments); };
     window.updateStandingsChart = function () { return Core.updateStandingsChart.apply(Core, arguments); };
+    window.resetStandingsChartBars = function () { return Core.resetStandingsChartBars.apply(Core, arguments); };
+    window.calculateGroupStandings = function () { return Core.calculateGroupStandings.apply(Core, arguments); };
+    window.getMathematicallyEliminatedGroupTeams = function () { return Core.getMathematicallyEliminatedGroupTeams.apply(Core, arguments); };
+    window.renderGroupStandings = function () { return Core.renderGroupStandings.apply(Core, arguments); };
+    window.getGroupPointRules = function () { return Core.getGroupPointRules.apply(Core, arguments); };
     window.openParticipantAvatarPopup = function () { return Core.openParticipantAvatarPopup.apply(Core, arguments); };
     window.closeParticipantAvatarPopup = function () { return Core.closeParticipantAvatarPopup.apply(Core, arguments); };
     window.bindStandingsAvatarClicks = function () { return Core.bindStandingsAvatarClicks.apply(Core, arguments); };

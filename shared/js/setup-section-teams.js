@@ -24,6 +24,7 @@
     Core.emptyGroup = function emptyGroup(index) {
         return {
             label: String.fromCharCode(65 + (index || 0)),
+            qualifyCount: 2,
             teams: [Core.emptyTeam(), Core.emptyTeam(), Core.emptyTeam(), Core.emptyTeam()],
         };
     }
@@ -247,11 +248,39 @@
     }
 
     Core.isGroupScheduleEntry = function isGroupScheduleEntry(entry) {
-        return String(entry && entry.id || '').toLowerCase().startsWith('group-');
+        const id = String(entry && entry.id || '').toLowerCase();
+        return id.startsWith('group-') || id.startsWith('gmatch-');
+    }
+
+    Core.allocMatchId = function allocMatchId(prefix) {
+        Core.form.matchIdCounter = Math.max(0, parseInt(Core.form.matchIdCounter, 10) || 0) + 1;
+        return String(prefix || 'match') + '-' + Core.form.matchIdCounter;
+    }
+
+    Core.ensureFixtureIds = function ensureFixtureIds() {
+        if (!Array.isArray(Core.form.groupFixtures)) Core.form.groupFixtures = [];
+        if (!Array.isArray(Core.form.knockoutFixtures)) Core.form.knockoutFixtures = [];
+        let counter = Math.max(0, parseInt(Core.form.matchIdCounter, 10) || 0);
+        Core.form.groupFixtures.forEach(f => {
+            if (!f.id) {
+                counter += 1;
+                f.id = 'gmatch-' + counter;
+            }
+        });
+        Core.form.knockoutFixtures.forEach(f => {
+            if (!f.id) {
+                counter += 1;
+                f.id = 'komatch-' + counter;
+            }
+        });
+        Core.form.matchIdCounter = counter;
     }
 
     Core.renderScheduleRowsHtml = function renderScheduleRowsHtml(catalog) {
         const swaps = Core.form.fixtureSideSwaps || {};
+        if (!catalog.length) {
+            return '<p class="hint">No matches yet. Use + Schedule to add one.</p>';
+        }
         return '<ul class="schedule-preview-list">' +
             catalog.map(entry => {
                 const pk = Core.catalogPairKey(entry);
@@ -266,6 +295,7 @@
                     '</div>' +
                     '<div class="schedule-edit-inputs">' +
                     '<button type="button" class="btn btn-secondary btn-sm schedule-swap-btn" data-action="swap-sides" title="Swap home/away order" aria-label="Swap home and away for ' + Core.esc(entry.label) + '">⇄ Swap</button>' +
+                    '<button type="button" class="btn btn-danger btn-sm" data-action="remove-schedule" title="Remove match">Remove</button>' +
                     '<input type="date" data-schedule-date value="' + Core.esc(parts.date) + '" aria-label="Date">' +
                     Core.scheduleTimeInputsHtml(timeValue) +
                     '</div></li>';
@@ -273,17 +303,98 @@
             '</ul>';
     }
 
-    Core.bindScheduleStagePanels = function bindScheduleStagePanels(root) {
-        if (!root) return;
-        root.querySelectorAll('.stage-panel[data-stage]').forEach(panel => {
-            const key = panel.dataset.stage;
-            panel.querySelector('.stage-panel-toggle')?.addEventListener('click', () => {
-                const open = panel.classList.toggle('is-open');
-                Core.stageOpenState[key] = open;
-                const btn = panel.querySelector('.stage-panel-toggle');
-                if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-            });
+    Core.teamNameOptionsHtml = function teamNameOptionsHtml(selected) {
+        const names = Core.teamNames();
+        let html = '<option value="">TBD</option>';
+        names.forEach(n => {
+            html += '<option value="' + Core.esc(n) + '"' +
+                (n === selected ? ' selected' : '') + '>' + Core.esc(n) + '</option>';
         });
+        return html;
+    }
+
+    Core.groupLabelOptionsHtml = function groupLabelOptionsHtml(selected) {
+        const defs = Core.form.groupDefinitions || [];
+        let html = '';
+        defs.forEach((g, i) => {
+            const label = (g.label || String.fromCharCode(65 + i)).trim();
+            html += '<option value="' + Core.esc(label) + '"' +
+                (label === selected ? ' selected' : '') + '>Group ' + Core.esc(label) + '</option>';
+        });
+        if (!html) html = '<option value="A">Group A</option>';
+        return html;
+    }
+
+    Core.koRoundOptionsHtml = function koRoundOptionsHtml(selected) {
+        const rounds = [
+            'Round of 32', 'Round of 16', 'Quarter-finals', 'Semi-finals', '3rd Place', 'Final',
+        ];
+        return rounds.map(r =>
+            '<option value="' + Core.esc(r) + '"' + (r === selected ? ' selected' : '') + '>' +
+            Core.esc(r) + '</option>'
+        ).join('');
+    }
+
+    Core.renderManualScheduleAddForm = function renderManualScheduleAddForm(stage) {
+        if (stage === 'group') {
+            return '<div class="schedule-add-form" data-stage="group">' +
+                '<select data-add="group" aria-label="Group">' + Core.groupLabelOptionsHtml('') + '</select>' +
+                '<select data-add="team-a" aria-label="Team A">' + Core.teamNameOptionsHtml('') + '</select>' +
+                '<span>vs</span>' +
+                '<select data-add="team-b" aria-label="Team B">' + Core.teamNameOptionsHtml('') + '</select>' +
+                '<button type="button" class="btn btn-secondary btn-sm" data-action="add-schedule">+ Schedule</button>' +
+                '</div>';
+        }
+        return '<div class="schedule-add-form" data-stage="knockout">' +
+            '<select data-add="round" aria-label="Round">' + Core.koRoundOptionsHtml('Round of 16') + '</select>' +
+            '<select data-add="team-a" aria-label="Team A">' + Core.teamNameOptionsHtml('') + '</select>' +
+            '<span>vs</span>' +
+            '<select data-add="team-b" aria-label="Team B">' + Core.teamNameOptionsHtml('') + '</select>' +
+            '<button type="button" class="btn btn-secondary btn-sm" data-action="add-schedule">+ Schedule</button>' +
+            '</div>';
+    }
+
+    Core.addManualScheduleEntry = function addManualScheduleEntry(stage, formEl) {
+        if (!formEl) return;
+        Core.ensureFixtureIds();
+        if (stage === 'group') {
+            const group = (formEl.querySelector('[data-add="group"]') || {}).value || 'A';
+            const a = (formEl.querySelector('[data-add="team-a"]') || {}).value || '';
+            const b = (formEl.querySelector('[data-add="team-b"]') || {}).value || '';
+            if (!a && !b) return;
+            Core.form.groupFixtures.push({
+                id: Core.allocMatchId('gmatch'),
+                a: a,
+                b: b,
+                group: group,
+            });
+        } else {
+            const round = (formEl.querySelector('[data-add="round"]') || {}).value || 'Knockout';
+            const a = (formEl.querySelector('[data-add="team-a"]') || {}).value || '';
+            const b = (formEl.querySelector('[data-add="team-b"]') || {}).value || '';
+            Core.form.knockoutFixtures.push({
+                id: Core.allocMatchId('komatch'),
+                a: a,
+                b: b,
+                round: round,
+            });
+        }
+        Core.renderScheduleSection({ skipCollect: true });
+    }
+
+    Core.removeManualScheduleEntry = function removeManualScheduleEntry(matchId) {
+        const id = String(matchId || '').trim();
+        if (!id) return;
+        Core.form.groupFixtures = (Core.form.groupFixtures || []).filter(f => f.id !== id);
+        Core.form.knockoutFixtures = (Core.form.knockoutFixtures || []).filter(f => f.id !== id);
+        if (Core.form.matchSchedule) {
+            delete Core.form.matchSchedule[id];
+            Object.keys(Core.form.matchSchedule).forEach(k => {
+                // also clear pair-key bindings referencing this match if any
+            });
+        }
+        if (Core.form.fixtureSideSwaps) delete Core.form.fixtureSideSwaps[id];
+        Core.renderScheduleSection({ skipCollect: true });
     }
 
     Core.renderScheduleSection = function renderScheduleSection(opts) {
@@ -292,7 +403,6 @@
         const preview = document.getElementById('schedule-preview');
         const complete = Core.isTeamsSectionComplete();
 
-        // Persist any in-progress date/time edits before rebuilding the list
         if (!skipCollect) Core.collectScheduleFromDom();
 
         if (section) section.classList.toggle('hidden', !complete);
@@ -303,46 +413,58 @@
             return;
         }
 
+        Core.ensureFixtureIds();
         Core.pruneMatchSchedule();
         const catalog = Core.getScheduleCatalog();
-        Core.pruneFixtureSideSwaps(catalog.map(e => Core.catalogPairKey(e)));
-        if (!catalog.length) {
-            preview.innerHTML = '<p class="hint">Add teams to see match schedule.</p>';
-            return;
-        }
+        Core.pruneFixtureSideSwaps(catalog.map(e => Core.catalogPairKey(e)).concat(catalog.map(e => e.id)));
 
         const scheduleTitle = document.getElementById('schedule-section-title');
         const scheduleHint = document.getElementById('schedule-section-hint');
-        if (scheduleTitle) {
-            scheduleTitle.textContent = 'Match Schedule';
-        }
+        if (scheduleTitle) scheduleTitle.textContent = 'Match Schedule';
         if (scheduleHint) {
-            scheduleHint.textContent = 'Set kickoff date and time in 24-hour format (WIB). Leave date blank if not scheduled yet. Use Swap to reverse home/away order. ' +
-                'List order: unscheduled first, then scheduled by nearest date. Order refreshes after Save.';
+            scheduleHint.textContent = 'No auto-generate — add each match with + Schedule. Set kickoff date/time (WIB). Use Swap for home/away. Remove deletes the match entry.';
         }
 
         const groupEntries = catalog.filter(Core.isGroupScheduleEntry);
         const knockoutEntries = catalog.filter(e => !Core.isGroupScheduleEntry(e));
         let html = '';
-        if (Core.form.includeGroupStage && groupEntries.length) {
+        if (Core.form.includeGroupStage) {
             html += Core.stagePanelShell(
                 'schedule-group',
                 'Group Stage Schedule',
-                Core.renderScheduleRowsHtml(groupEntries)
+                Core.renderManualScheduleAddForm('group') + Core.renderScheduleRowsHtml(groupEntries)
             );
         }
-        if (Core.form.includeKnockoutStage && knockoutEntries.length) {
+        if (Core.form.includeKnockoutStage) {
             html += Core.stagePanelShell(
                 'schedule-knockout',
                 'Knockout Schedule',
-                Core.renderScheduleRowsHtml(knockoutEntries)
+                Core.renderManualScheduleAddForm('knockout') + Core.renderScheduleRowsHtml(knockoutEntries)
             );
         }
         if (!html) {
-            html = Core.renderScheduleRowsHtml(catalog);
+            html = '<p class="hint">Enable Group Stage and/or Knockout Stage to schedule matches.</p>';
         }
         preview.innerHTML = html;
+        Core.bindScheduleStagePanels = Core.bindScheduleStagePanels || function bindScheduleStagePanels(root) {
+            if (!root) return;
+            root.querySelectorAll('.stage-panel[data-stage]').forEach(panel => {
+                const key = panel.dataset.stage;
+                panel.querySelector('.stage-panel-toggle')?.addEventListener('click', () => {
+                    const open = panel.classList.toggle('is-open');
+                    Core.stageOpenState[key] = open;
+                    const btn = panel.querySelector('.stage-panel-toggle');
+                    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                });
+            });
+        };
         Core.bindScheduleStagePanels(preview);
+
+        preview.querySelectorAll('.schedule-add-form').forEach(formEl => {
+            formEl.querySelector('[data-action="add-schedule"]')?.addEventListener('click', () => {
+                Core.addManualScheduleEntry(formEl.dataset.stage, formEl);
+            });
+        });
 
         preview.querySelectorAll('.schedule-edit-row').forEach(row => {
             const onChange = () => Core.syncScheduleFromRow(row);
@@ -352,6 +474,9 @@
             });
             row.querySelector('[data-action="swap-sides"]')?.addEventListener('click', () => {
                 Core.toggleFixtureSideSwap(row.dataset.pairKey || row.dataset.matchId);
+            });
+            row.querySelector('[data-action="remove-schedule"]')?.addEventListener('click', () => {
+                Core.removeManualScheduleEntry(row.dataset.matchId);
             });
         });
     }
@@ -546,14 +671,9 @@
     Core.getGroupStageHint = function getGroupStageHint() {
         const defs = Core.form.groupDefinitions || [];
         const unique = Core.uniqueTeamsFromGroups(defs).length;
-        const fixtures = (typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions)
-            ? ArisanBracket.fixturesFromGroupDefinitions(defs.map(g => ({
-                label: g.label,
-                teams: (g.teams || []).map(t => t.name).filter(Boolean),
-            })))
-            : [];
-        return 'List members of each group. Matches auto-generate as round-robin. Currently '
-            + defs.length + ' group(s), ' + unique + ' teams, ' + fixtures.length + ' matches.';
+        const fixtures = (Core.form.groupFixtures || []).filter(f => f && (f.a || f.b));
+        return 'List members of each group. Schedule matches manually below (no auto-generate). Currently '
+            + defs.length + ' group(s), ' + unique + ' teams, ' + fixtures.length + ' scheduled match(es).';
     }
 
     Core.getKnockoutStageHint = function getKnockoutStageHint(isCountry) {
@@ -569,15 +689,20 @@
         let body = '<p class="hint">' + Core.esc(Core.getGroupStageHint()) + '</p>';
         Core.form.groupDefinitions.forEach((g, gi) => {
             const label = (g.label || String.fromCharCode(65 + gi)).trim();
-            const matchCount = (() => {
-                const n = (g.teams || []).filter(t => (t.name || '').trim()).length;
-                return n >= 2 ? (n * (n - 1)) / 2 : 0;
-            })();
+            const matchCount = (Core.form.groupFixtures || []).filter(f =>
+                String((f && f.group) || '').trim() === label
+            ).length;
             body += '<div class="group-def-box row-item" data-group="' + gi + '">' +
                 '<div class="row-head">' +
                 '<div class="group-def-label-wrap">' +
                 '<strong>Group</strong> ' +
                 '<input type="text" class="group-label-input" data-g="label" maxlength="8" value="' + Core.esc(label) + '" aria-label="Group label">' +
+                '<label class="group-qualify-wrap" title="How many teams from this group advance to knockout">' +
+                'Advance to KO: top ' +
+                '<input type="number" class="group-qualify-input" data-g="qualify" min="1" max="16" step="1" value="' +
+                Core.esc(String(g.qualifyCount != null ? g.qualifyCount : 2)) +
+                '" aria-label="Number of teams advancing from this group to knockout">' +
+                '</label>' +
                 '<span class="hint group-match-hint">' + matchCount + ' match(es)</span>' +
                 '</div>' +
                 (Core.form.groupDefinitions.length > 1
@@ -749,6 +874,11 @@
                 if (!Core.form.groupDefinitions[gi]) return;
                 Core.form.groupDefinitions[gi].label = e.target.value;
                 Core.renderScheduleSection();
+            });
+            box.querySelector('[data-g="qualify"]')?.addEventListener('input', e => {
+                if (!Core.form.groupDefinitions[gi]) return;
+                const n = parseInt(e.target.value, 10);
+                Core.form.groupDefinitions[gi].qualifyCount = Number.isNaN(n) ? 2 : Math.max(1, n);
             });
             box.querySelector('[data-action="remove-group"]')?.addEventListener('click', () => Core.removeGroup(gi));
             box.querySelector('[data-action="add-group-team"]')?.addEventListener('click', () => Core.addTeamToGroup(gi));

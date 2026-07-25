@@ -329,6 +329,154 @@
             width: max-content;
             min-width: 100%;
         }
+        .group-standings-root {
+            width: 100%;
+            max-width: 960px;
+            margin: 0 auto 18px;
+            padding: 0 8px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+            box-sizing: border-box;
+        }
+        .group-standings-card {
+            background: rgba(20, 20, 42, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 12px 10px;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+        }
+        .group-standings-title {
+            margin: 0 0 10px;
+            font-size: 0.95rem;
+            color: #ffd700;
+            letter-spacing: 0.04em;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .group-standings-qualify-hint {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #9aa3b5;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+        .group-standings-table-wrap {
+            overflow-x: auto;
+        }
+        .group-standings-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+        .group-standings-table th,
+        .group-standings-table td {
+            padding: 6px 4px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .group-standings-table th {
+            color: #8b93a7;
+            font-weight: 600;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .group-standings-table td.gs-team {
+            text-align: left;
+            white-space: nowrap;
+            perspective: 90px;
+            perspective-origin: left center;
+        }
+        .group-standings-table .gs-team-name {
+            vertical-align: middle;
+            margin-right: 6px;
+            font-weight: 600;
+            color: #e8ecf5;
+        }
+        .group-standings-flag-wave {
+            width: 18px;
+            height: 12px;
+            vertical-align: middle;
+            margin-right: 6px;
+            animation-duration: 1.7s;
+            animation-delay: -0.2s;
+        }
+        .group-standings-flag-spacer {
+            width: 18px;
+            height: 12px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        .group-standings-table .gs-pts {
+            color: #ffd700;
+        }
+        .group-standings-badge {
+            display: inline-block;
+            margin-left: 4px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            vertical-align: middle;
+            text-transform: none;
+        }
+        .group-standings-badge--qualified {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.35);
+        }
+        .group-standings-badge--eliminated {
+            background: rgba(239, 68, 68, 0.18);
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.35);
+        }
+        .group-standings-badge--tie-waiting {
+            background: rgba(251, 191, 36, 0.18);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.4);
+        }
+        .group-standings-badge--tie-confirmed {
+            background: rgba(96, 165, 250, 0.18);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.4);
+        }
+        .group-standings-row.status-eliminated .gs-team-name {
+            color: #7a8194;
+            text-decoration: line-through;
+            opacity: 0.75;
+        }
+        .group-standings-row.status-qualified {
+            background: rgba(34, 197, 94, 0.08);
+            box-shadow: inset 3px 0 0 #4ade80;
+            animation: group-qualified-glow 2.2s ease-in-out infinite alternate;
+        }
+        .group-standings-row.status-qualified .gs-team-name {
+            color: #b8f5c8;
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.55);
+        }
+        .group-standings-row.status-qualified .group-standings-badge--qualified {
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.45);
+        }
+        @keyframes group-qualified-glow {
+            from {
+                background: rgba(34, 197, 94, 0.06);
+                box-shadow: inset 3px 0 0 rgba(74, 222, 128, 0.65), 0 0 0 rgba(74, 222, 128, 0);
+            }
+            to {
+                background: rgba(34, 197, 94, 0.16);
+                box-shadow: inset 3px 0 0 #4ade80, 0 0 14px rgba(74, 222, 128, 0.22);
+            }
+        }
+        html.anim-paused .group-standings-row.status-qualified,
+        .anim-paused .group-standings-row.status-qualified {
+            animation: none !important;
+        }
         .group-stage-columns {
             display: flex;
             flex-direction: row;
@@ -1027,7 +1175,8 @@
         .team,
         .podium-team-info,
         .player-podium-country,
-        .goldenboot-player-country {
+        .goldenboot-player-country,
+        .group-standings-table td.gs-team {
             perspective: 90px;
             perspective-origin: left center;
         }
@@ -1097,6 +1246,9 @@
             .flag-wave,
             .team-flag::after,
             .flag-wave::after {
+                animation: none;
+            }
+            .group-standings-row.status-qualified {
                 animation: none;
             }
         }
@@ -3554,6 +3706,10 @@
             z-index: 100000;
             overflow: hidden;
             pointer-events: none;
+            transition: opacity 1.2s ease-out;
+        }
+        .winner-celebration.is-fading-out {
+            opacity: 0;
         }
         .winner-fireworks {
             position: absolute;
@@ -3576,7 +3732,7 @@
             text-transform: uppercase;
             letter-spacing: 0.12em;
             animation: winnerAnnouncementIn 0.7s ease-out both,
-                winnerAnnouncementOut 0.8s ease-in 8s forwards;
+                winnerAnnouncementOut var(--winner-announce-out-duration, 1.2s) ease-in var(--winner-announce-out-delay, 7s) forwards;
         }
         .winner-announcement strong {
             display: flex;
@@ -3727,7 +3883,9 @@
                 transform: translate3d(0, 0, 0);
                 opacity: 0;
             }
-            10% { opacity: 1; }
+            8% { opacity: 1; }
+            /* Stay solid until ~80% of viewport height (travel is -120vh → 80/120 ≈ 67%) */
+            67% { opacity: 1; }
             100% {
                 transform: translate3d(var(--balloon-drift), -120vh, 0);
                 opacity: 0;

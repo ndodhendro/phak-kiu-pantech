@@ -1157,10 +1157,23 @@ Core.playFinalWinnerCelebration = function playFinalWinnerCelebration() {
             overlay.appendChild(canvas);
             Core.startWinnerFireworks(canvas, 2800);
         }
-        window.setTimeout(() => {
+        // Balloon CSS: delay ≤2.8s, duration ≤7.5s, travel -120vh.
+        // ~80% viewport height ≈ 80/120 of rise — fade FX only (no page blackout).
+        const maxDelayMs = 2800;
+        const maxDurMs = 7500;
+        const fadeMs = 1200;
+        const fadeAtMs = Math.round(maxDelayMs + maxDurMs * (80 / 120));
+        const lifeMs = maxDelayMs + maxDurMs + fadeMs;
+        announcement.style.setProperty('--winner-announce-out-delay', fadeAtMs + 'ms');
+        announcement.style.setProperty('--winner-announce-out-duration', fadeMs + 'ms');
+        window.setTimeout(function () {
+            if (!overlay.isConnected) return;
+            overlay.classList.add('is-fading-out');
+        }, fadeAtMs);
+        window.setTimeout(function () {
             overlay.remove();
             Core.finalCelebrationActive = false;
-        }, isMobile ? 7500 : 8500);
+        }, lifeMs);
         return;
     }
 

@@ -249,6 +249,10 @@ Core.updateSideQuestEliminatedStatus = function updateSideQuestEliminatedStatus(
 };
 Core.updateMainQuestEliminatedStatus = function updateMainQuestEliminatedStatus() {
     const { names, flags } = Core.getEliminatedFromBracket();
+    const groupEliminated = typeof Core.getMathematicallyEliminatedGroupTeams === 'function'
+        ? Core.getMathematicallyEliminatedGroupTeams()
+        : [];
+    const groupElimSet = new Set(groupEliminated);
     const pendingThird = Core.getThirdPlaceContenders();
     const tables = document.querySelectorAll(
         '#main-quest-table-root .standings-table, #main-quest-group-root .standings-table, #main-quest-knockout-root .standings-table'
@@ -280,6 +284,7 @@ Core.updateMainQuestEliminatedStatus = function updateMainQuestEliminatedStatus(
         const stageBlock = table.closest('[data-mq-stage]');
         const stage = stageBlock ? stageBlock.getAttribute('data-mq-stage') : '';
         const allowPodiumMedals = stage === 'knockout' || stage === 'legacy' || !stage;
+        const applyGroupMathElim = stage === 'group' || stage === 'legacy';
 
         table.querySelectorAll('tbody td.mq-pot-cell').forEach(cell => {
             if (cell.classList.contains('mq-pot-empty')) return;
@@ -308,6 +313,11 @@ Core.updateMainQuestEliminatedStatus = function updateMainQuestEliminatedStatus(
             }
 
             if (Core.mainQuestTeamInSet(teamName, names, flags, mainQuestTeamFlagCodes)) {
+                cell.classList.add('eliminated');
+                return;
+            }
+
+            if (applyGroupMathElim && groupElimSet.has(teamName)) {
                 cell.classList.add('eliminated');
                 return;
             }

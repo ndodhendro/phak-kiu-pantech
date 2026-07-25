@@ -524,15 +524,20 @@ window.ArisanBracket = (function () {
 
     function normalizeGroupDefinitions(raw) {
         if (!Array.isArray(raw)) return [];
-        return raw.map((g, i) => ({
-            label: String((g && (g.label || g.name)) || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
-            teams: Array.isArray(g && g.teams)
-                ? g.teams.map(t => {
-                    if (typeof t === 'string') return t.trim();
-                    return String((t && t.name) || '').trim();
-                }).filter(Boolean)
-                : [],
-        })).filter(g => g.teams.length);
+        return raw.map((g, i) => {
+            const qualifyRaw = g && g.qualifyCount;
+            const qualifyCount = qualifyRaw != null ? Math.max(0, parseInt(qualifyRaw, 10) || 0) : 2;
+            return {
+                label: String((g && (g.label || g.name)) || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
+                teams: Array.isArray(g && g.teams)
+                    ? g.teams.map(t => {
+                        if (typeof t === 'string') return t.trim();
+                        return String((t && t.name) || '').trim();
+                    }).filter(Boolean)
+                    : [],
+                qualifyCount: qualifyCount || 2,
+            };
+        }).filter(g => g.teams.length);
     }
 
     function fixturesFromGroupDefinitions(defs) {
@@ -603,11 +608,8 @@ window.ArisanBracket = (function () {
     }
 
     function resolveGroupPairs(opts) {
-        const defs = normalizeGroupDefinitions(opts.groupDefinitions);
-        let fixtures = Array.isArray(opts.groupFixtures) ? opts.groupFixtures : [];
-        if (defs.length) {
-            fixtures = fixturesFromGroupDefinitions(defs);
-        }
+        // Manual schedule only — never regenerate round-robin from definitions.
+        let fixtures = Array.isArray(opts.groupFixtures) ? opts.groupFixtures.slice() : [];
         const teams = (opts.teams || []).filter(t => t && t.name);
         const byName = new Map();
         teams.forEach(t => {
@@ -619,16 +621,17 @@ window.ArisanBracket = (function () {
             return fixtures.map((f, index) => {
                 const aName = String((f && (f.a || f.teamA)) || '').trim();
                 const bName = String((f && (f.b || f.teamB)) || '').trim();
-                const matchId = 'group-' + index;
+                const matchId = String((f && f.id) || ('group-' + index)).trim() || ('group-' + index);
                 let displayA = aName;
                 let displayB = bName;
-                if (swaps[matchId]) {
+                if (swaps[matchId] || swaps['group-' + index]) {
                     displayA = bName;
                     displayB = aName;
                 }
                 const explicit = String((f && (f.group || f.groupLabel)) || '').trim();
                 return {
                     index,
+                    matchId,
                     explicitGroup: explicit,
                     // Canonical fixture sides (ignore home/away swap) for stable schedule keys
                     sideA: aName,
@@ -640,11 +643,7 @@ window.ArisanBracket = (function () {
                 };
             });
         }
-        return buildFirstRoundPairs(teams).map((pair, index) => ({
-            index,
-            explicitGroup: '',
-            pair,
-        }));
+        return [];
     }
 
     /** Split fixtures into Group A/B/… via connected components (or explicit fixture.group). */
@@ -750,8 +749,10 @@ window.ArisanBracket = (function () {
         const year = leagueYear || new Date().getFullYear();
         const sched = schedule || {};
         return (entries || []).slice().sort((a, b) => {
-            const msA = scheduleTextToSortMs(sched['group-' + a.index], year);
-            const msB = scheduleTextToSortMs(sched['group-' + b.index], year);
+            const idA = a.matchId || ('group-' + a.index);
+            const idB = b.matchId || ('group-' + b.index);
+            const msA = scheduleTextToSortMs(sched[idA], year);
+            const msB = scheduleTextToSortMs(sched[idB], year);
             if (msA !== msB) return msA - msB;
             return a.index - b.index;
         });
@@ -774,9 +775,11 @@ window.ArisanBracket = (function () {
                 const msA = scheduleTextToSortMs(ta, year);
                 const msB = scheduleTextToSortMs(tb, year);
                 if (msA !== msB) return msA - msB;
-                const ia = parseInt(String(a.dataset.matchId || '').replace('group-', ''), 10) || 0;
-                const ib = parseInt(String(b.dataset.matchId || '').replace('group-', ''), 10) || 0;
-                return ia - ib;
+                const ia = String(a.dataset.matchId || '');
+                const ib = String(b.dataset.matchId || '');
+                if (ia < ib) return -1;
+                if (ia > ib) return 1;
+                return 0;
             });
             matchups.forEach(m => container.appendChild(m));
         });
@@ -791,7 +794,8 @@ window.ArisanBracket = (function () {
                 const pair = entry.pair;
                 const prefix = part.label ? ('Group ' + part.label) : 'Group';
                 catalog.push({
-                    id: 'group-' + entry.index,
+                    id: entry.matchId || ('group-' + entry.index),
+                    index: entry.index,
                     label: prefix + ' — ' + (pair[0]?.name || 'TBD') + ' vs ' + (pair[1]?.name || 'TBD'),
                     teamA: entry.sideA || (pair[0] && pair[0].name) || '',
                     teamB: entry.sideB || (pair[1] && pair[1].name) || '',
@@ -801,11 +805,7 @@ window.ArisanBracket = (function () {
             });
         });
         // Keep catalog in original fixture order for schedule/admin stability.
-        catalog.sort((a, b) => {
-            const ia = parseInt(String(a.id).replace('group-', ''), 10);
-            const ib = parseInt(String(b.id).replace('group-', ''), 10);
-            return ia - ib;
-        });
+        catalog.sort((a, b) => (a.index || 0) - (b.index || 0));
         return catalog;
     }
 
@@ -856,7 +856,7 @@ window.ArisanBracket = (function () {
                     '<div class="round-matches">';
                 sorted.forEach(entry => {
                     html += groupMatchupHtml(
-                        'group-' + entry.index,
+                        entry.matchId || ('group-' + entry.index),
                         entry.pair[0],
                         entry.pair[1],
                         competitionType,
@@ -870,7 +870,7 @@ window.ArisanBracket = (function () {
             html += '<div class="round-matches group-matches-grid">';
             sortGroupEntriesBySchedule(entries, schedule, year).forEach(entry => {
                 html += groupMatchupHtml(
-                    'group-' + entry.index,
+                    entry.matchId || ('group-' + entry.index),
                     entry.pair[0],
                     entry.pair[1],
                     competitionType,
@@ -992,6 +992,33 @@ window.ArisanBracket = (function () {
         return catalog;
     }
 
+    function buildManualKnockoutFixtureCatalog(opts) {
+        const list = Array.isArray(opts.knockoutFixtures) ? opts.knockoutFixtures : [];
+        const swaps = getFixtureSideSwaps(opts);
+        return list.map((f, index) => {
+            const id = String((f && f.id) || ('komatch-' + (index + 1))).trim();
+            const aName = String((f && (f.a || f.teamA)) || '').trim();
+            const bName = String((f && (f.b || f.teamB)) || '').trim();
+            const round = String((f && (f.round || f.roundLabel)) || '').trim() || 'Knockout';
+            let displayA = aName;
+            let displayB = bName;
+            if (swaps[id]) {
+                displayA = bName;
+                displayB = aName;
+            }
+            return {
+                id: id,
+                index: index,
+                label: round + ' — ' + (displayA || 'TBD') + ' vs ' + (displayB || 'TBD'),
+                teamA: aName,
+                teamB: bName,
+                group: '',
+                round: round,
+                leg: 0,
+            };
+        }).filter(e => e.teamA || e.teamB || e.round);
+    }
+
     function buildMatchCatalog(opts) {
         const includeGroup = opts.includeGroupStage !== false && !!opts.includeGroupStage;
         const includeKnockout = opts.includeKnockoutStage !== false;
@@ -1001,7 +1028,14 @@ window.ArisanBracket = (function () {
             catalog.push(...buildGroupMatchCatalog(opts));
         }
         if (includeKnockout) {
-            catalog.push(...buildKnockoutMatchCatalog(opts));
+            const structural = buildKnockoutMatchCatalog(opts);
+            const manual = buildManualKnockoutFixtureCatalog(opts);
+            const seen = new Set(structural.map(e => e.id));
+            catalog.push(...structural);
+            // Append manual KO fixtures that are not already bracket structural ids
+            manual.forEach(e => {
+                if (!seen.has(e.id)) catalog.push(e);
+            });
         }
         return catalog;
     }

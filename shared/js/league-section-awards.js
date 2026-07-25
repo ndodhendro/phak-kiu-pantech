@@ -517,6 +517,8 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
         return ((goal - startValue) / (endValue - startValue)) * trackHeight;
     };
 
+    // Full participant zones at build time; fill covers them as the ball slides
+    // (do not pre-clip by currentGoal — that made wilayah look "gone" before the slide).
     sorted.forEach(function (p, index) {
         const from = index === 0
             ? startValue
@@ -525,15 +527,14 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
             ? endValue
             : (p.goal + sorted[index + 1].goal) / 2;
 
-        const segFrom = Math.max(from, currentGoal);
-        if (to <= currentGoal || to <= segFrom) return;
+        if (to <= from) return;
 
         const zone = document.createElement('div');
         zone.className = 'total-goal-zone-v';
-        zone.style.top = goalToPx(segFrom) + 'px';
-        zone.style.height = (goalToPx(to) - goalToPx(segFrom)) + 'px';
+        zone.style.top = goalToPx(from) + 'px';
+        zone.style.height = (goalToPx(to) - goalToPx(from)) + 'px';
         zone.style.background = participantColors[p.name] || '#555';
-        zone.title = p.name + ' (' + Math.ceil(segFrom) + '–' + Math.floor(to) + ')';
+        zone.title = p.name + ' (' + Math.ceil(from) + '–' + Math.floor(to) + ')';
         track.appendChild(zone);
     });
 

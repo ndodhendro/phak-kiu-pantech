@@ -219,6 +219,25 @@ Core.bindStandingsAvatarClicks = function bindStandingsAvatarClicks() {
         if (name) Core.openParticipantAvatarPopup(name);
     });
 };
+/** Snap all standings bars to 0 when leaving the Standings tab (re-animates on re-entry). */
+Core.resetStandingsChartBars = function resetStandingsChartBars() {
+    const chart = document.querySelector('#standings-points-chart')
+        || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
+    if (!chart) return;
+
+    if (Core.barSlideSectionVisible) Core.barSlideSectionVisible.set(chart, false);
+
+    chart.querySelectorAll('.chart-bar').forEach(function (bar) {
+        if (Core.barSlideVisible) Core.barSlideVisible.set(bar, false);
+        if (typeof Core.resetBarSlide === 'function') {
+            Core.resetBarSlide(bar);
+        } else {
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+            delete bar.dataset.barSlid;
+        }
+    });
+};
 Core.updateStandingsChart = function updateStandingsChart() {
     Core.updateStandingsPoints();
 

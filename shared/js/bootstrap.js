@@ -538,6 +538,12 @@ function refreshMatchViewUi(includeLines) {
 
 function activateLeagueView(viewId, meta) {
     const first = !meta || meta.first !== false;
+    const prev = meta && meta.prev;
+
+    // Leaving Standings: collapse bars to 0 so re-entry can slide again
+    if (prev === 'standings' && viewId !== 'standings') {
+        if (typeof resetStandingsChartBars === 'function') resetStandingsChartBars();
+    }
 
     if (viewId === 'group') {
         const groupRoot = document.getElementById('group-stage-root');
@@ -546,6 +552,7 @@ function activateLeagueView(viewId, meta) {
             if (groupRoot) groupRoot.dataset.stageHydrated = '1';
         }
         refreshMatchViewUi(false);
+        if (typeof renderGroupStandings === 'function') renderGroupStandings();
     } else if (viewId === 'ko') {
         const bracketRoot = document.getElementById('bracket-root');
         if (first || !bracketRoot || !bracketRoot.dataset.stageHydrated) {

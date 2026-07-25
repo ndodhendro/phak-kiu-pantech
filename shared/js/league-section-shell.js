@@ -43,6 +43,9 @@ Core.enterSite = function enterSite() {
     Core.hasEntered = true;
     requestAnimationFrame(function () {
         window.scrollTo(0, 0);
+        if (typeof Core.flushPendingBarSlides === 'function') {
+            Core.flushPendingBarSlides();
+        }
     });
             window.setTimeout(function () {
                 if (window.ArisanLeagueViews && typeof ArisanLeagueViews.armCelebrationScheduler === 'function') {

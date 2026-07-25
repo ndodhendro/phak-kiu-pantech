@@ -13,6 +13,8 @@
     </script>
     <script src="../../shared/js/supabase-client.js"></script>
     <script src="../../shared/js/bracket-builder.js"></script>
+    <script src="../../shared/js/league-app-core.js"></script>
+    <script src="../../shared/js/league-section-group.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -327,6 +329,18 @@
             </div>
         </div>
 
+        <!-- 1b. Group Tie Resolution -->
+        <div class="card card-collapsible is-open hidden" data-section="group-ties" id="group-ties-card">
+            <button type="button" class="card-toggle" aria-expanded="true" aria-controls="section-group-ties">
+                <span>1b. Group Tie Resolution</span>
+                <span class="card-toggle-icon" aria-hidden="true">▼</span>
+            </button>
+            <div class="card-body" id="section-group-ties">
+            <p class="hint">When teams are tied on points at the qualification cutoff, set the order manually (top = advances first). Status: <em>tie, waiting for confirmation</em> until saved.</p>
+            <div id="group-ties-list"></div>
+            </div>
+        </div>
+
         <!-- 2. Golden Boot -->
         <div class="card card-collapsible is-open" data-section="golden-boot">
             <button type="button" class="card-toggle" aria-expanded="true" aria-controls="section-golden-boot">
@@ -532,6 +546,7 @@
             const catalog = ArisanBracket.buildMatchCatalog({
                 teams,
                 groupFixtures: settings.groupFixtures || [],
+                knockoutFixtures: settings.knockoutFixtures || [],
                 groupDefinitions: settings.groupDefinitions || [],
                 competitionType: settings.competitionType || 'country',
                 includeGroupStage: !!settings.includeGroupStage,
@@ -539,6 +554,7 @@
                 includeThirdPlace: settings.includeThirdPlace !== false,
                 twoLegKnockout: !!settings.twoLegKnockout,
                 finishedMatches: (config && config.finishedMatches) || [],
+                fixtureSideSwaps: settings.fixtureSideSwaps || {},
             });
             if (catalog.length) MATCH_CATALOG = catalog;
         }
@@ -657,6 +673,7 @@
 
         function showAdmin() {
             renderMatches();
+            renderGroupTies();
             renderGoldenBoot();
             renderGoldenGlove();
         }
@@ -664,6 +681,163 @@
         function getMatchLabel(id) {
             const m = MATCH_CATALOG.find(x => x.id === id);
             return m ? m.label : id;
+        }
+
+        function renderGroupTies() {
+            const card = document.getElementById('group-ties-card');
+            const list = document.getElementById('group-ties-list');
+            if (!card || !list) return;
+            list.innerHTML = '';
+
+            window.ADMIN_CONFIG = config;
+            if (typeof ArisanLeagueApp === 'undefined'
+                || typeof ArisanLeagueApp.calculateGroupStandings !== 'function'
+                || !window.LEAGUE_DATA) {
+                card.classList.add('hidden');
+                return;
+            }
+
+            const result = ArisanLeagueApp.calculateGroupStandings();
+            const tiedGroups = (result.groups || []).filter(g => g.hasBoundaryTie && g.groupComplete);
+            if (!tiedGroups.length) {
+                card.classList.add('hidden');
+                return;
+            }
+            card.classList.remove('hidden');
+
+            const resolutions = Object.assign(
+                {},
+                (window.LEAGUE_DATA && window.LEAGUE_DATA.groupTieResolutions) || {}
+            );
+
+            tiedGroups.forEach(g => {
+                const wrap = document.createElement('div');
+                wrap.className = 'row-item';
+                wrap.style.cssText = 'margin-bottom:14px;padding:12px;border:1px solid #2a2a5a;border-radius:10px;';
+                wrap.dataset.groupLabel = g.label;
+
+                const title = document.createElement('div');
+                title.style.cssText = 'font-weight:700;color:#ffd700;margin-bottom:8px;';
+                title.textContent = 'Group ' + g.label + ' — tied on ' +
+                    (g.teams.find(t => g.boundaryTied.indexOf(t.name) >= 0)?.pts ?? '?') +
+                    ' pts (top ' + g.qualifyCount + ' advance)';
+                wrap.appendChild(title);
+
+                const hint = document.createElement('p');
+                hint.className = 'hint';
+                hint.textContent = g.resolutionComplete
+                    ? 'Status: tie, confirmed'
+                    : 'Status: tie, waiting for confirmation — set order (1 = highest)';
+                wrap.appendChild(hint);
+
+                let order = Array.isArray(resolutions[g.label])
+                    ? resolutions[g.label].filter(n => g.boundaryTied.indexOf(n) >= 0)
+                    : [];
+                g.boundaryTied.forEach(n => {
+                    if (order.indexOf(n) < 0) order.push(n);
+                });
+
+                const ol = document.createElement('ol');
+                ol.className = 'tie-order-list';
+                ol.dataset.group = g.label;
+                ol.style.cssText = 'margin:8px 0 0 20px;display:flex;flex-direction:column;gap:6px;';
+
+                order.forEach((name, idx) => {
+                    const li = document.createElement('li');
+                    li.dataset.team = name;
+                    li.style.cssText = 'display:flex;align-items:center;gap:8px;';
+                    const label = document.createElement('span');
+                    label.textContent = name;
+                    label.style.flex = '1';
+                    const up = document.createElement('button');
+                    up.type = 'button';
+                    up.className = 'btn btn-secondary btn-sm';
+                    up.textContent = '↑';
+                    up.disabled = idx === 0;
+                    up.onclick = () => {
+                        if (idx === 0) return;
+                        const arr = Array.from(ol.querySelectorAll('li')).map(x => x.dataset.team);
+                        const t = arr[idx - 1];
+                        arr[idx - 1] = arr[idx];
+                        arr[idx] = t;
+                        rebuildTieList(ol, arr);
+                    };
+                    const down = document.createElement('button');
+                    down.type = 'button';
+                    down.className = 'btn btn-secondary btn-sm';
+                    down.textContent = '↓';
+                    down.disabled = idx === order.length - 1;
+                    down.onclick = () => {
+                        const arr = Array.from(ol.querySelectorAll('li')).map(x => x.dataset.team);
+                        if (idx >= arr.length - 1) return;
+                        const t = arr[idx + 1];
+                        arr[idx + 1] = arr[idx];
+                        arr[idx] = t;
+                        rebuildTieList(ol, arr);
+                    };
+                    li.appendChild(label);
+                    li.appendChild(up);
+                    li.appendChild(down);
+                    ol.appendChild(li);
+                });
+                wrap.appendChild(ol);
+                list.appendChild(wrap);
+            });
+        }
+
+        function rebuildTieList(ol, names) {
+            ol.innerHTML = '';
+            names.forEach((name, idx) => {
+                const li = document.createElement('li');
+                li.dataset.team = name;
+                li.style.cssText = 'display:flex;align-items:center;gap:8px;';
+                const label = document.createElement('span');
+                label.textContent = name;
+                label.style.flex = '1';
+                const up = document.createElement('button');
+                up.type = 'button';
+                up.className = 'btn btn-secondary btn-sm';
+                up.textContent = '↑';
+                up.disabled = idx === 0;
+                up.onclick = () => {
+                    if (idx === 0) return;
+                    const arr = Array.from(ol.querySelectorAll('li')).map(x => x.dataset.team);
+                    const t = arr[idx - 1];
+                    arr[idx - 1] = arr[idx];
+                    arr[idx] = t;
+                    rebuildTieList(ol, arr);
+                };
+                const down = document.createElement('button');
+                down.type = 'button';
+                down.className = 'btn btn-secondary btn-sm';
+                down.textContent = '↓';
+                down.disabled = idx === names.length - 1;
+                down.onclick = () => {
+                    const arr = Array.from(ol.querySelectorAll('li')).map(x => x.dataset.team);
+                    if (idx >= arr.length - 1) return;
+                    const t = arr[idx + 1];
+                    arr[idx + 1] = arr[idx];
+                    arr[idx] = t;
+                    rebuildTieList(ol, arr);
+                };
+                li.appendChild(label);
+                li.appendChild(up);
+                li.appendChild(down);
+                ol.appendChild(li);
+            });
+        }
+
+        function collectGroupTieResolutions() {
+            const out = Object.assign(
+                {},
+                (window.LEAGUE_DATA && window.LEAGUE_DATA.groupTieResolutions) || {}
+            );
+            document.querySelectorAll('#group-ties-list .tie-order-list').forEach(ol => {
+                const label = ol.dataset.group;
+                if (!label) return;
+                out[label] = Array.from(ol.querySelectorAll('li')).map(li => li.dataset.team).filter(Boolean);
+            });
+            return out;
         }
 
         function renderMatches() {
@@ -945,6 +1119,7 @@
                 finishedMatches: collectMatches(),
                 goldenBoot,
                 goldenGlove,
+                groupTieResolutions: collectGroupTieResolutions(),
             };
         }
 

@@ -162,6 +162,10 @@
         includeThirdPlace: true,
         twoLegKnockout: false,
         pointConfig: Core.normalizePointConfig(null),
+        groupPointRules: { win: 3, draw: 1, loss: 0 },
+        groupTieResolutions: {},
+        matchIdCounter: 0,
+        knockoutFixtures: [],
         teams: [],
         groupDefinitions: [],
         groupFixtures: [],
@@ -182,6 +186,7 @@
         group: true,
         knockout: true,
         'points-main': true,
+        'points-group-official': true,
         'points-side': true,
         'schedule-group': true,
         'schedule-knockout': true,
@@ -205,15 +210,10 @@
         if (Core.form.includeGroupStage) {
             const defs = Core.form.groupDefinitions || [];
             const unique = Core.uniqueTeamsFromGroups(defs).length;
-            const fixtures = (typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions)
-                ? ArisanBracket.fixturesFromGroupDefinitions(defs.map(g => ({
-                    label: g.label,
-                    teams: (g.teams || []).map(t => t.name).filter(Boolean),
-                })))
-                : [];
-            return 'Add groups and member countries/clubs. Matches auto-generate as round-robin '
-                + '(every team plays every other team in its group). Currently '
-                + defs.length + ' group(s), ' + unique + ' teams, ' + fixtures.length + ' matches.';
+            const fixtures = (Core.form.groupFixtures || []).filter(f => f && (f.a || f.b));
+            return 'Add groups and member countries/clubs. Schedule matches manually under Match Schedule '
+                + '(+ Schedule). Currently '
+                + defs.length + ' group(s), ' + unique + ' teams, ' + fixtures.length + ' scheduled match(es).';
         }
         const filled = Core.form.teams.filter(t => Core.normalizeSeedName(t.name)).length;
         const slots = Core.form.teams.length;
@@ -375,46 +375,59 @@
     }
 
     Core.getScheduleCatalog = function getScheduleCatalog() {
-        if (typeof ArisanBracket === 'undefined' || !Core.isTeamsSectionComplete()) return [];
-        const fromGroups = Core.form.includeGroupStage ? Core.uniqueTeamsFromGroups(Core.form.groupDefinitions) : [];
-        const knockoutTeams = Core.form.includeKnockoutStage
-            ? Core.form.teams.map(t => ({
-                name: Core.normalizeSeedName(t.name),
-                flag: Core.normalizeSeedName(t.name) ? (t.flag || '') : '',
-            }))
-            : [];
-        const byKey = new Map();
-        [...fromGroups, ...knockoutTeams.filter(t => t.name)].forEach(t => {
-            const key = t.name.toLowerCase();
-            if (!byKey.has(key)) byKey.set(key, t);
-        });
-        const catalogTeams = Core.form.includeKnockoutStage && knockoutTeams.length
-            ? knockoutTeams
-            : Array.from(byKey.values());
-        const defs = Core.form.includeGroupStage ? Core.definitionsForCatalog() : [];
-        const groupFixtures = (defs.length && ArisanBracket.fixturesFromGroupDefinitions)
-            ? ArisanBracket.fixturesFromGroupDefinitions(defs)
-            : (Core.form.groupFixtures || []);
-        // Build without applying index-based swaps so team-pair keys stay stable when
-        // fixture indexes shift (swaps are stored/looked up by pair key in the Core.form).
-        const catalog = ArisanBracket.buildMatchCatalog({
-            teams: catalogTeams,
-            groupDefinitions: defs,
-            groupFixtures,
-            competitionType: Core.form.competitionType,
-            includeGroupStage: Core.form.includeGroupStage,
-            includeKnockoutStage: Core.form.includeKnockoutStage,
-            includeThirdPlace: Core.form.includeThirdPlace,
-            twoLegKnockout: Core.form.twoLegKnockout,
-            fixtureSideSwaps: {},
-        }).map(e => {
-            const pk = Core.catalogPairKey(e);
-            const swapped = !!(Core.form.fixtureSideSwaps && Core.form.fixtureSideSwaps[pk]);
-            if (!swapped) return e;
-            return Object.assign({}, e, {
-                label: Core.swapVsLabel(e.label),
+        if (!Core.isTeamsSectionComplete()) return [];
+        if (typeof Core.ensureFixtureIds === 'function') Core.ensureFixtureIds();
+        const catalog = [];
+        const swaps = Core.form.fixtureSideSwaps || {};
+
+        if (Core.form.includeGroupStage) {
+            (Core.form.groupFixtures || []).forEach(f => {
+                if (!f || !(f.a || f.b)) return;
+                const id = f.id || '';
+                const a = String(f.a || '').trim();
+                const b = String(f.b || '').trim();
+                const group = String(f.group || '').trim();
+                const pk = Core.catalogPairKey({ id: id, teamA: a, teamB: b, group: group });
+                const swapped = !!swaps[pk] || !!swaps[id];
+                const labelA = swapped ? b : a;
+                const labelB = swapped ? a : b;
+                catalog.push({
+                    id: id,
+                    label: (group ? ('Group ' + group + ' — ') : 'Group — ') +
+                        (labelA || 'TBD') + ' vs ' + (labelB || 'TBD'),
+                    teamA: a,
+                    teamB: b,
+                    group: group,
+                    leg: 0,
+                    stage: 'group',
+                });
             });
-        });
+        }
+
+        if (Core.form.includeKnockoutStage) {
+            (Core.form.knockoutFixtures || []).forEach(f => {
+                if (!f || !(f.a || f.b || f.round || f.id)) return;
+                const id = f.id || '';
+                const a = String(f.a || '').trim();
+                const b = String(f.b || '').trim();
+                const round = String(f.round || '').trim() || 'Knockout';
+                const pk = Core.catalogPairKey({ id: id, teamA: a, teamB: b });
+                const swapped = !!swaps[pk] || !!swaps[id];
+                const labelA = swapped ? b : a;
+                const labelB = swapped ? a : b;
+                catalog.push({
+                    id: id,
+                    label: round + ' — ' + (labelA || 'TBD') + ' vs ' + (labelB || 'TBD'),
+                    teamA: a,
+                    teamB: b,
+                    group: '',
+                    round: round,
+                    leg: 0,
+                    stage: 'knockout',
+                });
+            });
+        }
+
         Core.promoteLegacyIdKeysToPairKeys(catalog);
         return Core.sortScheduleCatalogForSetup(catalog);
     }
@@ -545,14 +558,21 @@
         if (Core.form.includeGroupStage) {
             groupDefinitions = (Core.form.groupDefinitions || []).map((g, i) => ({
                 label: (g.label || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
+                qualifyCount: g.qualifyCount != null ? Math.max(1, parseInt(g.qualifyCount, 10) || 2) : 2,
                 teams: (g.teams || []).map(t => (t.name || '').trim()).filter(Boolean),
             })).filter(g => g.teams.length);
-            groupFixtures = (typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions)
-                ? ArisanBracket.fixturesFromGroupDefinitions(groupDefinitions)
-                : [];
+            // Manual schedule only — never auto-generate round-robin from definitions
+            groupFixtures = (Core.form.groupFixtures || []).filter(f => f && (f.a || f.b)).map(f => ({
+                id: f.id || '',
+                a: String(f.a || '').trim(),
+                b: String(f.b || '').trim(),
+                group: String(f.group || '').trim(),
+                round: f.round || '',
+            })).filter(f => f.a || f.b);
             const swaps = projected.fixtureSideSwaps || {};
             groupFixtures = groupFixtures.map((f, i) => {
-                if (!swaps['group-' + i]) return f;
+                const key = f.id || ('group-' + i);
+                if (!swaps[key]) return f;
                 return Object.assign({}, f, { a: f.b, b: f.a });
             });
         }
@@ -582,6 +602,10 @@
             includeThirdPlace: Core.form.includeThirdPlace,
             twoLegKnockout: Core.form.twoLegKnockout,
             pointConfig,
+            groupPointRules: Object.assign({ win: 3, draw: 1, loss: 0 }, Core.form.groupPointRules || {}),
+            groupTieResolutions: Core.form.groupTieResolutions || {},
+            matchIdCounter: Core.form.matchIdCounter || 0,
+            knockoutFixtures: Array.isArray(Core.form.knockoutFixtures) ? Core.form.knockoutFixtures : [],
             matchSchedule: projected.matchSchedule,
             fixtureSideSwaps: projected.fixtureSideSwaps,
             scheduleStartDate: Core.form.scheduleStartDate || '',
@@ -854,6 +878,10 @@
             includeThirdPlace: true,
             twoLegKnockout: false,
             pointConfig: Core.normalizePointConfig(null),
+            groupPointRules: { win: 3, draw: 1, loss: 0 },
+            groupTieResolutions: {},
+            matchIdCounter: 0,
+            knockoutFixtures: [],
             teams: [],
             groupDefinitions: [],
             groupFixtures: [],
@@ -901,6 +929,7 @@
         }
         return (defs || []).map((g, i) => ({
             label: String((g && g.label) || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
+            qualifyCount: g && g.qualifyCount != null ? Math.max(1, parseInt(g.qualifyCount, 10) || 2) : 2,
             teams: (Array.isArray(g && g.teams) ? g.teams : []).map(t => {
                 const name = typeof t === 'string' ? t.trim() : String((t && t.name) || '').trim();
                 const flag = typeof t === 'object' && t
@@ -919,6 +948,17 @@
         Core.form.includeThirdPlace = data.includeThirdPlace !== false;
         Core.form.twoLegKnockout = !!data.twoLegKnockout;
         Core.form.pointConfig = Core.normalizePointConfig(data.pointConfig);
+        Core.form.groupPointRules = Object.assign(
+            { win: 3, draw: 1, loss: 0 },
+            (data.groupPointRules && typeof data.groupPointRules === 'object') ? data.groupPointRules : {}
+        );
+        Core.form.groupTieResolutions = (data.groupTieResolutions && typeof data.groupTieResolutions === 'object')
+            ? Object.assign({}, data.groupTieResolutions)
+            : {};
+        Core.form.matchIdCounter = Math.max(0, parseInt(data.matchIdCounter, 10) || 0);
+        Core.form.knockoutFixtures = Array.isArray(data.knockoutFixtures)
+            ? data.knockoutFixtures.map(f => Object.assign({}, f))
+            : [];
         Core.form.matchSchedule = data.matchSchedule || {};
         Core.form.fixtureSideSwaps = (data.fixtureSideSwaps && typeof data.fixtureSideSwaps === 'object')
             ? Object.assign({}, data.fixtureSideSwaps)
@@ -933,10 +973,25 @@
 
         const fixtures = Array.isArray(data.groupFixtures) ? data.groupFixtures : [];
         Core.form.groupFixtures = fixtures.map(f => ({
+            id: String((f && f.id) || '').trim(),
             a: String((f && f.a) || '').trim(),
             b: String((f && f.b) || '').trim(),
             group: String((f && (f.group || f.groupLabel)) || '').trim(),
+            round: String((f && f.round) || '').trim(),
         }));
+        // Migrate legacy index-based fixtures: keep group-N as the stable id so
+        // existing matches.match_key / matchSchedule entries stay valid.
+        if (Core.form.groupFixtures.length && Core.form.groupFixtures.every(f => !f.id)) {
+            Core.form.groupFixtures = Core.form.groupFixtures.map((f, i) =>
+                Object.assign({}, f, { id: 'group-' + i })
+            );
+            Core.form.matchIdCounter = Math.max(
+                Math.max(0, parseInt(Core.form.matchIdCounter, 10) || 0),
+                Core.form.groupFixtures.length
+            );
+        } else if (typeof Core.ensureFixtureIds === 'function') {
+            Core.ensureFixtureIds();
+        }
 
         const uniqueTeams = (data.teams || []).map(t => ({ name: t.name || '', flag: t.flag || '' }));
         const flagByName = {};
@@ -966,6 +1021,43 @@
             if (Core.form.teams.length % 2 === 1) Core.form.teams.push(Core.emptyTeam());
         } else {
             Core.form.teams = [];
+        }
+
+        // Hydrate knockout schedule from bracket catalog once (legacy leagues),
+        // preserving structural ids (r16-0, qf-0, …) so scores/schedules still match.
+        if (
+            Core.form.includeKnockoutStage &&
+            !(Core.form.knockoutFixtures && Core.form.knockoutFixtures.length) &&
+            typeof ArisanBracket !== 'undefined' &&
+            ArisanBracket.buildMatchCatalog
+        ) {
+            const sched = Core.form.matchSchedule || {};
+            const hasLegacyKo = Object.keys(sched).some(k =>
+                /^(r\d+|qf|sf|final|third)-/.test(String(k))
+            );
+            if (hasLegacyKo) {
+                const koCatalog = ArisanBracket.buildMatchCatalog({
+                    teams: (Core.form.teams || []).map(t => ({
+                        name: Core.normalizeSeedName(t.name),
+                        flag: t.flag || '',
+                    })),
+                    competitionType: Core.form.competitionType || 'country',
+                    includeGroupStage: false,
+                    includeKnockoutStage: true,
+                    includeThirdPlace: !!Core.form.includeThirdPlace,
+                    twoLegKnockout: !!Core.form.twoLegKnockout,
+                    finishedMatches: [],
+                });
+                Core.form.knockoutFixtures = koCatalog.map(e => {
+                    const round = String(e.label || '').split(' — ')[0] || 'Knockout';
+                    return {
+                        id: e.id,
+                        a: e.teamA || '',
+                        b: e.teamB || '',
+                        round: round,
+                    };
+                });
+            }
         }
 
         Core.form.participants = (data.participants || []).map((p, i) => {

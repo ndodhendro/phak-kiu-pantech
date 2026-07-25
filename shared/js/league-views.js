@@ -25,6 +25,8 @@
     var celebrationTimer = null;
     var hydrated = Object.create(null);
     var mountApi = null;
+    /** Ensures first Enter on this page load plays soon (ignores stale session next-at). */
+    var pendingFirstEnterPlay = false;
 
     function celebrationStorageKey() {
         var ctx = window.LEAGUE_CONTEXT || {};
@@ -88,10 +90,13 @@
         var now = Date.now();
         var next = readNextCelebrationAt();
 
-        // First arm after Enter: play once soon, then schedule +30s from that play.
-        if (next == null) {
+        // First Enter this page load: always play once soon, then schedule +30s.
+        // Keep pendingFirstEnterPlay until play fires so a re-arm (e.g. schedule + enter)
+        // does not fall through to a stale session next-at.
+        if (pendingFirstEnterPlay || next == null) {
             celebrationTimer = setTimeout(function () {
                 celebrationTimer = null;
+                pendingFirstEnterPlay = false;
                 playCelebrationNow();
                 advanceNextCelebrationAt(Date.now() + CELEBRATION_INTERVAL_MS);
                 armCelebrationScheduler();
@@ -275,7 +280,15 @@
                 C.hasEntered = true;
                 requestAnimationFrame(function () {
                     window.scrollTo(0, 0);
+                    if (typeof C.flushPendingBarSlides === 'function') {
+                        C.flushPendingBarSlides();
+                    }
                 });
+                pendingFirstEnterPlay = true;
+                // Resolve winner again in case KO DOM / ADMIN_CONFIG became ready
+                if (typeof C.scheduleFinalWinnerCelebration === 'function') {
+                    C.scheduleFinalWinnerCelebration();
+                }
                 armCelebrationScheduler();
                 if (C.audio) {
                     if (typeof C.playBackgroundMusic === 'function') {

@@ -291,10 +291,14 @@ window.ArisanDB = (function () {
             includeThirdPlace: s.includeThirdPlace !== false,
             twoLegKnockout: !!s.twoLegKnockout,
             pointConfig: normalizePointConfig(s.pointConfig),
+            groupPointRules: normalizeGroupPointRules(s.groupPointRules),
+            groupTieResolutions: normalizeGroupTieResolutions(s.groupTieResolutions),
             teamOrder: Array.isArray(s.teamOrder) ? s.teamOrder : [],
             knockoutSeeds: normalizeKnockoutSeeds(s.knockoutSeeds),
             groupDefinitions: normalizeGroupDefinitions(s.groupDefinitions),
             groupFixtures: normalizeGroupFixtures(s.groupFixtures),
+            knockoutFixtures: Array.isArray(s.knockoutFixtures) ? normalizeGroupFixtures(s.knockoutFixtures) : [],
+            matchIdCounter: Math.max(0, parseInt(s.matchIdCounter, 10) || 0),
             matchSchedule: (s.matchSchedule && typeof s.matchSchedule === 'object') ? s.matchSchedule : {},
             fixtureSideSwaps: normalizeFixtureSideSwaps(s.fixtureSideSwaps),
             scheduleStartDate: s.scheduleStartDate || '',
@@ -319,7 +323,8 @@ window.ArisanDB = (function () {
     function applyFixtureSideSwapsToGroupFixtures(fixtures, swaps) {
         const map = normalizeFixtureSideSwaps(swaps);
         return (fixtures || []).map((f, i) => {
-            if (!map['group-' + i]) return f;
+            const key = f.id || ('group-' + i);
+            if (!map[key] && !map['group-' + i]) return f;
             return Object.assign({}, f, { a: f.b, b: f.a });
         });
     }
@@ -339,26 +344,63 @@ window.ArisanDB = (function () {
         });
     }
 
+    function normalizeGroupPointRules(raw) {
+        const r = raw && typeof raw === 'object' ? raw : {};
+        const toN = (v, d) => {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : d;
+        };
+        return {
+            win: toN(r.win, 3),
+            draw: toN(r.draw, 1),
+            loss: toN(r.loss, 0),
+        };
+    }
+
+    function normalizeGroupTieResolutions(raw) {
+        const out = {};
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+        Object.keys(raw).forEach(label => {
+            const key = String(label || '').trim();
+            if (!key) return;
+            const list = Array.isArray(raw[label]) ? raw[label] : [];
+            out[key] = list.map(n => String(n || '').trim()).filter(Boolean);
+        });
+        return out;
+    }
+
     function normalizeGroupDefinitions(raw) {
         if (!Array.isArray(raw)) return [];
-        return raw.map((g, i) => ({
-            label: String((g && (g.label || g.name)) || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
-            teams: Array.isArray(g && g.teams)
-                ? g.teams.map(t => {
-                    if (typeof t === 'string') return t.trim();
-                    return String((t && t.name) || '').trim();
-                }).filter(Boolean)
-                : [],
-        })).filter(g => g.teams.length);
+        return raw.map((g, i) => {
+            const qualifyRaw = g && g.qualifyCount;
+            const qualifyCount = qualifyRaw != null ? Math.max(0, parseInt(qualifyRaw, 10) || 0) : 2;
+            return {
+                label: String((g && (g.label || g.name)) || String.fromCharCode(65 + i)).trim() || String.fromCharCode(65 + i),
+                teams: Array.isArray(g && g.teams)
+                    ? g.teams.map(t => {
+                        if (typeof t === 'string') return t.trim();
+                        return String((t && t.name) || '').trim();
+                    }).filter(Boolean)
+                    : [],
+                qualifyCount: qualifyCount || 2,
+            };
+        }).filter(g => g.teams.length);
     }
 
     function normalizeGroupFixtures(raw) {
         if (!Array.isArray(raw)) return [];
-        return raw.map(f => ({
-            a: String((f && (f.a || f.teamA || f[0])) || '').trim(),
-            b: String((f && (f.b || f.teamB || f[1])) || '').trim(),
-            group: String((f && (f.group || f.groupLabel)) || '').trim(),
-        })).filter(f => f.a || f.b);
+        return raw.map(f => {
+            const row = {
+                a: String((f && (f.a || f.teamA || f[0])) || '').trim(),
+                b: String((f && (f.b || f.teamB || f[1])) || '').trim(),
+                group: String((f && (f.group || f.groupLabel)) || '').trim(),
+            };
+            const id = String((f && f.id) || '').trim();
+            if (id) row.id = id;
+            const round = String((f && (f.round || f.roundLabel)) || '').trim();
+            if (round) row.round = round;
+            return row;
+        }).filter(f => f.a || f.b || f.id || f.round);
     }
 
     /**
@@ -704,6 +746,10 @@ window.ArisanDB = (function () {
             twoLegKnockout: settings.twoLegKnockout,
             groupDefinitions: settings.groupDefinitions || [],
             groupFixtures: settings.groupFixtures || [],
+            knockoutFixtures: settings.knockoutFixtures || [],
+            groupPointRules: settings.groupPointRules || { win: 3, draw: 1, loss: 0 },
+            groupTieResolutions: settings.groupTieResolutions || {},
+            matchIdCounter: settings.matchIdCounter || 0,
             fixtureSideSwaps: settings.fixtureSideSwaps || {},
             knockoutSeeds: settings.knockoutSeeds || [],
             derivedAwards,
@@ -735,6 +781,20 @@ window.ArisanDB = (function () {
         await rest('PATCH', 'leagues?id=eq.' + leagueId, {
             last_updated: config.lastUpdated || null,
         }, 'return=minimal');
+
+        if (config.groupTieResolutions && typeof config.groupTieResolutions === 'object') {
+            const current = normalizeSettings(league.settings || {});
+            current.groupTieResolutions = normalizeGroupTieResolutions(config.groupTieResolutions);
+            await rest('PATCH', 'leagues?id=eq.' + leagueId, {
+                settings: current,
+            }, 'return=minimal');
+            if (window.LEAGUE_DATA) {
+                window.LEAGUE_DATA.groupTieResolutions = current.groupTieResolutions;
+                if (window.LEAGUE_DATA.settings) {
+                    window.LEAGUE_DATA.settings.groupTieResolutions = current.groupTieResolutions;
+                }
+            }
+        }
 
         // Upsert matches
         const matchRows = (config.finishedMatches || []).map(m => ({
@@ -871,20 +931,22 @@ window.ArisanDB = (function () {
             ? ArisanBracket.normalizeGroupDefinitions(setup.groupDefinitions)
             : normalizeGroupDefinitions(setup.groupDefinitions);
         let groupFixtures = normalizeGroupFixtures(setup.groupFixtures);
-        if (groupDefinitions.length && typeof ArisanBracket !== 'undefined' && ArisanBracket.fixturesFromGroupDefinitions) {
-            groupFixtures = normalizeGroupFixtures(ArisanBracket.fixturesFromGroupDefinitions(groupDefinitions));
-        } else if (groupDefinitions.length) {
-            // Fallback if bracket-builder not loaded: simple round-robin
-            groupFixtures = [];
-            groupDefinitions.forEach(g => {
-                const names = g.teams || [];
-                for (let i = 0; i < names.length; i++) {
-                    for (let j = i + 1; j < names.length; j++) {
-                        groupFixtures.push({ a: names[i], b: names[j], group: g.label });
-                    }
-                }
+        // Manual schedule only — never regenerate round-robin from group definitions.
+        let matchIdCounter = Math.max(0, parseInt(setup.matchIdCounter, 10) || 0);
+        groupFixtures = groupFixtures.map(f => {
+            if (f.id) return f;
+            matchIdCounter += 1;
+            return Object.assign({}, f, { id: 'gmatch-' + matchIdCounter });
+        });
+        let knockoutFixtures = normalizeGroupFixtures(setup.knockoutFixtures).map(f => {
+            if (f.id) return f;
+            matchIdCounter += 1;
+            return Object.assign({}, f, {
+                id: 'komatch-' + matchIdCounter,
+                round: f.round || '',
             });
-        }
+        });
+        setup.matchIdCounter = matchIdCounter;
         const fixtureSideSwaps = normalizeFixtureSideSwaps(setup.fixtureSideSwaps);
         groupFixtures = applyFixtureSideSwapsToGroupFixtures(groupFixtures, fixtureSideSwaps);
 
@@ -912,12 +974,16 @@ window.ArisanDB = (function () {
             includeThirdPlace: setup.includeThirdPlace,
             twoLegKnockout: setup.twoLegKnockout,
             pointConfig: setup.pointConfig,
+            groupPointRules: setup.groupPointRules,
+            groupTieResolutions: setup.groupTieResolutions,
             teamOrder: uniqueTeamRows.map(t => t.name),
             knockoutSeeds: Array.isArray(setup.knockoutSeeds)
                 ? normalizeKnockoutSeeds(setup.knockoutSeeds)
                 : [],
             groupDefinitions,
             groupFixtures,
+            knockoutFixtures,
+            matchIdCounter,
             fixtureSideSwaps,
             matchSchedule: setup.matchSchedule || {},
             scheduleStartDate: setup.scheduleStartDate || '',
@@ -1199,6 +1265,10 @@ window.ArisanDB = (function () {
             teams,
             groupDefinitions: settings.groupDefinitions || [],
             groupFixtures: settings.groupFixtures || [],
+            knockoutFixtures: settings.knockoutFixtures || [],
+            groupPointRules: settings.groupPointRules || { win: 3, draw: 1, loss: 0 },
+            groupTieResolutions: settings.groupTieResolutions || {},
+            matchIdCounter: settings.matchIdCounter || 0,
             fixtureSideSwaps: settings.fixtureSideSwaps || {},
             knockoutSeeds: settings.knockoutSeeds || [],
         };

@@ -25,7 +25,7 @@ const CORE = new Set([
   'setTieTeamSlots', 'setBracketUnitTeamSlots', 'setTeamSlot', 'getRoundOutputWinners',
   'appendTeamPlaceBadge', 'resolveMatchWinnerTeamEl',
   'prefersReducedMotion', 'slideDimension', 'playBarSlide', 'resetBarSlide', 'getBarDurationMs', 'barEase',
-  'getBarSlideSectionEl', 'playBarSlideSection', 'resetBarSlideSection', 'getBarSlideObserver', 'observeBarSlide',
+  'getBarSlideSectionEl', 'playBarSlideSection', 'flushPendingBarSlides', 'resetBarSlideSection', 'getBarSlideObserver', 'observeBarSlide',
   'isThirdPlaceMatchup', 'parseTeamScore', 'parseFullTimeScore', 'parseTotalGoalsFromScoreText',
   'mainQuestOutcomePoints', 'isSideQuestShareEnabled', 'addPointsToSupporters',
   'getFinishedMatchTeam', 'roundStandingsPoints', 'formatStandingsPoints',
@@ -75,7 +75,7 @@ const AWARDS = new Set([
 
 const STANDINGS = new Set([
   'buildParticipantSupportedTeams', 'calculateParticipantGoalStats', 'awardSideQuestPoints',
-  'calculateStandingsPointsFromBracket', 'updateStandingsPoints', 'updateStandingsChart',
+  'calculateStandingsPointsFromBracket', 'updateStandingsPoints', 'resetStandingsChartBars', 'updateStandingsChart',
 ]);
 
 const SHELL = new Set([

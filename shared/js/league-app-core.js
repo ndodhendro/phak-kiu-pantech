@@ -111,7 +111,8 @@ Core.competitionType = 'country';
 Core.twoLegKnockout = false;
 
 Core.isGroupMatchId = function isGroupMatchId(matchId) {
-    return String(matchId || '').startsWith('group-');
+    const id = String(matchId || '');
+    return id.startsWith('group-') || id.startsWith('gmatch-');
 };
 Core.isKnockoutMatchup = function isKnockoutMatchup(matchup) {
     const matchId = matchup?.dataset?.matchId || '';
@@ -681,6 +682,8 @@ Core.prefersReducedMotion = function prefersReducedMotion() {
 };
 Core.playBarSlide = function playBarSlide(el) {
     if (!el) return;
+    // Sliding effects wait until the user presses Enter (splash dismissed)
+    if (!Core.hasEntered) return;
     const prop = el.dataset.barProp || 'width';
     const value = el.dataset.barTarget;
     if (!value) return;
@@ -770,12 +773,26 @@ Core.getBarSlideSectionEl = function getBarSlideSectionEl(el) {
         || el;
 };
 Core.playBarSlideSection = function playBarSlideSection(section) {
+    if (!Core.hasEntered) return;
     const members = Core.barSlideSectionMembers.get(section);
     if (!members) return;
     members.forEach(function (el) {
         if (Core.barSlideVisible.get(el)) return;
         Core.barSlideVisible.set(el, true);
         Core.playBarSlide(el);
+    });
+};
+/** After Enter: play all pending slides on the currently visible league tab. */
+Core.flushPendingBarSlides = function flushPendingBarSlides() {
+    if (!Core.hasEntered) return;
+    document.querySelectorAll('.bar-slide-watch').forEach(function (el) {
+        const panel = el.closest('[data-league-view-panel]');
+        if (panel && panel.hidden) return;
+        Core.barSlideVisible.delete(el);
+        const section = Core.barSlideElToSection.get(el) || Core.getBarSlideSectionEl(el);
+        if (section) Core.barSlideSectionVisible.set(section, true);
+        Core.playBarSlide(el);
+        Core.barSlideVisible.set(el, true);
     });
 };
 Core.resetBarSlideSection = function resetBarSlideSection(section) {
@@ -843,8 +860,20 @@ Core.slideDimension = function slideDimension(el, prop, value) {
     el.classList.add('bar-slide-watch');
 
     if (Core.prefersReducedMotion()) {
+        if (!Core.hasEntered) {
+            el.style.transition = 'none';
+            el.style[prop] = '0%';
+            delete el.dataset.barSlid;
+            if (el.classList.contains('total-goal-fill-v')) {
+                Core.resetTotalGoalCurrentLabel(el);
+            }
+            return;
+        }
         el.style[prop] = value;
         el.dataset.barSlid = '1';
+        if (el.classList.contains('total-goal-fill-v')) {
+            Core.finishTotalGoalCurrentLabel(el);
+        }
         return;
     }
 
@@ -853,12 +882,12 @@ Core.slideDimension = function slideDimension(el, prop, value) {
     const section = Core.barSlideElToSection.get(el);
     const sectionOnScreen = !!(section && Core.barSlideSectionVisible.get(section));
 
-    if (sectionOnScreen) {
+    if (Core.hasEntered && sectionOnScreen) {
         // Section already on screen: play/replay this bar with the rest of the section feel
         Core.barSlideVisible.set(el, true);
         Core.playBarSlide(el);
     } else {
-        // Section off-screen (or waiting for first observer tick): keep collapsed
+        // Before Enter, off-screen, or waiting for first observer tick: keep collapsed
         el.style.transition = 'none';
         el.style[prop] = '0%';
         delete el.dataset.barSlid;

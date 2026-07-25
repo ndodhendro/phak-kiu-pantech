@@ -102,7 +102,8 @@ Core.getFinishedGroupMatchMap = function getFinishedGroupMatchMap() {
 
 /**
  * Official group standings per group.
- * Ranking by points only (no auto GD/H2H tie-break). Boundary ties need admin confirmation.
+ * Provisional ranking: pts desc → GD desc → name asc.
+ * Boundary ties at the qualify cutoff still need admin confirmation (manual order overrides GD).
  * @returns {{ groups: Array, eliminatedTeamNames: string[] }}
  */
 Core.calculateGroupStandings = function calculateGroupStandings() {
@@ -170,9 +171,10 @@ Core.calculateGroupStandings = function calculateGroupStandings() {
             return row;
         });
 
-        // Rank by points desc; equal points share the same provisional band (stable by name)
+        // Provisional rank: pts desc → GD desc → name asc (admin order overrides when confirmed)
         rows.sort(function (a, b) {
             if (b.pts !== a.pts) return b.pts - a.pts;
+            if (b.gd !== a.gd) return b.gd - a.gd;
             return a.name.localeCompare(b.name);
         });
 
@@ -228,6 +230,7 @@ Core.calculateGroupStandings = function calculateGroupStandings() {
                 if (ai != null && bi != null) return ai - bi;
                 if (ai != null) return -1;
                 if (bi != null) return 1;
+                if (b.gd !== a.gd) return b.gd - a.gd;
                 return a.name.localeCompare(b.name);
             });
         }

@@ -112,10 +112,19 @@ Core.calculateGroupStandings = function calculateGroupStandings() {
     const defs = Core.getGroupDefinitionsForStandings();
     const fixtures = Core.getGroupFixturesList();
     const finishedMap = Core.getFinishedGroupMatchMap();
+    const swaps = (window.LEAGUE_DATA && window.LEAGUE_DATA.fixtureSideSwaps) || {};
     const teamsMeta = {};
     ((window.LEAGUE_DATA && window.LEAGUE_DATA.teams) || []).forEach(function (t) {
         if (t && t.name) teamsMeta[t.name] = t;
     });
+
+    function displaySides(a, b, matchId, index) {
+        // Match UI / admin scores use swapped home-away order; attribute goals the same way.
+        if (swaps[matchId] || swaps['group-' + index]) {
+            return { a: b, b: a };
+        }
+        return { a: a, b: b };
+    }
 
     const eliminatedTeamNames = [];
     const groups = defs.map(function (def) {
@@ -133,7 +142,8 @@ Core.calculateGroupStandings = function calculateGroupStandings() {
             if (!a || !b) return;
             if (!byName[a] || !byName[b]) return;
             const matchId = f.id || ('group-' + index);
-            groupFixtures.push({ id: matchId, a: a, b: b, index: index });
+            const sides = displaySides(a, b, matchId, index);
+            groupFixtures.push({ id: matchId, a: sides.a, b: sides.b, index: index });
         });
 
         // Fallback: if fixtures omit group label, infer from team membership only when both in group
@@ -142,7 +152,9 @@ Core.calculateGroupStandings = function calculateGroupStandings() {
                 const a = String((f && (f.a || f.teamA)) || '').trim();
                 const b = String((f && (f.b || f.teamB)) || '').trim();
                 if (!a || !b || !byName[a] || !byName[b]) return;
-                groupFixtures.push({ id: f.id || ('group-' + index), a: a, b: b, index: index });
+                const matchId = f.id || ('group-' + index);
+                const sides = displaySides(a, b, matchId, index);
+                groupFixtures.push({ id: matchId, a: sides.a, b: sides.b, index: index });
             });
         }
 
@@ -340,7 +352,9 @@ Core.buildGroupStandingsHtml = function buildGroupStandingsHtml() {
         }).join('');
 
         return '<div class="group-standings-card" data-group="' + esc(g.label) + '">' +
-            '<h3 class="group-standings-title">Group ' + esc(g.label) +
+            '<h3 class="group-standings-title">' +
+            '<span class="group-standings-title-main">Group ' + esc(g.label) +
+            ' <span class="group-standings-official-badge" title="Official football group table">Official</span></span>' +
             ' <span class="group-standings-qualify-hint">Top ' + g.qualifyCount + ' advance</span></h3>' +
             '<div class="group-standings-table-wrap"><table class="group-standings-table">' +
             '<thead><tr>' +
@@ -356,15 +370,18 @@ Core.renderGroupStandings = function renderGroupStandings() {
     if (!d.includeGroupStage) {
         root.innerHTML = '';
         root.hidden = true;
+        root.removeAttribute('aria-label');
         return;
     }
     const html = Core.buildGroupStandingsHtml();
     if (!html) {
         root.innerHTML = '';
         root.hidden = true;
+        root.removeAttribute('aria-label');
         return;
     }
     root.hidden = false;
+    root.setAttribute('aria-label', 'Official Group Tables');
     root.innerHTML = html;
 };
 

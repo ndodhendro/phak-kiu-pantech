@@ -2515,32 +2515,6 @@
             transition: height var(--bar-duration) var(--bar-ease);
             z-index: 2;
         }
-        /* Heatmap clipped by fill height: cold at 0 goals → hot toward endValue */
-        .total-goal-fill-v::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: var(--tg-track-px, 500px);
-            border-radius: inherit;
-            pointer-events: none;
-            background:
-                linear-gradient(90deg, rgba(255, 255, 255, 0.2), transparent 40%),
-                linear-gradient(
-                    180deg,
-                    #1e3a8a 0%,
-                    #2563eb 14%,
-                    #0ea5e9 28%,
-                    #14b8a6 42%,
-                    #22c55e 55%,
-                    #eab308 68%,
-                    #f97316 82%,
-                    #ef4444 93%,
-                    #b91c1c 100%
-                );
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-        }
         .total-goal-current-indicator {
             position: absolute;
             left: 50%;
@@ -2555,14 +2529,22 @@
             will-change: top;
             transform: translate(-50%, -50%);
             pointer-events: none;
+            overflow: visible;
+        }
+        .total-goal-current-ball-wrap {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
         }
         .total-goal-current-ball {
             display: block;
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover;
             object-position: center;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+            transform: scale(1.2);
         }
         .total-goal-current-count {
             position: absolute;
@@ -2582,12 +2564,6 @@
                 0 0 6px rgba(0, 0, 0, 0.9),
                 0 0 1px #000;
             pointer-events: none;
-        }
-        .total-goal-current-line {
-            display: none;
-        }
-        .total-goal-current-label-v {
-            display: none;
         }
         .total-goal-marker-v {
             position: absolute;

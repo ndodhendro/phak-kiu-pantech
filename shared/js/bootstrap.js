@@ -354,29 +354,56 @@ function buildMainQuestTableFromParticipants() {
     wrapper.innerHTML = html;
 }
 
+function getStandingsParticipantOrder() {
+    const d = window.LEAGUE_DATA;
+    const names = Object.keys((d && d.participantAvatars) || {});
+    if (!names.length) return { names: [], points: {}, goalStats: {} };
+
+    let points = {};
+    let goalStats = {};
+    if (typeof calculateStandingsPointsFromBracket === 'function') {
+        points = calculateStandingsPointsFromBracket();
+    }
+    if (typeof calculateParticipantGoalStats === 'function') {
+        goalStats = calculateParticipantGoalStats();
+    }
+    if (typeof compareStandingsParticipants === 'function') {
+        names.sort((a, b) => compareStandingsParticipants(a, b, points, goalStats));
+    }
+    return { names: names, points: points, goalStats: goalStats };
+}
+
 function buildStandingsChartFromParticipants() {
     const d = window.LEAGUE_DATA;
     const chart = document.querySelector('#standings-points-chart')
         || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
     if (!d || !chart) return;
 
-    const names = Object.keys(d.participantAvatars || {});
+    const { names, points } = getStandingsParticipantOrder();
     if (!names.length) return;
 
     const colors = d.participantColors || {};
-    chart.innerHTML = names.map(name => {
+    const formatPts = typeof formatStandingsPoints === 'function'
+        ? formatStandingsPoints
+        : function (value) { return String(value); };
+    const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+    chart.innerHTML = names.map(function (name, index) {
         const color = colors[name] || '#3498db';
         const avatar = resolveParticipantAvatarUrl(d.participantAvatars, name);
+        const rank = index + 1;
+        const rankLabel = medals[rank] || String(rank);
+        const pts = formatPts(points[name] ?? 0);
         return '<div class="chart-row">' +
             '<div class="chart-label">' +
             '<div class="chart-label-box podium-team-card">' +
             '<div class="podium-team-info">' +
-            '<span class="chart-rank">–</span>' +
+            '<span class="chart-rank">' + rankLabel + '</span>' +
             '<span class="chart-name">' + name + '</span>' +
             '</div></div></div>' +
             '<div class="chart-bar-wrapper">' +
             '<div class="chart-bar" style="background:' + color + ';">' +
-            '<span class="chart-value">0</span>' +
+            '<span class="chart-value">' + pts + '</span>' +
             participantAvatarImgHtml(avatar, name, 'chart-avatar') +
             '</div></div>' +
             '</div>';
@@ -384,6 +411,23 @@ function buildStandingsChartFromParticipants() {
 
     if (typeof bindStandingsAvatarClicks === 'function') {
         bindStandingsAvatarClicks();
+    }
+}
+
+function prewarmStandingsChart() {
+    const chart = document.querySelector('#standings-points-chart')
+        || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
+    if (!chart || chart.dataset.standingsPrewarmed === '1') return;
+
+    ensureMatchStagesHydrated({ group: true, ko: true });
+    buildStandingsChartFromParticipants();
+    if (typeof updateStandingsChart === 'function') {
+        updateStandingsChart();
+    }
+
+    chart.dataset.standingsPrewarmed = '1';
+    if (window.ArisanLeagueViews && typeof ArisanLeagueViews.markHydrated === 'function') {
+        ArisanLeagueViews.markHydrated('standings');
     }
 }
 
@@ -566,7 +610,7 @@ function activateLeagueView(viewId, meta) {
             buildStandingsChartFromParticipants();
         }
         if (typeof updateStandingsChart === 'function') {
-            setTimeout(updateStandingsChart, 80);
+            updateStandingsChart();
         }
         if (typeof observeAnimPauseTargets === 'function') {
             setTimeout(observeAnimPauseTargets, 200);
@@ -622,6 +666,7 @@ function startApp() {
         window.syncLeagueDataFromDb();
     }
     applyBrandingFromLeagueData();
+    prewarmStandingsChart();
 
     if (typeof initGlowSync === 'function') initGlowSync();
 

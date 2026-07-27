@@ -517,8 +517,7 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
         return ((goal - startValue) / (endValue - startValue)) * trackHeight;
     };
 
-    // Full participant zones at build time; fill covers them as the ball slides
-    // (do not pre-clip by currentGoal — that made wilayah look "gone" before the slide).
+    // Participant wilayah colors always visible on the track (no solid/heatmap overlay).
     sorted.forEach(function (p, index) {
         const from = index === 0
             ? startValue
@@ -556,6 +555,8 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
     countEl.textContent = '0';
     currentIndicator.appendChild(countEl);
 
+    const ballWrap = document.createElement('span');
+    ballWrap.className = 'total-goal-current-ball-wrap';
     const ballImg = document.createElement('img');
     ballImg.className = 'total-goal-current-ball';
     ballImg.setAttribute('data-league-ball', '');
@@ -565,7 +566,8 @@ Core.buildTotalGoalBar = function buildTotalGoalBar() {
     ballImg.src = typeof Core.getBallImageUrl === 'function'
         ? Core.getBallImageUrl()
         : '';
-    currentIndicator.appendChild(ballImg);
+    ballWrap.appendChild(ballImg);
+    currentIndicator.appendChild(ballWrap);
 
     track.appendChild(currentIndicator);
 

@@ -1009,6 +1009,39 @@ Core.compareStandingsParticipants = function compareStandingsParticipants(a, b, 
 
     return a.localeCompare(b);
 };
+/** Why `winner` ranks above `loser` when points are tied (goals from supported teams, FT+ET). */
+Core.explainStandingsTieBreak = function explainStandingsTieBreak(winner, loser, goalStats) {
+    const gsW = (goalStats && goalStats[winner]) || { scored: 0, conceded: 0 };
+    const gsL = (goalStats && goalStats[loser]) || { scored: 0, conceded: 0 };
+
+    if (gsW.scored !== gsL.scored) {
+        return {
+            criterion: 'scored',
+            label: 'more goals scored',
+            winnerValue: gsW.scored,
+            loserValue: gsL.scored,
+            summary: winner + ' above ' + loser + ' — more goals scored (' +
+                gsW.scored + ' vs ' + gsL.scored + ')',
+        };
+    }
+    if (gsW.conceded !== gsL.conceded) {
+        return {
+            criterion: 'conceded',
+            label: 'fewer goals conceded',
+            winnerValue: gsW.conceded,
+            loserValue: gsL.conceded,
+            summary: winner + ' above ' + loser + ' — fewer goals conceded (' +
+                gsW.conceded + ' vs ' + gsL.conceded + ')',
+        };
+    }
+    return {
+        criterion: 'name',
+        label: 'name order (A–Z)',
+        winnerValue: winner,
+        loserValue: loser,
+        summary: winner + ' above ' + loser + ' — name order (A–Z)',
+    };
+};
 Core.getStandingsRankOneParticipants = function getStandingsRankOneParticipants() {
     const points = Core.calculateStandingsPointsFromBracket();
     const goalStats = Core.calculateParticipantGoalStats();

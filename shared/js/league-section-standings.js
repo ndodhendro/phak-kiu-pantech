@@ -211,6 +211,7 @@ Core.bindStandingsAvatarClicks = function bindStandingsAvatarClicks() {
     if (!chart || chart.dataset.avatarPopupBound === '1') return;
     chart.dataset.avatarPopupBound = '1';
     chart.addEventListener('click', function (e) {
+        if (e.target.closest('.chart-tie-break')) return;
         const hit = e.target.closest('.chart-avatar, .chart-name, .chart-bar, .chart-bar-wrapper');
         if (!hit || !chart.contains(hit)) return;
         const row = hit.closest('.chart-row');
@@ -218,6 +219,145 @@ Core.bindStandingsAvatarClicks = function bindStandingsAvatarClicks() {
         const name = row.querySelector('.chart-name')?.textContent.trim();
         if (name) Core.openParticipantAvatarPopup(name);
     });
+};
+Core.bindStandingsTieBreakToggles = function bindStandingsTieBreakToggles() {
+    const chart = document.querySelector('#standings-points-chart')
+        || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
+    if (!chart || chart.dataset.tieBreakBound === '1') return;
+    chart.dataset.tieBreakBound = '1';
+    if (!Core._standingsTieBreakOpen) Core._standingsTieBreakOpen = Object.create(null);
+
+    chart.addEventListener('click', function (e) {
+        const toggle = e.target.closest('.chart-tie-break-toggle');
+        if (!toggle || !chart.contains(toggle)) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const block = toggle.closest('.chart-tie-break');
+        if (!block) return;
+        const panel = block.querySelector('.chart-tie-break-panel');
+        if (!panel) return;
+
+        const key = block.dataset.tieKey || '';
+        const open = toggle.getAttribute('aria-expanded') !== 'true';
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        panel.hidden = !open;
+        block.classList.toggle('is-open', open);
+        if (key) {
+            if (open) Core._standingsTieBreakOpen[key] = true;
+            else delete Core._standingsTieBreakOpen[key];
+        }
+    });
+};
+/** Insert expand/collapse tie-break notes after each group of equal-points participants. */
+Core.renderStandingsTieBreakers = function renderStandingsTieBreakers(chart, rows, goalStats) {
+    if (!chart) return;
+    chart.querySelectorAll('.chart-tie-break').forEach(el => el.remove());
+    rows.forEach(row => row.classList.remove('chart-row--tied'));
+
+    if (!Core._standingsTieBreakOpen) Core._standingsTieBreakOpen = Object.create(null);
+    const formatPts = Core.formatStandingsPoints || function (v) { return String(v); };
+
+    let i = 0;
+    while (i < rows.length) {
+        let j = i + 1;
+        while (j < rows.length && rows[j]._points === rows[i]._points) j++;
+        if (j - i < 2) {
+            i = j;
+            continue;
+        }
+
+        const group = rows.slice(i, j);
+        group.forEach(row => row.classList.add('chart-row--tied'));
+
+        const pts = rows[i]._points;
+        const names = group.map(r => r._name);
+        const tieKey = String(pts) + ':' + names.join('|');
+        const open = !!Core._standingsTieBreakOpen[tieKey];
+
+        const block = document.createElement('div');
+        block.className = 'chart-tie-break' + (open ? ' is-open' : '');
+        block.dataset.tieKey = tieKey;
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'chart-tie-break-toggle';
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        const icon = document.createElement('span');
+        icon.className = 'chart-tie-break-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = '▸';
+
+        const label = document.createElement('span');
+        label.className = 'chart-tie-break-label';
+        label.textContent = 'Points tied at ' + formatPts(pts) +
+            ' · ' + group.length + ' participants · tie-break applied';
+
+        toggle.appendChild(icon);
+        toggle.appendChild(label);
+
+        const panel = document.createElement('div');
+        panel.className = 'chart-tie-break-panel';
+        panel.hidden = !open;
+
+        const rules = document.createElement('p');
+        rules.className = 'chart-tie-break-rules';
+        rules.textContent = 'Tie-break order: goals scored (FT+ET) → goals conceded (FT+ET) → name (A–Z). Stats from supported teams.';
+        panel.appendChild(rules);
+
+        const list = document.createElement('ul');
+        list.className = 'chart-tie-break-list';
+
+        group.forEach((row, idx) => {
+            const name = row._name;
+            const gs = (goalStats && goalStats[name]) || { scored: 0, conceded: 0 };
+            const li = document.createElement('li');
+            li.className = 'chart-tie-break-item';
+
+            const head = document.createElement('div');
+            head.className = 'chart-tie-break-item-head';
+
+            const who = document.createElement('strong');
+            who.className = 'chart-tie-break-who';
+            who.textContent = name;
+
+            const stats = document.createElement('span');
+            stats.className = 'chart-tie-break-stats';
+            stats.textContent = 'GF ' + gs.scored + ' · GA ' + gs.conceded;
+
+            head.appendChild(who);
+            head.appendChild(stats);
+            li.appendChild(head);
+
+            if (idx < group.length - 1) {
+                const below = group[idx + 1]._name;
+                const reason = Core.explainStandingsTieBreak(name, below, goalStats);
+                const why = document.createElement('p');
+                why.className = 'chart-tie-break-why';
+                why.textContent = 'Wins tie-break vs ' + below + ' — ' + reason.label +
+                    (reason.criterion === 'name'
+                        ? ''
+                        : ' (' + reason.winnerValue + ' vs ' + reason.loserValue + ')');
+                li.appendChild(why);
+            }
+
+            list.appendChild(li);
+        });
+
+        panel.appendChild(list);
+        block.appendChild(toggle);
+        block.appendChild(panel);
+
+        const lastRow = group[group.length - 1];
+        if (lastRow.nextSibling) {
+            chart.insertBefore(block, lastRow.nextSibling);
+        } else {
+            chart.appendChild(block);
+        }
+
+        i = j;
+    }
 };
 /** Snap all standings bars to 0 when leaving the Standings tab (re-animates on re-entry). */
 Core.resetStandingsChartBars = function resetStandingsChartBars() {
@@ -244,6 +384,7 @@ Core.updateStandingsChart = function updateStandingsChart() {
     const chart = document.querySelector('#standings-points-chart')
         || document.querySelector('.standings-section .standings-chart:not(#goldenboot-chart)');
     if (!chart) return;
+    chart.querySelectorAll('.chart-tie-break').forEach(el => el.remove());
     const rows = Array.from(chart.querySelectorAll('.chart-row'));
     
     // Get points from each row (supports decimals e.g. shared side-quest points)
@@ -263,7 +404,7 @@ Core.updateStandingsChart = function updateStandingsChart() {
 
     rows.forEach((row, index) => {
         chart.appendChild(row);
-        row.classList.remove('top-1', 'rank-1', 'rank-2', 'rank-3', 'podium-place-1', 'podium-place-2', 'podium-place-3');
+        row.classList.remove('top-1', 'rank-1', 'rank-2', 'rank-3', 'podium-place-1', 'podium-place-2', 'podium-place-3', 'chart-row--tied');
         row.style.removeProperty('--glow-color');
         const rank = index + 1;
         const rankEl = row.querySelector('.chart-rank');
@@ -290,7 +431,10 @@ Core.updateStandingsChart = function updateStandingsChart() {
             : 0;
         Core.slideDimension(bar, 'width', pct + '%');
     });
+
+    Core.renderStandingsTieBreakers(chart, rows, goalStats);
     Core.bindStandingsAvatarClicks();
+    Core.bindStandingsTieBreakToggles();
     if (typeof Core.observeAnimPauseTargets === 'function') Core.observeAnimPauseTargets(chart);
 };
 })(window.ArisanLeagueApp);

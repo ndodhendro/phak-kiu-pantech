@@ -45,6 +45,305 @@ Core.applyPlayerAvatarBlend = function applyPlayerAvatarBlend(img, src) {
     }
     img.classList.remove('player-img-opaque-bg');
 };
+/** Team name for a Golden Boot player (country field). */
+Core.getGoldenBootPlayerTeam = function getGoldenBootPlayerTeam(player) {
+    const nationality = Core.getPlayerNationality(player);
+    if (nationality && nationality.country) return String(nationality.country).trim();
+    return String(player?.country || '').trim();
+};
+/** Tournament GF/GA per team from finished matches (FT+ET). */
+Core.calculateTeamGoalStatsFromBracket = function calculateTeamGoalStatsFromBracket() {
+    const stats = Object.create(null);
+
+    function ensure(name) {
+        if (!stats[name]) stats[name] = { gf: 0, ga: 0 };
+        return stats[name];
+    }
+
+    Core.forEachGoalStatMatchup(matchup => {
+        const teams = matchup.querySelectorAll(':scope > .team');
+        if (teams.length !== 2) return;
+
+        const teamData = Array.from(teams).map(teamEl => ({
+            name: teamEl.querySelector('.team-name')?.textContent.trim(),
+            scoreText: teamEl.querySelector('.team-score')?.textContent,
+        }));
+
+        if (!teamData[0].name || !teamData[1].name) return;
+        if (teamData[0].name === 'TBD' || teamData[1].name === 'TBD') return;
+
+        const goals0 = Core.parseTotalGoalsFromScoreText(teamData[0].scoreText);
+        const goals1 = Core.parseTotalGoalsFromScoreText(teamData[1].scoreText);
+        if (goals0 === null || goals1 === null) return;
+
+        const a = ensure(teamData[0].name);
+        const b = ensure(teamData[1].name);
+        a.gf += goals0;
+        a.ga += goals1;
+        b.gf += goals1;
+        b.ga += goals0;
+    });
+
+    return stats;
+};
+/**
+ * Head-to-head between two teams across finished matches.
+ * Returns { played, scoredA, scoredB, diff } where diff = scoredA - scoredB.
+ */
+Core.getTeamsHeadToHead = function getTeamsHeadToHead(teamA, teamB) {
+    const a = String(teamA || '').trim();
+    const b = String(teamB || '').trim();
+    const empty = { played: 0, scoredA: 0, scoredB: 0, diff: 0 };
+    if (!a || !b || a === b) return empty;
+
+    let scoredA = 0;
+    let scoredB = 0;
+    let played = 0;
+
+    Core.forEachGoalStatMatchup(matchup => {
+        const teams = matchup.querySelectorAll(':scope > .team');
+        if (teams.length !== 2) return;
+
+        const teamData = Array.from(teams).map(teamEl => ({
+            name: teamEl.querySelector('.team-name')?.textContent.trim(),
+            scoreText: teamEl.querySelector('.team-score')?.textContent,
+        }));
+
+        if (!teamData[0].name || !teamData[1].name) return;
+
+        let goalsForA = null;
+        let goalsForB = null;
+        if (teamData[0].name === a && teamData[1].name === b) {
+            goalsForA = Core.parseTotalGoalsFromScoreText(teamData[0].scoreText);
+            goalsForB = Core.parseTotalGoalsFromScoreText(teamData[1].scoreText);
+        } else if (teamData[0].name === b && teamData[1].name === a) {
+            goalsForA = Core.parseTotalGoalsFromScoreText(teamData[1].scoreText);
+            goalsForB = Core.parseTotalGoalsFromScoreText(teamData[0].scoreText);
+        }
+        if (goalsForA === null || goalsForB === null) return;
+
+        played += 1;
+        scoredA += goalsForA;
+        scoredB += goalsForB;
+    });
+
+    return { played: played, scoredA: scoredA, scoredB: scoredB, diff: scoredA - scoredB };
+};
+/** Sort: goals desc → H2H → team GF desc → team GA asc → name. */
+Core.compareGoldenBootPlayers = function compareGoldenBootPlayers(a, b, teamStats) {
+    const goalsDiff = (b.goals || 0) - (a.goals || 0);
+    if (goalsDiff !== 0) return goalsDiff;
+
+    const teamA = Core.getGoldenBootPlayerTeam(a);
+    const teamB = Core.getGoldenBootPlayerTeam(b);
+    const h2h = Core.getTeamsHeadToHead(teamA, teamB);
+    if (h2h.played > 0 && h2h.diff !== 0) return -h2h.diff;
+
+    const stats = teamStats || {};
+    const gsA = stats[teamA] || { gf: 0, ga: 0 };
+    const gsB = stats[teamB] || { gf: 0, ga: 0 };
+    if (gsB.gf !== gsA.gf) return gsB.gf - gsA.gf;
+    if (gsA.ga !== gsB.ga) return gsA.ga - gsB.ga;
+
+    return String(a.name || '').localeCompare(String(b.name || ''));
+};
+Core.sortGoldenBootNominations = function sortGoldenBootNominations(data, teamStats) {
+    const stats = teamStats || Core.calculateTeamGoalStatsFromBracket();
+    return [...(data || [])].sort((a, b) => Core.compareGoldenBootPlayers(a, b, stats));
+};
+/** Why `winner` ranks above `loser` when player goals are tied. */
+Core.explainGoldenBootTieBreak = function explainGoldenBootTieBreak(winner, loser, teamStats) {
+    const teamW = Core.getGoldenBootPlayerTeam(winner);
+    const teamL = Core.getGoldenBootPlayerTeam(loser);
+    const h2h = Core.getTeamsHeadToHead(teamW, teamL);
+
+    if (h2h.played > 0 && h2h.diff !== 0) {
+        return {
+            criterion: 'h2h',
+            label: 'better head-to-head',
+            winnerValue: h2h.scoredA + '-' + h2h.scoredB,
+            loserValue: h2h.scoredB + '-' + h2h.scoredA,
+            summary: winner.name + ' above ' + loser.name + ' — better H2H (' +
+                h2h.scoredA + '-' + h2h.scoredB + ')',
+        };
+    }
+
+    const stats = teamStats || {};
+    const gsW = stats[teamW] || { gf: 0, ga: 0 };
+    const gsL = stats[teamL] || { gf: 0, ga: 0 };
+
+    if (gsW.gf !== gsL.gf) {
+        return {
+            criterion: 'gf',
+            label: 'more team goals scored (GF)',
+            winnerValue: gsW.gf,
+            loserValue: gsL.gf,
+            summary: winner.name + ' above ' + loser.name + ' — more GF (' +
+                gsW.gf + ' vs ' + gsL.gf + ')',
+        };
+    }
+    if (gsW.ga !== gsL.ga) {
+        return {
+            criterion: 'ga',
+            label: 'fewer team goals conceded (GA)',
+            winnerValue: gsW.ga,
+            loserValue: gsL.ga,
+            summary: winner.name + ' above ' + loser.name + ' — fewer GA (' +
+                gsW.ga + ' vs ' + gsL.ga + ')',
+        };
+    }
+    return {
+        criterion: 'name',
+        label: 'name order (A–Z)',
+        winnerValue: winner.name,
+        loserValue: loser.name,
+        summary: winner.name + ' above ' + loser.name + ' — name order (A–Z)',
+    };
+};
+Core.bindGoldenBootTieBreakToggles = function bindGoldenBootTieBreakToggles() {
+    const chart = document.getElementById('goldenboot-chart');
+    if (!chart || chart.dataset.tieBreakBound === '1') return;
+    chart.dataset.tieBreakBound = '1';
+    if (!Core._goldenBootTieBreakOpen) Core._goldenBootTieBreakOpen = Object.create(null);
+
+    chart.addEventListener('click', function (e) {
+        const toggle = e.target.closest('.chart-tie-break-toggle');
+        if (!toggle || !chart.contains(toggle)) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const block = toggle.closest('.chart-tie-break');
+        if (!block) return;
+        const panel = block.querySelector('.chart-tie-break-panel');
+        if (!panel) return;
+
+        const key = block.dataset.tieKey || '';
+        const open = toggle.getAttribute('aria-expanded') !== 'true';
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        panel.hidden = !open;
+        block.classList.toggle('is-open', open);
+        if (key) {
+            if (open) Core._goldenBootTieBreakOpen[key] = true;
+            else delete Core._goldenBootTieBreakOpen[key];
+        }
+    });
+};
+Core.renderGoldenBootTieBreakers = function renderGoldenBootTieBreakers(container, sorted, teamStats) {
+    if (!container) return;
+    container.querySelectorAll('.chart-tie-break').forEach(el => el.remove());
+    const rows = Array.from(container.querySelectorAll('.goldenboot-row'));
+    rows.forEach(row => row.classList.remove('goldenboot-row--tied'));
+
+    if (!Core._goldenBootTieBreakOpen) Core._goldenBootTieBreakOpen = Object.create(null);
+
+    let i = 0;
+    while (i < sorted.length) {
+        let j = i + 1;
+        while (j < sorted.length && (sorted[j].goals || 0) === (sorted[i].goals || 0)) j++;
+        if (j - i < 2) {
+            i = j;
+            continue;
+        }
+
+        const group = sorted.slice(i, j);
+        for (let k = i; k < j; k++) {
+            if (rows[k]) rows[k].classList.add('goldenboot-row--tied');
+        }
+
+        const goals = sorted[i].goals || 0;
+        const names = group.map(p => p.name);
+        const tieKey = String(goals) + ':' + names.join('|');
+        const open = !!Core._goldenBootTieBreakOpen[tieKey];
+
+        const block = document.createElement('div');
+        block.className = 'chart-tie-break goldenboot-tie-break' + (open ? ' is-open' : '');
+        block.dataset.tieKey = tieKey;
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'chart-tie-break-toggle';
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        const icon = document.createElement('span');
+        icon.className = 'chart-tie-break-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = '▸';
+
+        const label = document.createElement('span');
+        label.className = 'chart-tie-break-label';
+        label.textContent = 'Goals tied at ' + goals +
+            ' · ' + group.length + ' players · tie-break applied';
+
+        toggle.appendChild(icon);
+        toggle.appendChild(label);
+
+        const panel = document.createElement('div');
+        panel.className = 'chart-tie-break-panel';
+        panel.hidden = !open;
+
+        const rules = document.createElement('p');
+        rules.className = 'chart-tie-break-rules';
+        rules.textContent = 'Tie-break order: H2H → team GF → team GA → name (A–Z). Team stats from tournament matches (FT+ET).';
+        panel.appendChild(rules);
+
+        const list = document.createElement('ul');
+        list.className = 'chart-tie-break-list';
+
+        group.forEach((player, idx) => {
+            const team = Core.getGoldenBootPlayerTeam(player);
+            const gs = (teamStats && teamStats[team]) || { gf: 0, ga: 0 };
+            const li = document.createElement('li');
+            li.className = 'chart-tie-break-item';
+
+            const head = document.createElement('div');
+            head.className = 'chart-tie-break-item-head';
+
+            const who = document.createElement('strong');
+            who.className = 'chart-tie-break-who';
+            who.textContent = player.name + (team ? ' (' + team + ')' : '');
+
+            const statsEl = document.createElement('span');
+            statsEl.className = 'chart-tie-break-stats';
+            statsEl.textContent = 'GF ' + gs.gf + ' · GA ' + gs.ga;
+
+            head.appendChild(who);
+            head.appendChild(statsEl);
+            li.appendChild(head);
+
+            if (idx < group.length - 1) {
+                const below = group[idx + 1];
+                const reason = Core.explainGoldenBootTieBreak(player, below, teamStats);
+                const why = document.createElement('p');
+                why.className = 'chart-tie-break-why';
+                let detail = '';
+                if (reason.criterion === 'h2h') {
+                    detail = ' (' + reason.winnerValue + ')';
+                } else if (reason.criterion !== 'name') {
+                    detail = ' (' + reason.winnerValue + ' vs ' + reason.loserValue + ')';
+                }
+                why.textContent = 'Wins tie-break vs ' + below.name + ' — ' + reason.label + detail;
+                li.appendChild(why);
+            }
+
+            list.appendChild(li);
+        });
+
+        panel.appendChild(list);
+        block.appendChild(toggle);
+        block.appendChild(panel);
+
+        const lastRow = rows[j - 1];
+        if (lastRow) {
+            if (lastRow.nextSibling) {
+                container.insertBefore(block, lastRow.nextSibling);
+            } else {
+                container.appendChild(block);
+            }
+        }
+
+        i = j;
+    }
+};
 Core.sortGoldenGloveNominations = function sortGoldenGloveNominations(data) {
     return [...(data || [])].sort((a, b) => {
         const sa = (a.supporters && a.supporters.length) || 0;
@@ -279,19 +578,17 @@ Core.buildGoldenBootChart = function buildGoldenBootChart() {
     if (!container) return;
     container.innerHTML = '';
 
-    // Sort by goals count descending, then name ascending
+    // Sort: goals desc → H2H → team GF → team GA → name
     const bootData = (window.ADMIN_CONFIG && window.ADMIN_CONFIG.goldenBoot) || [];
-    const sorted = [...bootData].sort((a, b) => {
-        const diff = b.goals - a.goals;
-        if (diff !== 0) return diff;
-        return a.name.localeCompare(b.name);
-    });
+    const teamStats = Core.calculateTeamGoalStatsFromBracket();
+    const sorted = Core.sortGoldenBootNominations(bootData, teamStats);
     const maxGoals = Math.max(...sorted.map(p => p.goals), 1);
 
     sorted.forEach((player, index) => {
         const row = document.createElement('div');
         row.className = 'goldenboot-row';
-        if (player.goals === sorted[0].goals) row.classList.add('top-1');
+        row.dataset.playerName = player.name || '';
+        if (index === 0 && (player.goals || 0) > 0) row.classList.add('top-1');
 
         // Bar area (card + bar)
         const barArea = document.createElement('div');
@@ -366,6 +663,9 @@ Core.buildGoldenBootChart = function buildGoldenBootChart() {
         container.appendChild(row);
         Core.slideDimension(bar, 'width', pct + '%');
     });
+
+    Core.renderGoldenBootTieBreakers(container, sorted, teamStats);
+    Core.bindGoldenBootTieBreakToggles();
     if (typeof Core.observeAnimPauseTargets === 'function') Core.observeAnimPauseTargets(container);
 };
 Core.calculateCurrentGoalFromBracket = function calculateCurrentGoalFromBracket() {
@@ -682,15 +982,14 @@ Core.applyGoldenBootBonus = function applyGoldenBootBonus(points) {
     const maxGoals = Math.max(...bootData.map(p => p.goals || 0));
     if (maxGoals <= 0) return;
 
-    const winners = [];
-    bootData
-        .filter(p => (p.goals || 0) === maxGoals)
-        .forEach(player => {
-            (player.supporters || []).forEach(name => winners.push(name));
-        });
+    // Sole leader after tie-break (H2H → GF → GA → name)
+    const sorted = Core.sortGoldenBootNominations(bootData);
+    const winner = sorted[0];
+    if (!winner || (winner.goals || 0) !== maxGoals) return;
+
     Core.awardSideQuestPoints(
         points,
-        winners,
+        winner.supporters || [],
         Core.pointConfig.sideQuest.goldenBoot,
         Core.isSideQuestShareEnabled('goldenBoot')
     );

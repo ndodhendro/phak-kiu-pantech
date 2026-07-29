@@ -156,6 +156,12 @@
     window.createPlayerPodiumPlace = function () { return Core.createPlayerPodiumPlace.apply(Core, arguments); };
     window.buildPlayerPodium = function () { return Core.buildPlayerPodium.apply(Core, arguments); };
     window.buildGoldenBootChart = function () { return Core.buildGoldenBootChart.apply(Core, arguments); };
+    window.sortGoldenBootNominations = function () { return Core.sortGoldenBootNominations.apply(Core, arguments); };
+    window.compareGoldenBootPlayers = function () { return Core.compareGoldenBootPlayers.apply(Core, arguments); };
+    window.explainGoldenBootTieBreak = function () { return Core.explainGoldenBootTieBreak.apply(Core, arguments); };
+    window.renderGoldenBootTieBreakers = function () { return Core.renderGoldenBootTieBreakers.apply(Core, arguments); };
+    window.bindGoldenBootTieBreakToggles = function () { return Core.bindGoldenBootTieBreakToggles.apply(Core, arguments); };
+    window.calculateTeamGoalStatsFromBracket = function () { return Core.calculateTeamGoalStatsFromBracket.apply(Core, arguments); };
     window.cancelTotalGoalCurrentLabel = function () { return Core.cancelTotalGoalCurrentLabel.apply(Core, arguments); };
     window.syncTotalGoalMarkers = function () { return Core.syncTotalGoalMarkers.apply(Core, arguments); };
     window.resetTotalGoalCurrentLabel = function () { return Core.resetTotalGoalCurrentLabel.apply(Core, arguments); };
@@ -185,6 +191,9 @@
     window.openParticipantAvatarPopup = function () { return Core.openParticipantAvatarPopup.apply(Core, arguments); };
     window.closeParticipantAvatarPopup = function () { return Core.closeParticipantAvatarPopup.apply(Core, arguments); };
     window.bindStandingsAvatarClicks = function () { return Core.bindStandingsAvatarClicks.apply(Core, arguments); };
+    window.bindStandingsTieBreakToggles = function () { return Core.bindStandingsTieBreakToggles.apply(Core, arguments); };
+    window.explainStandingsTieBreak = function () { return Core.explainStandingsTieBreak.apply(Core, arguments); };
+    window.renderStandingsTieBreakers = function () { return Core.renderStandingsTieBreakers.apply(Core, arguments); };
     window.unlockSplashScroll = function () { return Core.unlockSplashScroll.apply(Core, arguments); };
     window.lockSplashScroll = function () { return Core.lockSplashScroll.apply(Core, arguments); };
     window.enterSite = function () { return Core.enterSite.apply(Core, arguments); };

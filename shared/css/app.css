@@ -1315,6 +1315,97 @@
             align-items: center;
             margin-bottom: 10px;
         }
+        .chart-row.chart-row--tied {
+            margin-bottom: 6px;
+        }
+        .chart-row.chart-row--tied .chart-bar-wrapper {
+            border-color: rgba(255, 193, 7, 0.35);
+        }
+        .chart-tie-break {
+            margin: 0 0 14px 118px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 193, 7, 0.28);
+            background: rgba(255, 193, 7, 0.06);
+            overflow: hidden;
+        }
+        .chart-tie-break-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            margin: 0;
+            padding: 8px 12px;
+            border: 0;
+            background: transparent;
+            color: #ffd54f;
+            font: inherit;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+        }
+        .chart-tie-break-toggle:hover {
+            background: rgba(255, 193, 7, 0.08);
+        }
+        .chart-tie-break-icon {
+            display: inline-block;
+            flex-shrink: 0;
+            transition: transform 0.18s ease;
+            line-height: 1;
+        }
+        .chart-tie-break.is-open .chart-tie-break-icon {
+            transform: rotate(90deg);
+        }
+        .chart-tie-break-label {
+            min-width: 0;
+            line-height: 1.35;
+        }
+        .chart-tie-break-panel {
+            padding: 0 12px 10px;
+            border-top: 1px solid rgba(255, 193, 7, 0.18);
+        }
+        .chart-tie-break-rules {
+            margin: 8px 0 10px;
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 0.72rem;
+            line-height: 1.4;
+        }
+        .chart-tie-break-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .chart-tie-break-item {
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.22);
+        }
+        .chart-tie-break-item-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .chart-tie-break-who {
+            color: #fff;
+            font-size: 0.82rem;
+        }
+        .chart-tie-break-stats {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 0.72rem;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .chart-tie-break-why {
+            margin: 6px 0 0;
+            color: #ffd54f;
+            font-size: 0.72rem;
+            line-height: 1.4;
+        }
         .chart-label {
             flex-shrink: 0;
             width: 118px;
@@ -2629,6 +2720,15 @@
         .goldenboot-row {
             margin-bottom: 12px;
         }
+        .goldenboot-row.goldenboot-row--tied {
+            margin-bottom: 6px;
+        }
+        .goldenboot-row.goldenboot-row--tied .goldenboot-bar-wrapper {
+            border-color: rgba(255, 193, 7, 0.35);
+        }
+        .goldenboot-tie-break {
+            margin-left: calc(var(--award-card-width) + 12px);
+        }
         .goldenboot-bar-area {
             display: flex;
             align-items: flex-start;
@@ -3397,6 +3497,9 @@
                 width: 104px;
                 min-width: 104px;
                 padding-right: 8px;
+            }
+            .chart-tie-break {
+                margin-left: 104px;
             }
             .chart-label .podium-team-info {
                 min-height: 20px;

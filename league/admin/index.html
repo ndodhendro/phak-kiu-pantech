@@ -936,7 +936,7 @@
                 winSel.innerHTML = '';
                 if (isFinished) {
                     winSel.disabled = false;
-                    [['0', 'Team 1'], ['1', 'Team 2']].forEach(([v, t]) => {
+                    [['', '—'], ['0', 'Team 1'], ['1', 'Team 2']].forEach(([v, t]) => {
                         const opt = document.createElement('option');
                         opt.value = v;
                         opt.textContent = t;
@@ -947,7 +947,8 @@
                     } else if (match.winner === 0 || match.winner === 1) {
                         winSel.value = String(match.winner);
                     } else {
-                        winSel.value = '0';
+                        // Tidak ada pemenang (draw / 0-0-0-0 / belum dipilih)
+                        winSel.value = '';
                     }
                 } else {
                     winSel.disabled = true;
@@ -1076,20 +1077,10 @@
                     },
                 };
                 if (status === 'finished') {
-                    const winnerIdx = parseInt(winnerVal, 10);
-                    if (winnerIdx === 0 || winnerIdx === 1) {
-                        entry.winner = winnerIdx;
-                    } else {
-                        // Infer dari skor bila dropdown winner belum dipilih
-                        const ft0 = parseScoreInput(row.querySelector('.score-ft-0').value);
-                        const ft1 = parseScoreInput(row.querySelector('.score-ft-1').value);
-                        const et0 = parseScoreInput(row.querySelector('.score-et-0').value);
-                        const et1 = parseScoreInput(row.querySelector('.score-et-1').value);
-                        const total0 = ft0 + et0;
-                        const total1 = ft1 + et1;
-                        if (total0 > total1) entry.winner = 0;
-                        else if (total1 > total0) entry.winner = 1;
+                    if (winnerVal === '0' || winnerVal === '1') {
+                        entry.winner = parseInt(winnerVal, 10);
                     }
+                    // winnerVal '' = pilihan '—' (tidak ada pemenang); jangan infer dari skor
                 }
                 return entry;
             });

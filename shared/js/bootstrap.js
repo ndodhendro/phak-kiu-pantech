@@ -625,7 +625,7 @@ function activateLeagueView(viewId, meta) {
             setTimeout(observeAnimPauseTargets, 200);
         }
     } else if (viewId === 'podium') {
-        ensureMatchStagesHydrated({ ko: true });
+        ensureMatchStagesHydrated({ group: true, ko: true });
         if (typeof updateSideQuestEliminatedStatus === 'function') updateSideQuestEliminatedStatus();
         if (typeof buildPodiumCards === 'function') {
             buildPodiumCards('podium-champion', sideQuestPodium.champion);

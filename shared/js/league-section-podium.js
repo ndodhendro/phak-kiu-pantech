@@ -206,45 +206,49 @@ Core.updateSideQuestEliminatedStatus = function updateSideQuestEliminatedStatus(
     const thirdWinner = typeof Core.getFinishedMatchTeam === 'function'
         ? Core.getFinishedMatchTeam('third-0', 'winner')
         : null;
+    const groupElimSet = new Set(
+        typeof Core.getMathematicallyEliminatedGroupTeams === 'function'
+            ? Core.getMathematicallyEliminatedGroupTeams()
+            : []
+    );
 
     Object.entries(Core.sideQuestPodium.champion).forEach(([name, info]) => {
         if (finalFinished) {
             // Setelah Final: hanya juara yang glowing
             info.eliminated = !Core.podiumTeamMatchesResult(name, info, champion);
-            return;
+        } else {
+            // Gugur atau masuk perebutan juara 3 → tidak glowing
+            info.eliminated = Core.isPodiumTeamKnockedOut(name, info) || Core.isPodiumTeamInThirdPlace(name, info);
         }
-        // Gugur atau masuk perebutan juara 3 → tidak glowing
-        info.eliminated = Core.isPodiumTeamKnockedOut(name, info) || Core.isPodiumTeamInThirdPlace(name, info);
+        if (groupElimSet.has(name)) info.eliminated = true;
     });
 
     Object.entries(Core.sideQuestPodium.runnerup).forEach(([name, info]) => {
         if (finalFinished) {
             // Setelah Final: hanya runner-up (kalah Final) yang glowing
             info.eliminated = !Core.podiumTeamMatchesResult(name, info, runnerUp);
-            return;
+        } else {
+            // Gugur atau masuk perebutan juara 3 → tidak glowing
+            info.eliminated = Core.isPodiumTeamKnockedOut(name, info) || Core.isPodiumTeamInThirdPlace(name, info);
         }
-        // Gugur atau masuk perebutan juara 3 → tidak glowing
-        info.eliminated = Core.isPodiumTeamKnockedOut(name, info) || Core.isPodiumTeamInThirdPlace(name, info);
+        if (groupElimSet.has(name)) info.eliminated = true;
     });
 
     Object.entries(Core.sideQuestPodium.third).forEach(([name, info]) => {
         if (thirdFinished) {
             // Setelah perebutan juara 3: hanya pemenang yang glowing
             info.eliminated = !Core.podiumTeamMatchesResult(name, info, thirdWinner);
-            return;
-        }
-        // Sudah lolos Final → tidak glowing di 3rd Place
-        if (Core.isPodiumTeamFinalist(name, info)) {
+        } else if (Core.isPodiumTeamFinalist(name, info)) {
+            // Sudah lolos Final → tidak glowing di 3rd Place
             info.eliminated = true;
-            return;
-        }
-        // Sudah di slot perebutan juara 3 → tetap glowing
-        if (Core.isPodiumTeamInThirdPlace(name, info)) {
+        } else if (Core.isPodiumTeamInThirdPlace(name, info)) {
+            // Sudah di slot perebutan juara 3 → tetap glowing
             info.eliminated = false;
-            return;
+        } else {
+            // Gugur sebelum SF → tidak glowing; selain itu default glowing
+            info.eliminated = Core.isPodiumTeamKnockedOutBeforeSf(name, info);
         }
-        // Gugur sebelum SF → tidak glowing; selain itu default glowing
-        info.eliminated = Core.isPodiumTeamKnockedOutBeforeSf(name, info);
+        if (groupElimSet.has(name)) info.eliminated = true;
     });
 };
 Core.updateMainQuestEliminatedStatus = function updateMainQuestEliminatedStatus() {
@@ -410,7 +414,10 @@ Core.buildPodiumCards = function buildPodiumCards(containerId, data) {
         winnerTeam = Core.getFinishedMatchTeam('third-0', 'winner');
     }
 
-    const sortBySupportersThenName = (entries) => entries.slice().sort((a, b) => {
+    const sortPodiumEntries = (entries) => entries.slice().sort((a, b) => {
+        const ea = a[1].eliminated ? 1 : 0;
+        const eb = b[1].eliminated ? 1 : 0;
+        if (ea !== eb) return ea - eb; // alive first, then eliminated
         const sa = (a[1].supporters && a[1].supporters.length) || 0;
         const sb = (b[1].supporters && b[1].supporters.length) || 0;
         if (sb !== sa) return sb - sa;
@@ -469,7 +476,7 @@ Core.buildPodiumCards = function buildPodiumCards(containerId, data) {
         appendPodiumCard(winnerRow, winnerEntry[0], winnerEntry[1]);
         container.appendChild(winnerRow);
 
-        const others = sortBySupportersThenName(
+        const others = sortPodiumEntries(
             entries.filter(([name]) => name !== winnerEntry[0])
         );
         if (others.length) {
@@ -484,7 +491,7 @@ Core.buildPodiumCards = function buildPodiumCards(containerId, data) {
 
     const row = document.createElement('div');
     row.className = 'podium-teams-row';
-    sortBySupportersThenName(entries).forEach(([team, info]) => {
+    sortPodiumEntries(entries).forEach(([team, info]) => {
         appendPodiumCard(row, team, info);
     });
     container.appendChild(row);
